@@ -24,7 +24,12 @@ var (
 	ErrIllegalTransition  = errors.New("illegal status transition")
 	ErrInvalidBlockTitle  = errors.New("invalid block title")
 	ErrInvalidStartAndEnd = errors.New("invalid start and end")
+	ErrOverlap            = errors.New("planned time overlaps")
+	ErrCarryoverRefused   = errors.New("block cannot be carried over")
 )
+
+// ExtendStep is how far one stretch pushes the planned end.
+const ExtendStep = 15 * time.Minute
 
 type Block struct {
 	ID        utils.ID   `json:"id"`
@@ -135,6 +140,42 @@ func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
 	}
 
 	return fmt.Errorf("%w: %q to %q", ErrIllegalTransition, b.Status, to)
+}
+
+// Extend pushes the planned end by one step. Only running or paused blocks
+// stretch, and the longer range must still fit the day, ignoring this block
+// itself. The longer end stays on refusal.
+func (b *Block) Extend(day []Block) error {
+	if b.Status != InProgress && b.Status != Paused {
+		return fmt.Errorf("%w: extend from %q", ErrIllegalTransition, b.Status)
+	}
+	others := make([]Block, 0, len(day))
+	for _, ob := range day {
+		if ob.ID == b.ID {
+			continue
+		}
+		others = append(others, ob)
+	}
+	if newEnd := b.PlannedEnd.Add(ExtendStep); IsOverlapping(b.PlannedStart, newEnd, others) {
+		return fmt.Errorf("%w: stretch to %s", ErrOverlap, newEnd.Format(time.Kitchen))
+	} else {
+		b.PlannedEnd = newEnd
+		return nil
+	}
+}
+
+// CarryOver copies an unfinished block to another day as a fresh todo, leaving
+// the source untouched. Finished, skipped and hidden sources refuse, as does a
+// copy that would overlap its new day.
+func (b Block) CarryOver(dayID utils.ID, start, end time.Time, target []Block) (*Block, error) {
+	if b.Archived || b.Status == Done || b.Status == Skipped {
+		return nil, fmt.Errorf("%w: status: %q", ErrCarryoverRefused, b.Status)
+	}
+	if IsOverlapping(start, end, target) {
+		return nil, fmt.Errorf("%w: %s to %s", ErrOverlap, start.Format(time.Kitchen), end.Format(time.Kitchen))
+	}
+	src := b.ID
+	return NewBlock(NewBlockInput{Title: b.Title, DayID: dayID, PlannedStartAt: start, PlannedEndAt: end, CopiedFromID: &src})
 }
 
 // IsOverlapping reports whether a planned range touches any visible block of

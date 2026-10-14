@@ -9,17 +9,21 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/utils"
 )
 
-func mkTime(h, m int) time.Time {
-	return time.Date(2026, time.October, 14, h, m, 0, 0, time.UTC)
+func timeFromStr(s string) time.Time {
+	t, err := time.Parse("2006-01-02 15:04", "2026-10-14 "+s)
+	if err != nil {
+		panic("bad test clock: " + s)
+	}
+	return t
 }
 
 func TestIsOverlapping(t *testing.T) {
 	day := []Block{
-		{ID: "study", DayID: "day-1", Title: "study", Status: Todo, PlannedStart: mkTime(9, 0), PlannedEnd: mkTime(10, 0)},
-		{ID: "code", DayID: "day-1", Title: "code", Status: Paused, PlannedStart: mkTime(10, 30), PlannedEnd: mkTime(11, 30)},
-		{ID: "gym", DayID: "day-1", Title: "gym", Status: Done, PlannedStart: mkTime(14, 0), PlannedEnd: mkTime(15, 0)},
-		{ID: "read", DayID: "day-1", Title: "read", Status: Skipped, PlannedStart: mkTime(16, 0), PlannedEnd: mkTime(17, 0)},
-		{ID: "old", DayID: "day-1", Title: "old", Status: Todo, PlannedStart: mkTime(12, 0), PlannedEnd: mkTime(13, 0), Archived: true},
+		{ID: "study", DayID: "day", Title: "study", Status: Todo, PlannedStart: timeFromStr("09:00"), PlannedEnd: timeFromStr("10:00")},
+		{ID: "code", DayID: "day", Title: "code", Status: Paused, PlannedStart: timeFromStr("10:30"), PlannedEnd: timeFromStr("11:30")},
+		{ID: "gym", DayID: "day", Title: "gym", Status: Done, PlannedStart: timeFromStr("14:00"), PlannedEnd: timeFromStr("15:00")},
+		{ID: "read", DayID: "day", Title: "read", Status: Skipped, PlannedStart: timeFromStr("16:00"), PlannedEnd: timeFromStr("17:00")},
+		{ID: "old", DayID: "day", Title: "old", Status: Todo, PlannedStart: timeFromStr("12:00"), PlannedEnd: timeFromStr("13:00"), Archived: true},
 	}
 
 	tests := []struct {
@@ -29,25 +33,116 @@ func TestIsOverlapping(t *testing.T) {
 		others []Block
 		want   bool
 	}{
-		{name: "fully inside a block", start: mkTime(9, 15), end: mkTime(9, 45), others: day, want: true},
-		{name: "start inside a block", start: mkTime(9, 30), end: mkTime(10, 15), others: day, want: true},
-		{name: "end inside a block", start: mkTime(8, 30), end: mkTime(9, 30), others: day, want: true},
-		{name: "spans a whole block", start: mkTime(8, 0), end: mkTime(10, 0), others: day, want: true},
-		{name: "identical to a block", start: mkTime(9, 0), end: mkTime(10, 0), others: day, want: true},
-		{name: "inside a skipped block", start: mkTime(16, 15), end: mkTime(16, 45), others: day, want: true},
-		{name: "touching a block end", start: mkTime(10, 0), end: mkTime(10, 30), others: day, want: false},
-		{name: "touching a block start", start: mkTime(8, 0), end: mkTime(9, 0), others: day, want: false},
-		{name: "sitting in a gap", start: mkTime(13, 0), end: mkTime(14, 0), others: day, want: false},
-		{name: "after every block", start: mkTime(17, 0), end: mkTime(18, 0), others: day, want: false},
-		{name: "before every block", start: mkTime(7, 0), end: mkTime(8, 0), others: day, want: false},
-		{name: "empty day never overlaps", start: mkTime(9, 0), end: mkTime(10, 0), others: nil, want: false},
-		{name: "archived block holds no time", start: mkTime(12, 15), end: mkTime(12, 45), others: day, want: false},
+		{name: "fully inside a block", start: timeFromStr("09:15"), end: timeFromStr("09:45"), others: day, want: true},
+		{name: "start inside a block", start: timeFromStr("09:30"), end: timeFromStr("10:15"), others: day, want: true},
+		{name: "end inside a block", start: timeFromStr("08:30"), end: timeFromStr("09:30"), others: day, want: true},
+		{name: "spans a whole block", start: timeFromStr("08:00"), end: timeFromStr("10:00"), others: day, want: true},
+		{name: "identical to a block", start: timeFromStr("09:00"), end: timeFromStr("10:00"), others: day, want: true},
+		{name: "inside a skipped block", start: timeFromStr("16:15"), end: timeFromStr("16:45"), others: day, want: true},
+		{name: "touching a block end", start: timeFromStr("10:00"), end: timeFromStr("10:30"), others: day, want: false},
+		{name: "touching a block start", start: timeFromStr("08:00"), end: timeFromStr("09:00"), others: day, want: false},
+		{name: "sitting in a gap", start: timeFromStr("13:00"), end: timeFromStr("14:00"), others: day, want: false},
+		{name: "after every block", start: timeFromStr("17:00"), end: timeFromStr("18:00"), others: day, want: false},
+		{name: "before every block", start: timeFromStr("07:00"), end: timeFromStr("08:00"), others: day, want: false},
+		{name: "empty day never overlaps", start: timeFromStr("09:00"), end: timeFromStr("10:00"), others: nil, want: false},
+		{name: "archived block holds no time", start: timeFromStr("12:15"), end: timeFromStr("12:45"), others: day, want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsOverlapping(tt.start, tt.end, tt.others); got != tt.want {
 				t.Errorf("got overlap %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtend(t *testing.T) {
+	study := Block{ID: "study", DayID: "day", Title: "study", Status: InProgress, PlannedStart: timeFromStr("09:00"), PlannedEnd: timeFromStr("10:00")}
+	code := Block{ID: "code", DayID: "day", Title: "code", Status: Todo, PlannedStart: timeFromStr("10:30"), PlannedEnd: timeFromStr("11:30")}
+	day := []Block{study, code}
+	tests := []struct {
+		name    string
+		block   Block
+		day     []Block
+		wantEnd time.Time
+		wantErr error
+	}{
+		{name: "stretch lands in free space", block: study, day: day, wantEnd: timeFromStr("10:15")},
+		{name: "stretch skips itself", block: Block{ID: "solo", DayID: "other", Title: "solo", Status: Paused, PlannedStart: timeFromStr("09:00"), PlannedEnd: timeFromStr("10:00")}, day: []Block{
+			{ID: "solo", DayID: "other", Title: "solo", Status: Paused, PlannedStart: timeFromStr("09:00"), PlannedEnd: timeFromStr("10:00")},
+		}, wantEnd: timeFromStr("10:15")},
+		{name: "stretch into clash refuses", block: study, day: []Block{
+			study,
+			{ID: "code", DayID: "day", Title: "code", Status: Todo, PlannedStart: timeFromStr("10:00"), PlannedEnd: timeFromStr("11:00")},
+		}, wantErr: ErrOverlap},
+		{name: "todo cannot stretch", block: code, day: day, wantErr: ErrIllegalTransition},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := tt.block
+			err := b.Extend(tt.day)
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("got error %v, want %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
+			}
+			if !b.PlannedEnd.Equal(tt.wantEnd) {
+				t.Errorf("got end %v, want %v", b.PlannedEnd, tt.wantEnd)
+			}
+		})
+	}
+}
+
+func TestCarryOver(t *testing.T) {
+	target := []Block{
+		{ID: "gym", DayID: "next", Title: "gym", Status: Todo, PlannedStart: timeFromStr("14:00"), PlannedEnd: timeFromStr("15:00")},
+	}
+	tests := []struct {
+		name    string
+		src     Block
+		start   time.Time
+		end     time.Time
+		wantErr error
+	}{
+		{name: "todo carries with same times", src: Block{ID: "study", DayID: "day", Title: "study", Status: Todo}, start: timeFromStr("09:00"), end: timeFromStr("10:00")},
+		{name: "running carries", src: Block{ID: "code", DayID: "day", Title: "code", Status: InProgress}, start: timeFromStr("09:00"), end: timeFromStr("10:00")},
+		{name: "paused carries", src: Block{ID: "code", DayID: "day", Title: "code", Status: Paused}, start: timeFromStr("09:00"), end: timeFromStr("10:00")},
+		{name: "done refuses", src: Block{ID: "gym", DayID: "day", Title: "gym", Status: Done}, start: timeFromStr("09:00"), end: timeFromStr("10:00"), wantErr: ErrCarryoverRefused},
+		{name: "skipped refuses", src: Block{ID: "read", DayID: "day", Title: "read", Status: Skipped}, start: timeFromStr("09:00"), end: timeFromStr("10:00"), wantErr: ErrCarryoverRefused},
+		{name: "archived refuses", src: Block{ID: "old", DayID: "day", Title: "old", Status: Todo, Archived: true}, start: timeFromStr("09:00"), end: timeFromStr("10:00"), wantErr: ErrCarryoverRefused},
+		{name: "clash on target refuses", src: Block{ID: "study", DayID: "day", Title: "study", Status: Todo}, start: timeFromStr("14:15"), end: timeFromStr("14:45"), wantErr: ErrOverlap},
+		{name: "bad times refuse", src: Block{ID: "study", DayID: "day", Title: "study", Status: Todo}, start: timeFromStr("10:00"), end: timeFromStr("09:00"), wantErr: ErrInvalidStartAndEnd},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.src.CarryOver("next", tt.start, tt.end, target)
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("got error %v, want %v", err, tt.wantErr)
+				}
+				if got != nil {
+					t.Errorf("got non-nil block, want nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
+			}
+			if got.Status != Todo || got.DayID != "next" {
+				t.Errorf("got %q on %q, want todo on next", got.Status, got.DayID)
+			}
+			if got.CopiedFromID == nil || *got.CopiedFromID != tt.src.ID {
+				t.Errorf("got copy from %v, want %q", got.CopiedFromID, tt.src.ID)
+			}
+			if !got.PlannedStart.Equal(tt.start) || !got.PlannedEnd.Equal(tt.end) {
+				t.Errorf("got times %v to %v, want %v to %v", got.PlannedStart, got.PlannedEnd, tt.start, tt.end)
 			}
 		})
 	}
@@ -94,7 +189,7 @@ func TestUpdateStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Block{ID: "block", DayID: "day", Title: "block", Status: tt.from}
-			now := time.Date(2026, time.October, 14, 12, 0, 0, 0, time.UTC)
+			now := timeFromStr("12:00")
 			day := tt.day
 			if day.Date == "" {
 				day = sameDay
@@ -116,8 +211,8 @@ func TestUpdateStatus(t *testing.T) {
 	}
 }
 
-func TestNewBlockInputValidation(t *testing.T) {
-	now := time.Now()
+func TestValidate(t *testing.T) {
+	now := timeFromStr("09:00")
 	tests := []struct {
 		name    string
 		input   NewBlockInput
@@ -198,7 +293,7 @@ func TestNewBlockInputValidation(t *testing.T) {
 }
 
 func TestNewBlock(t *testing.T) {
-	now := time.Date(2026, time.October, 14, 9, 0, 0, 0, time.UTC)
+	now := timeFromStr("09:00")
 	t.Run("bad input returns nil plus the error", func(t *testing.T) {
 		got, err := NewBlock(NewBlockInput{Title: "", DayID: "day", PlannedStartAt: now, PlannedEndAt: now.Add(time.Hour)})
 		if !errors.Is(err, ErrInvalidBlockTitle) {
