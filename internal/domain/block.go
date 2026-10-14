@@ -72,7 +72,7 @@ func NewBlock(input NewBlockInput) (*Block, error) {
 		return nil, err
 	}
 
-	block := Block{
+	return &Block{
 		ID:           utils.NewIDWithPrefix("bl"),
 		CreatedAt:    time.Now().UTC(),
 		Title:        strings.TrimSpace(input.Title),
@@ -81,9 +81,7 @@ func NewBlock(input NewBlockInput) (*Block, error) {
 		PlannedEnd:   input.PlannedEndAt,
 		Status:       Todo,
 		CopiedFromID: input.CopiedFromID,
-	}
-
-	return &block, nil
+	}, nil
 }
 
 // UpdateStatus moves the block to a new status when the lifecycle table allows
