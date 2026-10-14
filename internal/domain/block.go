@@ -42,7 +42,7 @@ type Block struct {
 
 	Archived bool `json:"archived"`
 
-	// The block from which this block is created
+	// Source block of a carryover copy, if this block is one.
 	CopiedFromID *utils.ID `json:"copied_from_id"`
 }
 
@@ -66,7 +66,7 @@ func (inp NewBlockInput) Validate() error {
 	return nil
 }
 
-// NewBlock creates a new block instance based on the input
+// NewBlock validates the input and builds a fresh todo block.
 func NewBlock(input NewBlockInput) (*Block, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func NewBlock(input NewBlockInput) (*Block, error) {
 
 // UpdateStatus moves the block to a new status when the lifecycle table allows
 // it, stamping actual times from now. It reports ErrIllegalTransition otherwise.
-func (b *Block) UpdateStatus(to Status, now time.Time) error {
+func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
 	switch b.Status {
 	case Todo:
 		switch to {
@@ -123,19 +123,25 @@ func (b *Block) UpdateStatus(to Status, now time.Time) error {
 			b.Status = Done
 			return nil
 		}
+	case Done:
+		switch to {
+		case InProgress:
+			if day.Date == now.Format("2006-01-02") {
+				b.ActualEnd = nil
+				b.Status = InProgress
+				return nil
+			}
+		}
 	}
-
-	// TODO: Reopen from done stays refused until the Day type arrives with the calendar
-	// date the same day rule needs.
 
 	return fmt.Errorf("%w: %q to %q", ErrIllegalTransition, b.Status, to)
 }
 
-// IsOverlapping checks if the planned time overlap with any other block
-// under the same day.
+// IsOverlapping reports whether a planned range touches any visible block of
+// the day. Archived rows hold no time and are ignored.
 func IsOverlapping(startAt, endAt time.Time, existingBlocks []Block) bool {
 	for _, ob := range existingBlocks {
-		// archived blocks are inactive, hence skip
+		// Archived rows are not counted
 		if ob.Archived {
 			continue
 		}
@@ -147,4 +153,46 @@ func IsOverlapping(startAt, endAt time.Time, existingBlocks []Block) bool {
 		return true
 	}
 	return false
+}
+
+// Now answers what runs at the moment: whoever is active wins, else the
+// planned block holding now.
+func Now(blocks []Block, now time.Time) *Block {
+	var planned *Block
+	for i := range blocks {
+		b := blocks[i]
+		if b.Archived {
+			continue
+		}
+		if b.Status == InProgress {
+			hit := b
+			return &hit
+		}
+		if planned == nil && (b.Status == Todo || b.Status == Paused) &&
+			!b.PlannedStart.After(now) && now.Before(b.PlannedEnd) {
+			hit := b
+			planned = &hit
+		}
+	}
+	return planned
+}
+
+// Next answers the earliest visible todo starting after now, or nothing when
+// the rest of the day holds no todo.
+func Next(blocks []Block, now time.Time) *Block {
+	var best *Block
+	for i := range blocks {
+		b := blocks[i]
+		if b.Archived || b.Status != Todo {
+			continue
+		}
+		if !b.PlannedStart.After(now) {
+			continue
+		}
+		if best == nil || b.PlannedStart.Before(best.PlannedStart) {
+			hit := b
+			best = &hit
+		}
+	}
+	return best
 }

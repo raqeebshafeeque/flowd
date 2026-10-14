@@ -54,10 +54,13 @@ func TestIsOverlapping(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
+	sameDay := Day{ID: "day", Date: "2026-10-14", Timezone: "Asia/Kolkata"}
+	otherDay := Day{ID: "day", Date: "2026-10-13", Timezone: "Asia/Kolkata"}
 	tests := []struct {
 		name    string
 		from    Status
 		to      Status
+		day     Day
 		want    Status
 		wantErr error
 	}{
@@ -81,6 +84,8 @@ func TestUpdateStatus(t *testing.T) {
 		{name: "done cannot pause", from: Done, to: Paused, wantErr: ErrIllegalTransition},
 		{name: "done cannot skip", from: Done, to: Skipped, wantErr: ErrIllegalTransition},
 		{name: "done cannot return to todo", from: Done, to: Todo, wantErr: ErrIllegalTransition},
+		{name: "done reopens same day", from: Done, to: InProgress, day: sameDay, want: InProgress},
+		{name: "done refuses other day", from: Done, to: InProgress, day: otherDay, wantErr: ErrIllegalTransition},
 		{name: "skipped is terminal", from: Skipped, to: InProgress, wantErr: ErrIllegalTransition},
 		{name: "skipped cannot finish", from: Skipped, to: Done, wantErr: ErrIllegalTransition},
 		{name: "skipped cannot skip again", from: Skipped, to: Skipped, wantErr: ErrIllegalTransition},
@@ -90,7 +95,11 @@ func TestUpdateStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			b := Block{ID: "block", DayID: "day", Title: "block", Status: tt.from}
 			now := time.Date(2026, time.October, 14, 12, 0, 0, 0, time.UTC)
-			err := b.UpdateStatus(tt.to, now)
+			day := tt.day
+			if day.Date == "" {
+				day = sameDay
+			}
+			err := b.UpdateStatus(tt.to, now, day)
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
 					t.Errorf("got error %v, want %v", err, tt.wantErr)
