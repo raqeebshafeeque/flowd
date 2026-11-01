@@ -311,7 +311,7 @@ func TestNewBlock(t *testing.T) {
 			t.Fatalf("unexpected error %v", err)
 		}
 		if !strings.HasPrefix(string(got.ID), "bl_") {
-			t.Errorf("got ID %q, want prefix %q", got.ID, "bl_")
+			t.Errorf("got id %q, want prefix %q", got.ID, "bl_")
 		}
 		if got.Status != Todo {
 			t.Errorf("got status %q, want %q", got.Status, Todo)

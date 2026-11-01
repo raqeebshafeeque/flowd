@@ -121,7 +121,7 @@ func TestNewDay(t *testing.T) {
 				t.Fatalf("unexpected error %v", err)
 			}
 			if !strings.HasPrefix(string(got.ID), "dy_") {
-				t.Errorf("got ID %q, want prefix %q", got.ID, "dy_")
+				t.Errorf("got id %q, want prefix %q", got.ID, "dy_")
 			}
 			if got.Date != tt.date || got.Timezone != tt.timezone {
 				t.Errorf("got %q in %q, want %q in %q", got.Date, got.Timezone, tt.date, tt.timezone)
