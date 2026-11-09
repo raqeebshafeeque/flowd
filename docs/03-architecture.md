@@ -123,7 +123,9 @@ untrusted text as a quoted environment value, never executable workflow interpol
 required checks. A solo owner needs those checks, not an impossible separate reviewer requirement.
 
 Native jobs run full/race Go tests, vet/build and formatting, record actual OS/architecture, and
-exercise release/installer integration. `scripts/ci-tools.sh DIRECTORY` fetches GoReleaser 2.20.0,
+exercise release/installer integration. Known Go vulnerabilities are checked with pinned
+`govulncheck` v1.9.0 against the current advisory database. Build with the Go patch level declared
+in go.mod or newer. `scripts/ci-tools.sh DIRECTORY` fetches GoReleaser 2.20.0,
 actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific SHA-256 pins.
 Review/update pins deliberately when upgrading tools. These are CI/developer prerequisites only.
 
@@ -135,10 +137,12 @@ GitHub check runs need owner activation; validating YAML locally does not establ
 
 Release Please v5.0.0 is pinned in the trusted main workflow and uses the root manifest/config.
 Its bundled release library supports draft releases and immediate tag creation; both are enabled.
-The initial version is 0.1.0, with cecab34 as the changelog history boundary. The bootstrap commit
-also carries a one-time `Release-As: 0.1.0` footer; do not put a permanent release-as override in
-configuration. The simple strategy may generate its own version.txt on a release PR; it is
-bot-managed metadata, never a manually edited executable version. Packaging derives from the tag.
+The initial version is 0.1.0. Squash the setup PR onto existing main; use its existing initial
+commit `2bd113c` as the bootstrap history boundary so it survives that squash. Local learning
+commits do not become separate main commits. The setup squash commit must carry a one-time
+`Release-As: 0.1.0` footer; do not put a permanent release-as override in configuration. The simple
+strategy may generate its own version.txt on a release PR; it is bot-managed metadata, never a
+manually edited executable version. Packaging derives from the tag.
 
 Below 1.0, fixes bump patch, features bump minor and declared breaking changes bump minor with a
 clear warning. At/after 1.0, breaking changes bump major. Squash titles/body must preserve the
@@ -202,10 +206,13 @@ GoReleaser 2.20.0 builds no-cgo Darwin/Linux amd64/arm64 archives from an approv
 it does not keep a second source version. The global hook avoids writing into dist before
 GoReleaser initializes it. The executable embeds the version through the existing main linker seam.
 
-Each `flowd_X.Y.Z_OS_ARCH.tar.gz` contains only flowd, VERSION, LICENSE and the complete skill
-with its own VERSION plus command/safety references. The standalone installer is also a release
-asset. `checksums.txt` covers it and every platform archive. Generated packages/staging are ignored,
-never committed. Published archives are not independently signed or notarized.
+Each `flowd_X.Y.Z_OS_ARCH.tar.gz` contains only flowd, VERSION, LICENSE, THIRD_PARTY_NOTICES and
+the complete skill with its own VERSION plus command/safety references. Both license files are
+retained in the installed skill directory. `go run ./scripts/notices` collects upstream license
+texts for Go and the dependencies of all four release targets; tests check the committed notice
+bundle for drift. Refresh it when changing Go or dependencies. The standalone installer is also a
+release asset. `checksums.txt` covers it and every platform archive. Generated packages/staging are
+ignored, never committed. Published archives are not independently signed or notarized.
 
 `goreleaser check` validates configuration. Set `FLOWD_GORELEASER` to the pinned executable when
 running distribution tests to exercise real no-publish builds in a temporary tagged checkout.
@@ -282,7 +289,10 @@ Planned order compares parsed instants, so whole-second and fractional timestamp
   release: another process could be holding the old inode. Only cooperating flowd operations use
   this maintenance protocol; external SQLite tools must be closed before offline repair.
 - Normal open creates missing directories at 0700 and the database at 0600. Existing parent modes
-  are not changed. Paths are canonicalized; hard-linked databases and unsafe lock paths are refused.
+  are not changed. Existing WAL, shared-memory and rollback-journal files are checked before
+  SQLite opens them: aliases/special files are refused, and normal open tightens modes to 0600.
+  Read-only doctor refuses non-private sidecars without changing them. Paths are canonicalized;
+  hard-linked databases and unsafe lock paths are refused.
 - One connection is retained per store. Failed opens and close release all owned resources.
 
 ## A keypress, start to finish

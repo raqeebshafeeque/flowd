@@ -128,7 +128,7 @@ func archiveFiles(t *testing.T, path string) map[string][]byte {
 
 func TestGeneratedPackageContract(t *testing.T) {
 	directory := noPublishPackages(t)
-	expected := []string{"LICENSE", "VERSION", "flowd", "skills/flowd/SKILL.md", "skills/flowd/VERSION", "skills/flowd/references/commands.md", "skills/flowd/references/safety.md"}
+	expected := []string{"LICENSE", "THIRD_PARTY_NOTICES", "VERSION", "flowd", "skills/flowd/SKILL.md", "skills/flowd/VERSION", "skills/flowd/references/commands.md", "skills/flowd/references/safety.md"}
 	sort.Strings(expected)
 	for _, target := range []string{"darwin_amd64", "darwin_arm64", "linux_amd64", "linux_arm64"} {
 		files := archiveFiles(t, filepath.Join(directory, "flowd_0.1.0_"+target+".tar.gz"))
@@ -143,6 +143,11 @@ func TestGeneratedPackageContract(t *testing.T) {
 		for _, name := range []string{"VERSION", "skills/flowd/VERSION"} {
 			if string(files[name]) != "0.1.0\n" {
 				t.Errorf("wrong %s version record", target)
+			}
+		}
+		for _, notice := range []string{"LICENSE", "THIRD_PARTY_NOTICES"} {
+			if string(files[notice]) != projectFile(t, notice) {
+				t.Errorf("%s does not preserve %s", target, notice)
 			}
 		}
 		if string(files["skills/flowd/SKILL.md"]) != projectFile(t, "skills/flowd/SKILL.md") {

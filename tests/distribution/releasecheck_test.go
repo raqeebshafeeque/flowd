@@ -29,6 +29,28 @@ func publishAssets(t *testing.T, f *releaseFixture) string {
 	return directory
 }
 
+func TestReleaseVerificationUsesPrivateEnvironment(t *testing.T) {
+	t.Setenv("FLOWD_REVIEW_SECRET", "not-for-the-release-executable")
+	f := newReleaseFixture(t)
+	f.release("0.1.0", func(entries []archiveEntry) []archiveEntry {
+		entries[0].data = []byte(`#!/bin/sh
+set -eu
+[ -z "${FLOWD_REVIEW_SECRET:-}" ] || exit 42
+[ "$(pwd -P)" = "$(cd "$HOME" && pwd -P)" ] || exit 43
+case "$1" in
+ --version) printf 'flowd 0.1.0\n';;
+ --json) printf '{"version":"0.1.0"}\n';;
+ --help) printf 'Usage: flowd\n';;
+ *) exit 44;;
+esac
+`)
+		return entries
+	})
+	if err := releasecheck.Verify(publishAssets(t, f), "0.1.0"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestPublishedAssetVerification(t *testing.T) {
 	f := newReleaseFixture(t)
 	directory := publishAssets(t, f)

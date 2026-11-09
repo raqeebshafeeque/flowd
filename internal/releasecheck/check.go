@@ -20,7 +20,7 @@ import (
 )
 
 var normalVersion = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`)
-var members = []string{"flowd", "VERSION", "LICENSE", "skills/flowd/SKILL.md", "skills/flowd/VERSION", "skills/flowd/references/commands.md", "skills/flowd/references/safety.md"}
+var members = []string{"flowd", "VERSION", "LICENSE", "THIRD_PARTY_NOTICES", "skills/flowd/SKILL.md", "skills/flowd/VERSION", "skills/flowd/references/commands.md", "skills/flowd/references/safety.md"}
 
 // Verify checks the complete release and smokes only the native executable.
 // Checksums provide same-channel integrity, not independent publisher authentication.
@@ -193,6 +193,7 @@ func smoke(binary []byte, version string) error {
 			args = []string{"--help"}
 		}
 		command := exec.CommandContext(ctx, file.Name(), args...)
+		command.Dir = sandbox
 		command.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + sandbox, "XDG_DATA_HOME=" + filepath.Join(sandbox, "data"), "TMPDIR=" + sandbox, "TZ=UTC"}
 		output, err := command.CombinedOutput()
 		if err != nil {

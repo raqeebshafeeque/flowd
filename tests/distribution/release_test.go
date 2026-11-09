@@ -2,6 +2,8 @@ package distribution
 
 import (
 	"encoding/json"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -9,7 +11,7 @@ import (
 
 func TestReleaseWorkflowTrust(t *testing.T) {
 	workflow := projectFile(t, ".github/workflows/release.yml")
-	for _, contract := range []string{"RELEASE_PLEASE_TOKEN", "refs/heads/main", "contents: read", "persist-credentials: false", "cancel-in-progress: false", "release_created", "tag_name", "45996ed1f6d02564a971a2fa1b5860e934307cf7"} {
+	for _, contract := range []string{"RELEASE_PLEASE_TOKEN", "refs/heads/main", "contents: read", "persist-credentials: false", "cancel-in-progress: false", "release_created", "tag_name", "45996ed1f6d02564a971a2fa1b5860e934307cf7", "govulncheck@v1.9.0 -test ./..."} {
 		if !strings.Contains(workflow, contract) {
 			t.Errorf("missing release trust contract %s", contract)
 		}
@@ -28,6 +30,36 @@ func TestReleasePublicationRouting(t *testing.T) {
 	}
 	if strings.Contains(workflow, "tags:") {
 		t.Error("publication must not depend on another tag event")
+	}
+}
+
+func TestBootstrapBoundarySurvivesSetupSquash(t *testing.T) {
+	var config struct {
+		Bootstrap string `json:"bootstrap-sha"`
+	}
+	if err := json.Unmarshal([]byte(projectFile(t, "release-please-config.json")), &config); err != nil {
+		t.Fatal(err)
+	}
+	git := func(args ...string) string {
+		t.Helper()
+		command := exec.Command("git", args...)
+		command.Dir = projectRoot(t)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("squash fixture %v: %v; %s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	root := git("rev-list", "--max-parents=0", "HEAD")
+	head := git("rev-parse", "HEAD")
+	repository := filepath.Join(t.TempDir(), "squash.git")
+	git("clone", "--shared", "--bare", ".", repository)
+	// Match the setup squash: the feature tree, with only pre-implementation main as parent.
+	squash := git("-C", repository, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+		"commit-tree", head+"^{tree}", "-p", root, "-m", "feat: bootstrap\n\nRelease-As: 0.1.0")
+	command := exec.Command("git", "-C", repository, "merge-base", "--is-ancestor", config.Bootstrap, squash)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bootstrap boundary is absent from squash-merged main: %v; %s", err, output)
 	}
 }
 

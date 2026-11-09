@@ -132,14 +132,14 @@ run_staged() (
 validate_payload() {
     payload=$stage/payload
     tar -tzf "$stage/archive.tar.gz" > "$stage/members" || fail 'cannot list release archive'
-    printf '%s\n' flowd VERSION LICENSE skills/flowd/SKILL.md skills/flowd/VERSION \
+    printf '%s\n' flowd VERSION LICENSE THIRD_PARTY_NOTICES skills/flowd/SKILL.md skills/flowd/VERSION \
         skills/flowd/references/commands.md skills/flowd/references/safety.md | sort > "$stage/expected"
     sort "$stage/members" > "$stage/actual"
     cmp -s "$stage/expected" "$stage/actual" || fail 'unexpected, duplicate or missing archive members'
     tar -tvzf "$stage/archive.tar.gz" > "$stage/types" || fail 'cannot inspect archive types'
     awk 'substr($0,1,1) != "-" { bad=1 } END { exit bad }' "$stage/types" || fail 'archive links or unsupported entry types are refused'
     mkdir -p "$payload/skills/flowd/references" || fail 'cannot create payload staging'
-    for member in flowd VERSION LICENSE skills/flowd/SKILL.md skills/flowd/VERSION \
+    for member in flowd VERSION LICENSE THIRD_PARTY_NOTICES skills/flowd/SKILL.md skills/flowd/VERSION \
         skills/flowd/references/commands.md skills/flowd/references/safety.md; do
         tar -xzOf "$stage/archive.tar.gz" "$member" > "$payload/$member" || fail "cannot stage $member"
         [ -s "$payload/$member" ] || fail "empty package member: $member"
@@ -235,6 +235,9 @@ publish_payload() {
     cp "$payload/flowd" "$binary_stage/new" || fail 'cannot stage executable'
     chmod 755 "$binary_stage/new" || fail 'cannot set executable mode'
     cp -R "$payload/skills/flowd" "$skill_stage/new" || fail 'cannot stage skill'
+    for notice in LICENSE THIRD_PARTY_NOTICES; do
+        cp "$payload/$notice" "$skill_stage/new/$notice" || fail "cannot retain $notice"
+    done
     chmod -R u=rwX,go=rX "$skill_stage/new" || fail 'cannot set skill modes'
     printf 'flowd-install-v1\n%s\n%s\n' "$version" "$binary_target" > "$skill_stage/new/.flowd-install" || fail 'cannot record installation ownership'
     chmod 600 "$skill_stage/new/.flowd-install" || fail 'cannot set ownership record mode'

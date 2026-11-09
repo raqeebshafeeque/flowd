@@ -19,7 +19,8 @@ flowd --version
 
 The installer verifies archive checksums and installs both `~/.local/bin/flowd` and the matching
 `~/.agents/skills/flowd/`. HTTPS/bootstrap trust is required; same-channel checksums are not
-independent publisher authentication. Installation never operates on planner data.
+independent publisher authentication. Installation never operates on planner data. Project and
+third-party license notices are retained in the installed skill directory.
 
 ## Update or pin
 
@@ -34,7 +35,8 @@ Use `--bin-dir DIR` and `--skills-dir DIR` to override parent directories. Unman
 need review before `--force`; symlink/special-file destinations are always refused. Managed skill
 edits are replaced on upgrade. Failed restoration reports recovery paths; replacement across the
 two destinations is not crash-atomic. Concurrent installers are refused; an interrupted install
-may leave an install lock needing inspection. See [architecture](docs/03-architecture.md) for recovery.
+may leave an install lock needing inspection. See [architecture](docs/03-architecture.md) for
+recovery.
 
 ## Use
 
@@ -66,7 +68,7 @@ permissions. Planner data shown to an external-model agent enters its context/pr
 
 ## Development
 
-Building source is optional for contributors, not an installer fallback:
+Building source is optional for contributors, not an installer fallback. Use Go 1.27.3 or newer:
 
 ```sh
 go build -o flowd ./cmd/flowd

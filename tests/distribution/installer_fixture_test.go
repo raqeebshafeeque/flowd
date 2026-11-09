@@ -112,7 +112,7 @@ func (f *releaseFixture) entries(version string) []archiveEntry {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	entries := []archiveEntry{{name: "flowd", data: binary}, {name: "VERSION", data: []byte(version + "\n")}, {name: "skills/flowd/VERSION", data: []byte(version + "\n")}, {name: "LICENSE", data: []byte(projectFile(f.t, "LICENSE"))}}
+	entries := []archiveEntry{{name: "flowd", data: binary}, {name: "VERSION", data: []byte(version + "\n")}, {name: "skills/flowd/VERSION", data: []byte(version + "\n")}, {name: "LICENSE", data: []byte(projectFile(f.t, "LICENSE"))}, {name: "THIRD_PARTY_NOTICES", data: []byte(projectFile(f.t, "THIRD_PARTY_NOTICES"))}}
 	for _, name := range []string{"SKILL.md", "references/commands.md", "references/safety.md"} {
 		entries = append(entries, archiveEntry{name: "skills/flowd/" + name, data: []byte(projectFile(f.t, "skills/flowd/"+name))})
 	}

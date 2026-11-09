@@ -24,6 +24,7 @@ archives:
     name_template: "flowd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
+      - THIRD_PARTY_NOTICES
       - src: .release/package/VERSION
         dst: .
         strip_parent: true
