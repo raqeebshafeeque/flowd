@@ -137,6 +137,11 @@ seconds causes one calm recalc, never a burst.
 - `flowd doctor` checks path and permissions, `integrity_check`, schema version and a lock probe.
   Prints `OK` or the first problem with a fix hint. Exit 0 on OK, else 1. Data changes only with
   explicit `--repair`, which brings back the `.bak`.
+- `backup` uses SQLite `VACUUM INTO` to include committed WAL changes, not a raw main-file copy.
+  It writes a private temporary snapshot, syncs it, replaces `.bak`, then syncs the parent directory.
+  Pre-publication failure retains the old backup. A directory-sync error after replacement reports
+  that publication already happened. Full integrity and foreign-key checks use a separate
+  read-only connection, never normal schema initialization or permission tightening.
 
 ## When things break
 

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/raqeebshafeeque/flowd/internal/domain"
+	"github.com/raqeebshafeeque/flowd/internal/store"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +19,23 @@ func binaryCommand(t *testing.T, binary, path string, args ...string) []byte {
 		t.Fatalf("command %v failed: %v; %s", args, err, output)
 	}
 	return output
+}
+
+func TestExecutableMaintenance(t *testing.T) {
+	binary := buildExecutable(t)
+	path := filepath.Join(t.TempDir(), "health.sqlite")
+	binaryCommand(t, binary, path, "add", "09:00", "10:00", "Study")
+	database, err := store.Open(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, runErr := exec.Command(binary, "--db", path, "doctor").CombinedOutput()
+	if runErr == nil || !strings.Contains(string(output), "ERR_LOCKED:") {
+		t.Errorf("competing doctor should refuse: %v; %s", runErr, output)
+	}
+	database.Close()
+	binaryCommand(t, binary, path, "doctor")
+	binaryCommand(t, binary, path, "backup")
 }
 
 func TestExecutableTracking(t *testing.T) {

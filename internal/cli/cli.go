@@ -40,6 +40,8 @@ Commands:
   events BLOCK                  Read ordered history (full id for archived work)
   copy [--start T] [--end T] BLOCK  Copy unfinished work to the next calendar day
   review                        Show counts, missed work and overrun history
+  doctor                        Inspect existing data without repairing it
+  backup                        Publish a private SQLite snapshot beside the database
 
 Copy preserves local clocks and overnight ends; offsets disambiguate DST repeats.
 Review excludes skipped work from progress; todos are missed only after local day end.
@@ -140,11 +142,24 @@ func errorDetails(err error) (string, int, string) {
 }
 
 func (app application) execute(ctx context.Context, opts options) (err error) {
+	if opts.command == "doctor" {
+		if err := store.Inspect(ctx, opts.path); err != nil {
+			return err
+		}
+		return printMaintenance(app.out, opts, opts.path)
+	}
 	database, err := store.Open(ctx, opts.path)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, database.Close()) }()
+	if opts.command == "backup" {
+		path, err := database.Backup(ctx)
+		if err != nil {
+			return err
+		}
+		return printMaintenance(app.out, opts, path)
+	}
 	stamp := app.now().UTC()
 	day, zone, err := selectedDay(ctx, database, opts, stamp)
 	if err != nil {

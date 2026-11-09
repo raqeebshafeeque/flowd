@@ -26,6 +26,10 @@ number, full id or unique visible-id prefix. Row numbers change; use full ids in
 local clock times unless overridden. Use `24:00` only for an end, or an offset RFC 3339 timestamp
 for an overnight end or a repeated DST clock. Missing/repeated local clocks are refused.
 `review` excludes skipped work from progress; a never-started todo is missed after local day end.
+`doctor` checks an existing database without creating data or changing its permissions.
+`backup` writes a private `.bak` SQLite snapshot, including committed WAL contents. A failed
+publication leaves the previous snapshot; a reported directory-sync failure may occur after the
+new snapshot is already published. These checks are not a physical power-loss test.
 See `--help` for the commands currently available.
 
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
