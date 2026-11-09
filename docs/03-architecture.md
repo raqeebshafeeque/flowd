@@ -91,7 +91,9 @@ Downloads are staged privately. The exact archive checksum, member set/types, ve
 skill references and native help/version are checked before installation. Files are streamed from
 the archive into controlled staging paths, never blindly unpacked into a destination. Same-channel
 checksums detect corruption/mismatch, not a compromised publisher. Installation uses the network;
-the planner executable itself remains offline.
+the planner executable itself remains offline. Native help/version run in a private home and
+working directory with a minimal environment, without inherited credentials. This is not an OS
+sandbox against a malicious publisher's executable.
 
 Installation stages new files beside their destination parents, retains prior targets, then
 renames the binary and complete skill directory into place. An ownership/version record identifies
@@ -99,11 +101,19 @@ managed installs. Unmanaged collisions need `--force`; final symlinks/special fi
 followed. Replacing the complete skill removes obsolete references without touching other skills.
 Managed skill customizations are replaced; keep personal notes outside that directory.
 
+Publication acquires a `.flowd-install.lock` directory in each canonical destination parent before
+inspecting targets. Each records the installer PID in `owner`; a competing installation is refused,
+even with `--force`. Nested binary/skill destinations are refused. Handled exits release owned
+locks only. A forced termination can leave an install lock: first confirm no installer still runs,
+then reconcile the reported destinations/recovery files before explicitly removing that install
+lock directory. This is separate from the database's stable `.lock` inode, which must never be
+unlinked.
+
 A handled publication error or interrupt attempts to restore the prior pair. If restoration fails,
 private recovery files remain and diagnostics identify the real partial state. Inspect them before
 rerunning or using force. The two paths are not one crash-atomic transaction; forced termination
 can need manual reconciliation. Installing an older executable does not reverse data migrations.
-The installer never opens a database, touches backups/coordination files or edits shell startup.
+The installer never opens a database, touches its backups/coordination files or edits shell startup.
 
 ## Continuous checks
 

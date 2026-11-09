@@ -33,7 +33,8 @@ sh "$installer" --version v0.1.0
 Use `--bin-dir DIR` and `--skills-dir DIR` to override parent directories. Unmanaged collisions
 need review before `--force`; symlink/special-file destinations are always refused. Managed skill
 edits are replaced on upgrade. Failed restoration reports recovery paths; replacement across the
-two destinations is not crash-atomic. See [architecture](docs/03-architecture.md) for recovery.
+two destinations is not crash-atomic. Concurrent installers are refused; an interrupted install
+may leave an install lock needing inspection. See [architecture](docs/03-architecture.md) for recovery.
 
 ## Use
 

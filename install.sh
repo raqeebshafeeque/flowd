@@ -11,6 +11,8 @@ skills_dir=
 stage=
 binary_stage=
 skill_stage=
+binary_lock=
+skill_lock=
 publication=false
 new_binary=false
 new_skill=false
@@ -44,7 +46,7 @@ parse_args() {
 }
 
 prerequisites() {
-    for utility in curl tar awk cat chmod cmp cp dirname grep mkdir mktemp mv rm sort uname; do
+    for utility in curl tar awk cat chmod cmp cp dirname env grep mkdir mktemp mv rm rmdir sort uname; do
         command -v "$utility" >/dev/null 2>&1 || fail "required utility not found: $utility"
     done
     if command -v sha256sum >/dev/null 2>&1; then checksum_tool=sha256sum
@@ -80,11 +82,18 @@ cleanup() {
             status=1
         fi
     fi
-    [ -z "$stage" ] || rm -rf "$stage"
+    [ -z "$stage" ] || rm -rf "$stage" || status=1
     if [ "$restored" = true ]; then
-        [ -z "$binary_stage" ] || rm -rf "$binary_stage"
-        [ -z "$skill_stage" ] || rm -rf "$skill_stage"
+        [ -z "$binary_stage" ] || rm -rf "$binary_stage" || status=1
+        [ -z "$skill_stage" ] || rm -rf "$skill_stage" || status=1
     fi
+    for lock in "$binary_lock" "$skill_lock"; do
+        [ -n "$lock" ] || continue
+        if ! rm -f "$lock/owner" || ! rmdir "$lock"; then
+            printf 'flowd install: cannot release install lock: %s\n' "$lock" >&2
+            status=1
+        fi
+    done
     exit "$status"
 }
 
@@ -94,6 +103,7 @@ fetch() {
 }
 
 normal_version() {
+    case "$1" in ''|*[!0-9.]*) return 1 ;; esac
     printf '%s\n' "$1" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 }
 
@@ -110,6 +120,14 @@ verify_checksum() {
     fi
     [ "$actual" = "$expected" ] || fail 'release checksum mismatch; no files installed'
 }
+
+# Environment isolation avoids incidental planner access and credential inheritance.
+# It is not an OS sandbox for a malicious publisher's executable.
+run_staged() (
+    CDPATH='' cd "$stage/home" || exit 1
+    env -i PATH="${PATH:-/usr/bin:/bin}" HOME="$stage/home" \
+        XDG_DATA_HOME="$stage/home/data" TMPDIR="$stage/home" TZ=UTC "$payload/flowd" "$@"
+)
 
 validate_payload() {
     payload=$stage/payload
@@ -136,11 +154,12 @@ validate_payload() {
         grep -Fq "($reference)" "$payload/skills/flowd/SKILL.md" || fail "skill reference missing: $reference"
     done
     chmod 755 "$payload/flowd" || fail 'cannot mark staged executable'
-    actual_version=$("$payload/flowd" --version) || fail 'release executable cannot run on this host'
+    mkdir "$stage/home" || fail 'cannot create private preflight home'
+    actual_version=$(run_staged --version) || fail 'release executable cannot run on this host'
     [ "$actual_version" = "flowd $version" ] || fail 'executable version mismatch'
-    actual_json=$("$payload/flowd" --json --version) || fail 'release JSON version check failed'
+    actual_json=$(run_staged --json --version) || fail 'release JSON version check failed'
     [ "$actual_json" = "{\"version\":\"$version\"}" ] || fail 'executable JSON version mismatch'
-    "$payload/flowd" --help >/dev/null || fail 'release help check failed'
+    run_staged --help >/dev/null || fail 'release help check failed'
 }
 
 prepare_install() {
@@ -166,6 +185,7 @@ prepare_install() {
     trap 'cleanup' EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
+    stage=$(CDPATH='' cd "$stage" && pwd -P) || fail 'cannot resolve private staging'
     base=$repository/releases/download/v$version
     fetch -o "$stage/checksums.txt" "$base/checksums.txt" || fail 'release checksums unavailable; no files installed'
     fetch -o "$stage/archive.tar.gz" "$base/$asset" || fail 'release archive unavailable; no files installed'
@@ -182,6 +202,19 @@ publish_payload() {
     skills_dir=$(CDPATH='' cd "$skills_dir" && pwd -P)
     binary_target=$bin_dir/flowd
     skill_target=$skills_dir/flowd
+    [ "$binary_target" != "$skill_target" ] || fail 'binary and skill destinations must be distinct'
+    case "$bin_dir/" in "$skill_target/"*) fail 'binary directory must not be inside the managed skill destination' ;; esac
+    # Cooperating installers must own both parents before inspecting or moving targets.
+    # Never override an existing lock, including after a crash or with --force.
+    if mkdir "$bin_dir/.flowd-install.lock" 2>/dev/null; then binary_lock=$bin_dir/.flowd-install.lock
+    else fail "cannot acquire install lock: $bin_dir/.flowd-install.lock; inspect for another or interrupted installer"
+    fi
+    if mkdir "$skills_dir/.flowd-install.lock" 2>/dev/null; then skill_lock=$skills_dir/.flowd-install.lock
+    else fail "cannot acquire install lock: $skills_dir/.flowd-install.lock; inspect for another or interrupted installer"
+    fi
+    for lock in "$binary_lock" "$skill_lock"; do
+        printf '%s\n' "$$" > "$lock/owner" || fail 'cannot record install lock owner'
+    done
     if [ -L "$binary_target" ] || [ -L "$skill_target" ]; then fail 'destination symlinks are refused, even with --force'; fi
     if [ -e "$binary_target" ] && [ ! -f "$binary_target" ]; then fail 'executable destination is not a regular file'; fi
     if [ -e "$skill_target" ] && [ ! -d "$skill_target" ]; then fail 'skill destination is not a real directory'; fi
