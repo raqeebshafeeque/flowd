@@ -142,6 +142,13 @@ seconds causes one calm recalc, never a burst.
   Pre-publication failure retains the old backup. A directory-sync error after replacement reports
   that publication already happened. Full integrity and foreign-key checks use a separate
   read-only connection, never normal schema initialization or permission tightening.
+- Only `doctor --repair` restores `.bak`. It validates the snapshot before moving any original,
+  prepares and syncs a replacement, then preserves old main/WAL/SHM/rollback files in a private
+  `.recovery-*` directory. Restoring an older snapshot intentionally removes newer live changes.
+  A synced `.repair` marker records the recovery directory, replacement and publication stage
+  before journals move. Normal opens refuse while it exists; explicit repair resumes safely.
+  Publication and marker removal sync the parent directory. Earlier recovery directories are
+  never reused or deleted. External SQLite tools must be closed during this operation.
 
 ## When things break
 

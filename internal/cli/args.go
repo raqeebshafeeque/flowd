@@ -16,7 +16,7 @@ type options struct {
 	args                          []string
 	path, date, zone              string
 	editTitle, editStart, editEnd string
-	json, help, version           bool
+	json, help, version, repair   bool
 }
 
 func usage(format string, args ...any) error {
@@ -97,7 +97,9 @@ func parseArgs(args []string) (options, error) {
 	boolOption(command, "help", &opts.help)
 	boolOption(command, "h", &opts.help)
 	switch opts.command {
-	case "list", "review", "doctor", "backup", "now", "next", "add", "delete", "start", "pause", "resume", "finish", "skip", "reopen", "extend", "events":
+	case "doctor":
+		boolOption(command, "repair", &opts.repair)
+	case "list", "review", "backup", "now", "next", "add", "delete", "start", "pause", "resume", "finish", "skip", "reopen", "extend", "events":
 	case "copy":
 		stringOption(command, "start", &opts.editStart)
 		stringOption(command, "end", &opts.editEnd)

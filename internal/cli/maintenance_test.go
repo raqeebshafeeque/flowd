@@ -8,6 +8,33 @@ import (
 	"testing"
 )
 
+func TestRepairCommand(t *testing.T) {
+	f := newCommandFixture(t)
+	block := f.saved("add", "09:00", "10:00", "Study")
+	f.ok("backup")
+	if err := os.WriteFile(f.path, []byte("damaged live database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.fail("ERR_CORRUPT", 1, "list")
+	var result struct {
+		Recovery string
+		OK       bool
+	}
+	if err := json.Unmarshal([]byte(f.ok("--json", "doctor", "--repair")), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result.OK || result.Recovery == "" {
+		t.Error("repair must identify retained originals")
+	}
+	if _, err := os.Stat(filepath.Join(result.Recovery, filepath.Base(f.path))); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.view().Blocks; len(got) != 1 || got[0].ID != block.ID {
+		t.Error("repair lost backed-up work")
+	}
+	f.ok("doctor")
+}
+
 func TestMaintenanceCommands(t *testing.T) {
 	f := newCommandFixture(t)
 	f.fail("ERR_NOT_FOUND", 1, "doctor")

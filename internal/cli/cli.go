@@ -40,7 +40,8 @@ Commands:
   events BLOCK                  Read ordered history (full id for archived work)
   copy [--start T] [--end T] BLOCK  Copy unfinished work to the next calendar day
   review                        Show counts, missed work and overrun history
-  doctor                        Inspect existing data without repairing it
+  doctor [--repair]             Inspect data; explicit repair restores .bak
+                               Repair discards newer live changes but preserves originals
   backup                        Publish a private SQLite snapshot beside the database
 
 Copy preserves local clocks and overnight ends; offsets disambiguate DST repeats.
@@ -108,6 +109,8 @@ func errorDetails(err error) (string, int, string) {
 	switch {
 	case errors.Is(err, context.Canceled):
 		return "ERR_CANCELLED", 130, ""
+	case errors.Is(err, store.ErrIncompleteRepair):
+		return "ERR_REPAIR", 1, "run flowd doctor --repair to finish; retained originals are not deleted"
 	case errors.Is(err, store.ErrCorrupt):
 		return "ERR_CORRUPT", 1, "run flowd doctor; restore a known-good backup only with doctor --repair"
 	case errors.Is(err, errUsage), errors.Is(err, store.ErrInvalidPath):
@@ -143,6 +146,9 @@ func errorDetails(err error) (string, int, string) {
 
 func (app application) execute(ctx context.Context, opts options) (err error) {
 	if opts.command == "doctor" {
+		if opts.repair {
+			return app.repair(ctx, opts)
+		}
 		if err := store.Inspect(ctx, opts.path); err != nil {
 			return err
 		}

@@ -21,6 +21,9 @@ func Inspect(ctx context.Context, path string) (err error) {
 	if err != nil {
 		return err
 	}
+	if err := checkRepair(path); err != nil {
+		return err
+	}
 	if err := privateFile(path); err != nil {
 		return err
 	}

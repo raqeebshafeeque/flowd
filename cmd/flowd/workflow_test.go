@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/store"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,30 @@ func binaryCommand(t *testing.T, binary, path string, args ...string) []byte {
 		t.Fatalf("command %v failed: %v; %s", args, err, output)
 	}
 	return output
+}
+
+func TestExecutableRepair(t *testing.T) {
+	binary := buildExecutable(t)
+	path := filepath.Join(t.TempDir(), "repair.sqlite")
+	binaryCommand(t, binary, path, "add", "09:00", "10:00", "Study")
+	binaryCommand(t, binary, path, "backup")
+	if err := os.WriteFile(path, []byte("damaged database"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var restored struct {
+		OK       bool
+		Recovery string
+	}
+	if err := json.Unmarshal(binaryCommand(t, binary, path, "doctor", "--repair"), &restored); err != nil {
+		t.Fatal(err)
+	}
+	if !restored.OK || restored.Recovery == "" {
+		t.Fatal("repair must report retained originals")
+	}
+	if _, err := os.Stat(filepath.Join(restored.Recovery, filepath.Base(path))); err != nil {
+		t.Fatal(err)
+	}
+	binaryCommand(t, binary, path, "doctor")
 }
 
 func TestExecutableMaintenance(t *testing.T) {
