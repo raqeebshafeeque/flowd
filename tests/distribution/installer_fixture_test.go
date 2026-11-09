@@ -117,7 +117,11 @@ func (f *releaseFixture) release(version string, mutate func([]archiveEntry) []a
 	var checksums strings.Builder
 	for _, platform := range []string{"darwin_amd64", "darwin_arm64", "linux_amd64", "linux_arm64"} {
 		var buffer bytes.Buffer
-		gzipWriter := gzip.NewWriter(&buffer)
+		// Compression ratio is not under test; avoid race-instrumented deflate work.
+		gzipWriter, err := gzip.NewWriterLevel(&buffer, gzip.NoCompression)
+		if err != nil {
+			f.t.Fatal(err)
+		}
 		writer := tar.NewWriter(gzipWriter)
 		for _, entry := range entries {
 			kind := entry.kind

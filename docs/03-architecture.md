@@ -104,6 +104,22 @@ rerunning or using force. The two paths are not one crash-atomic transaction; fo
 can need manual reconciliation. Installing an older executable does not reverse data migrations.
 The installer never opens a database, touches backups/coordination files or edits shell startup.
 
+## Continuous checks
+
+Short-lived PRs target main. Squash titles use Conventional Commits; the title check receives
+untrusted text as a quoted environment value, never executable workflow interpolation.
+`Conventional title`, `Native (ubuntu-latest)` and `Native (macos-latest)` are the owner-configured
+required checks. A solo owner needs those checks, not an impossible separate reviewer requirement.
+
+Native jobs run full/race Go tests, vet/build and formatting, record actual OS/architecture, and
+exercise release/installer integration. `scripts/ci-tools.sh DIRECTORY` fetches GoReleaser 2.20.0,
+actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific SHA-256 pins.
+Review/update pins deliberately when upgrading tools. These are CI/developer prerequisites only.
+
+Code-check workflows use read-only permissions, no release secrets and no privileged untrusted
+checkout. Checkout/setup-go actions are pinned to reviewed commits. Branch protection and actual
+GitHub check runs need owner activation; validating YAML locally does not establish either.
+
 ## Release packages
 
 GoReleaser 2.20.0 builds no-cgo Darwin/Linux amd64/arm64 archives from an approved version tag.
