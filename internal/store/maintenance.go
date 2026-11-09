@@ -73,6 +73,14 @@ func readOnly(ctx context.Context, path string) (_ *Store, err error) {
 }
 
 func inspectFile(ctx context.Context, path string) (err error) {
+	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+		if err := safeSibling(path + suffix); err != nil {
+			return err
+		}
+		if err := privateFile(path + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
 	db, err := readOnly(ctx, path)
 	if err != nil {
 		return err

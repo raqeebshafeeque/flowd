@@ -71,6 +71,19 @@ func resolvePath(path string, create bool) (string, error) {
 	return absolute, nil
 }
 
+// SQLite may reuse crash-left files; validate their identities before it can open them.
+func prepareSidecars(path string) error {
+	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+		if err := safeSibling(path + suffix); err != nil {
+			return err
+		}
+		if err := os.Chmod(path+suffix, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
 func prepareDatabaseFile(path string) error {
 	// Never open and close an extra descriptor for an existing database: POSIX
 	// record locks can be disturbed by closing a descriptor to the same inode.

@@ -37,6 +37,9 @@ func Open(ctx context.Context, path string) (_ *Store, err error) {
 	if err := checkRepair(absolute); err != nil {
 		return nil, err
 	}
+	if err := prepareSidecars(absolute); err != nil {
+		return nil, fmt.Errorf("prepare database sidecars %q: %w", path, err)
+	}
 	if err := prepareDatabaseFile(absolute); err != nil {
 		return nil, fmt.Errorf("prepare database %q: %w", path, err)
 	}
