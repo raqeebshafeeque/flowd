@@ -23,7 +23,10 @@ reads and writes one local SQLite file plus its `.bak` beside it. Nothing touche
 
 ## Inside the binary
 
-One binary with four small parts:
+One binary with small parts:
+
+- CLI: parses flags and commands, coordinates domain operations and formats text or JSON.
+  `cmd/flowd` handles signals and process exit; `internal/cli` accepts a clock and output writers.
 
 - TUI: draws the day with now, next and review, and takes keys. No SQL here and no rule math here.
 - Domain: checks the D1 to D8 rules and works out now, next, overrun and score. Pure logic, no file
@@ -37,6 +40,8 @@ Call direction, enforced by folders `internal/tui, internal/domain, internal/sto
 internal/scheduler`:
 
 ```text
+cli -> domain
+cli -> store
 tui -> domain
 tui -> store -> domain
 scheduler -> store (read only)
@@ -50,6 +55,13 @@ creation is saved in the same transaction. Automatic pause and start must use on
 
 On the command line: `flowd` opens today, `flowd YYYY-MM-DD` opens that date, `flowd doctor` checks
 the store, `flowd --help` lists keys and commands.
+
+CLI options precede the command. Read commands are `list` (the default), `now` and `next`.
+`--date YYYY-MM-DD` or a positional date selects a day. `--db PATH` overrides the default file;
+`--timezone ZONE` sets the zone for a new day and refuses conflicts with a saved zone. The default
+is a detected IANA system zone, falling back to UTC. The binary embeds fallback timezone data.
+`--json` produces parseable stdout, with null for absent now/next and an uncountable score.
+Text shows local planned times, progress and overrun flags; read views do not insert planner rows.
 
 ## How rows get saved
 
