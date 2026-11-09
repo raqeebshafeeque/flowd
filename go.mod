@@ -1,10 +1,10 @@
 module github.com/raqeebshafeeque/flowd
 
-go 1.27.0
+go 1.27.3
 
 require (
 	github.com/oklog/ulid/v2 v2.1.2
- golang.org/x/sys v0.49.0
+	golang.org/x/sys v0.49.0
 	modernc.org/sqlite v1.61.0
 )
 

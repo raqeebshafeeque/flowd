@@ -63,6 +63,8 @@ jobs:
         run: go test ./... -count=1
       - name: Race checks
         run: go test -race ./... -count=1
+      - name: Known Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./...
       - name: Vet and build
         run: |
           go vet ./...

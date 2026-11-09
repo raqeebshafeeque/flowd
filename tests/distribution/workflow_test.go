@@ -10,7 +10,7 @@ import (
 
 func TestDistributionCI(t *testing.T) {
 	workflow := projectFile(t, ".github/workflows/ci.yml")
-	for _, check := range []string{"ci-tools.sh", "shellcheck", "actionlint", "goreleaser check", "FLOWD_GORELEASER"} {
+	for _, check := range []string{"ci-tools.sh", "shellcheck", "actionlint", "goreleaser check", "FLOWD_GORELEASER", "govulncheck@v1.9.0 -test ./..."} {
 		if !strings.Contains(workflow, check) {
 			t.Errorf("missing distribution CI step %s", check)
 		}
