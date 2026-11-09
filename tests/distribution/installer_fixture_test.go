@@ -38,7 +38,7 @@ func newReleaseFixture(t *testing.T) *releaseFixture {
 			t.Fatal(err)
 		}
 	}
-	for _, tool := range []string{"awk", "cat", "chmod", "cmp", "cp", "dirname", "env", "grep", "mkdir", "mktemp", "mv", "rm", "rmdir", "sort", "tar", "sha256sum", "shasum"} {
+	for _, tool := range []string{"awk", "cat", "chmod", "cmp", "cp", "dirname", "env", "grep", "gzip", "mkdir", "mktemp", "mv", "rm", "rmdir", "sort", "tar", "sha256sum", "shasum"} {
 		real, err := exec.LookPath(tool)
 		if err != nil {
 			continue

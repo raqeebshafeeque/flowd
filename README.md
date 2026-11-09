@@ -5,7 +5,8 @@ A local-only terminal day planner. One binary, fully offline; no sync or backgro
 ## Install
 
 Public downloads require a published release. On macOS/Linux (arm64 or amd64), installation needs
-curl, tar, standard shell utilities and `sha256sum` or `shasum`, not Go, GitHub credentials or sudo.
+curl, tar, gzip, standard shell utilities and `sha256sum` or `shasum`, not Go, GitHub credentials
+or sudo.
 
 ```sh
 installer=$(mktemp)

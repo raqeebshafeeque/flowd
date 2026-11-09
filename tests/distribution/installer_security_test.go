@@ -13,6 +13,20 @@ import (
 	"time"
 )
 
+func TestInstallerRequiresGzipBeforeDownload(t *testing.T) {
+	f := newReleaseFixture(t)
+	if err := os.Remove(filepath.Join(f.tools, "gzip")); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	output, err := f.validate("--version", "0.1.0")
+	if err == nil || !strings.Contains(output, "required utility not found: gzip") {
+		t.Errorf("missing gzip must fail preflight: %v; %s", err, output)
+	}
+	if _, err := os.Stat(f.requests); !os.IsNotExist(err) {
+		t.Error("missing gzip attempted a download")
+	}
+}
+
 func TestInstallerRejectsMultilineVersionsBeforeDownload(t *testing.T) {
 	for _, version := range []string{"0.1.0\njunk", "junk\n0.1.0", "0.1.0\n", "0.1.0\r", "0.1.0\n0.2.0"} {
 		t.Run(version, func(t *testing.T) {

@@ -22,7 +22,7 @@ usage_error() { printf 'flowd install: %s\n' "$*" >&2; exit 2; }
 help() {
     printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--bin-dir DIR] [--skills-dir DIR] [--force]' \
         'Downloads a public release; defaults to ~/.local/bin and ~/.agents/skills.' \
-        'Requires curl, tar, standard shell utilities and sha256sum or shasum.' \
+        'Requires curl, tar, gzip, standard shell utilities and sha256sum or shasum.' \
         'Does not build source, use sudo, edit shell startup files or operate on planner data.'
 }
 
@@ -46,7 +46,7 @@ parse_args() {
 }
 
 prerequisites() {
-    for utility in curl tar awk cat chmod cmp cp dirname env grep mkdir mktemp mv rm rmdir sort uname; do
+    for utility in curl tar awk cat chmod cmp cp dirname env grep gzip mkdir mktemp mv rm rmdir sort uname; do
         command -v "$utility" >/dev/null 2>&1 || fail "required utility not found: $utility"
     done
     if command -v sha256sum >/dev/null 2>&1; then checksum_tool=sha256sum

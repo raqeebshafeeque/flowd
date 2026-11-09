@@ -84,7 +84,7 @@ progress is rounded done divided by visible minus skipped, or null when uncounta
 
 `install.sh` uses public GitHub release URLs, normal version tags and explicit Darwin/Linux CPU
 mapping. It rejects unsupported hosts, invalid versions and HTTP failures without source-build
-fallback. Its only runtime prerequisites are POSIX shell, curl, tar, ordinary filesystem/text
+fallback. Its only runtime prerequisites are POSIX shell, curl, tar, gzip, ordinary filesystem/text
 utilities and a SHA-256 utility. Go, GitHub CLI, Python and jq are not installer dependencies.
 
 Downloads are staged privately. The exact archive checksum, member set/types, version records,
