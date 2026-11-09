@@ -16,8 +16,9 @@ import (
 )
 
 type application struct {
-	out io.Writer
-	now func() time.Time
+	out  io.Writer
+	now  func() time.Time
+	wait func(context.Context) error
 }
 
 // Run returns an exit code; only main terminates the process.
@@ -40,6 +41,8 @@ Commands:
   events BLOCK                  Read ordered history (full id for archived work)
   copy [--start T] [--end T] BLOCK  Copy unfinished work to the next calendar day
   review                        Show counts, missed work and overrun history
+  watch                         Refresh once a second until Ctrl-C
+                               Pipes stay plain; JSON is one snapshot per line
   doctor [--repair]             Inspect data; explicit repair restores .bak
                                Repair discards newer live changes but preserves originals
   backup                        Publish a private SQLite snapshot beside the database
@@ -87,7 +90,11 @@ func (app application) run(ctx context.Context, args []string, stderr io.Writer,
 				opts.path, err = filepath.Abs(opts.path)
 			}
 			if err == nil {
-				err = app.execute(ctx, opts)
+				if opts.command == "watch" {
+					err = app.watch(ctx, opts)
+				} else {
+					err = app.execute(ctx, opts)
+				}
 			}
 		}
 	}

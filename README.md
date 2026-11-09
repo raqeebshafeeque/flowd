@@ -34,7 +34,9 @@ new snapshot is already published. These checks are not a physical power-loss te
 main/journal files in the reported private recovery directory. An interrupted repair blocks normal
 opening; run the same repair command to finish. Do not remove `.lock` or `.repair` files manually.
 Close external SQLite tools before repair; they do not participate in flowd ownership.
-See `--help` for the commands currently available.
+`watch` refreshes once a second and releases database ownership between snapshots. Ctrl-C exits
+cleanly. Implicit dates follow local midnight; `--date` pins the view. Pipe output stays plain;
+`--json watch` emits one complete snapshot per line. See `--help` for command details.
 
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
 `~/.local/share/flowd/flowd.sqlite`.

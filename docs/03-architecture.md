@@ -116,8 +116,12 @@ and the version and expected schema are checked. The selected local day can then
 After a kill: OS ownership is released automatically. SQLite recovers committed WAL data on
 reopening; `quick_check(1)` runs before use. Unfinished transactions do not become partial saves.
 
-Clock watch: now and next get worked out on every key plus once a second while idle. A jump past 30
-seconds causes one calm recalc, never a burst.
+CLI watch builds one fresh snapshot, closes storage, writes the frame, then waits about one second.
+Other commands can own the file between refreshes. A busy later refresh is retried without output
+flooding; an initially busy watch exits with the lock error. Each refresh captures the current clock,
+so jumps recalculate once without replaying missed ticks. Implicit dates follow local midnight;
+explicit dates stay pinned. Only terminal text uses redraw controls; pipes are plain and JSON is
+one snapshot per line. Ctrl-C cancels the wait and exits cleanly.
 
 ## Time
 
