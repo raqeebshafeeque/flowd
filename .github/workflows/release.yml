@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to verify or retry (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flowd-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require scoped release credential
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+            echo 'Configure the expiring repository-scoped RELEASE_PLEASE_TOKEN before activation.' >&2
+            exit 1
+          fi
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          target-branch: main
+
+  publish:
+    needs: prepare
+    if: >-
+      ${{ always() && github.ref == 'refs/heads/main' &&
+          ((needs.prepare.result == 'success' && needs.prepare.outputs.release_created == 'true') ||
+           github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Validate selected tag before checkout
+        id: select
+        env:
+          CANDIDATE_TAG: ${{ inputs.tag || needs.prepare.outputs.tag_name }}
+        run: |
+          tag=$(printf '%s' "$CANDIDATE_TAG" | tr -d '\n\r')
+          if [ "$tag" != "$CANDIDATE_TAG" ] || ! printf '%s\n' "$tag" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo 'Choose an existing normal vX.Y.Z release tag.' >&2
+            exit 2
+          fi
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.select.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Verify approved source
+        env:
+          RELEASE_TAG: ${{ steps.select.outputs.tag }}
+          EXPECTED_RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+        run: sh scripts/check-release-tag.sh "$RELEASE_TAG"
+      - name: Pinned tools and source checks
+        run: |
+          sh scripts/ci-tools.sh "$RUNNER_TEMP/flowd-tools"
+          echo "$RUNNER_TEMP/flowd-tools" >> "$GITHUB_PATH"
+          echo "FLOWD_GORELEASER=$RUNNER_TEMP/flowd-tools/goreleaser" >> "$GITHUB_ENV"
+          export PATH="$RUNNER_TEMP/flowd-tools:$PATH"
+          export FLOWD_GORELEASER="$RUNNER_TEMP/flowd-tools/goreleaser"
+          shellcheck install.sh scripts/*.sh
+          actionlint
+          goreleaser check
+          go test ./... -count=1
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./...
+          go vet ./...
+          go build ./...
+          test -z "$(gofmt -l cmd internal tests scripts)"
+      - name: Publish only a complete verified draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.select.outputs.tag }}
+        run: sh scripts/publish-release.sh "$RELEASE_TAG"

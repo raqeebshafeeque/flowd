@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: Conventional title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate literal PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: sh scripts/check-pr-title.sh "$PR_TITLE"
+  native:
+    name: Native (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Pinned distribution tools
+        run: |
+          sh scripts/ci-tools.sh "$RUNNER_TEMP/flowd-tools"
+          echo "$RUNNER_TEMP/flowd-tools" >> "$GITHUB_PATH"
+          echo "FLOWD_GORELEASER=$RUNNER_TEMP/flowd-tools/goreleaser" >> "$GITHUB_ENV"
+      - name: Distribution lint and configuration
+        run: |
+          shellcheck install.sh scripts/*.sh
+          actionlint
+          goreleaser check
+      - name: Record native environment
+        run: |
+          uname -sm
+          go version
+          go env GOOS GOARCH
+      - name: Formatting
+        run: test -z "$(gofmt -l cmd internal tests scripts)"
+      - name: Tests
+        run: go test ./... -count=1
+      - name: Race checks
+        run: go test -race ./... -count=1
+      - name: Known Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./...
+      - name: Vet and build
+        run: |
+          go vet ./...
+          go build ./...

@@ -1,0 +1,258 @@
+package domain
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/raqeebshafeeque/flowd/internal/utils"
+)
+
+type Status string
+
+const (
+	Todo       Status = "todo"
+	InProgress Status = "in_progress"
+	Paused     Status = "paused"
+	Done       Status = "done"
+	Skipped    Status = "skipped"
+)
+
+var (
+	ErrIllegalTransition  = errors.New("illegal status transition")
+	ErrInvalidBlockTitle  = errors.New("invalid block title")
+	ErrInvalidStartAndEnd = errors.New("invalid start and end")
+	ErrOverlap            = errors.New("planned time overlaps")
+	ErrCarryoverRefused   = errors.New("block cannot be carried over")
+)
+
+// ExtendStep is how far one stretch pushes the planned end.
+const ExtendStep = 15 * time.Minute
+
+type Block struct {
+	ID        utils.ID   `json:"id"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt *time.Time `json:"updated_at"`
+
+	DayID  utils.ID `json:"day_id"`
+	Title  string   `json:"title"`
+	Status Status   `json:"status"`
+
+	PlannedStart time.Time  `json:"planned_start"`
+	PlannedEnd   time.Time  `json:"planned_end"`
+	ActualStart  *time.Time `json:"actual_start"`
+	ActualEnd    *time.Time `json:"actual_end"`
+
+	Archived bool `json:"archived"`
+
+	// Source block of a carryover copy, if this block is one.
+	CopiedFromID *utils.ID `json:"copied_from_id"`
+}
+
+type NewBlockInput struct {
+	Title          string
+	DayID          utils.ID
+	PlannedStartAt time.Time
+	PlannedEndAt   time.Time
+	CopiedFromID   *utils.ID
+}
+
+func (inp NewBlockInput) Validate() error {
+	title := strings.TrimSpace(inp.Title)
+	if title == "" || utf8.RuneCountInString(title) > 120 {
+		return fmt.Errorf("%w: use 1 to 120 characters", ErrInvalidBlockTitle)
+	}
+
+	if inp.PlannedStartAt.Equal(inp.PlannedEndAt) || inp.PlannedStartAt.After(inp.PlannedEndAt) {
+		return fmt.Errorf("%w: start at: %s | end at : %s", ErrInvalidStartAndEnd, inp.PlannedStartAt, inp.PlannedEndAt)
+	}
+
+	return nil
+}
+
+// NewBlock validates the input and builds a fresh todo block.
+func NewBlock(input NewBlockInput) (*Block, error) {
+	if err := input.Validate(); err != nil {
+		return nil, err
+	}
+
+	return &Block{
+		ID:           utils.NewIDWithPrefix("bl"),
+		CreatedAt:    time.Now().UTC(),
+		Title:        strings.TrimSpace(input.Title),
+		DayID:        input.DayID,
+		PlannedStart: input.PlannedStartAt,
+		PlannedEnd:   input.PlannedEndAt,
+		Status:       Todo,
+		CopiedFromID: input.CopiedFromID,
+	}, nil
+}
+
+// UpdateStatus moves the block to a new status when the lifecycle table allows
+// it, stamping actual times from now. It reports ErrIllegalTransition otherwise.
+func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
+	if b.Archived {
+		return fmt.Errorf("%w: block is archived", ErrIllegalTransition)
+	}
+	switch b.Status {
+	case Todo:
+		switch to {
+		case InProgress:
+			if b.ActualStart == nil {
+				stamp := now
+				b.ActualStart = &stamp
+			}
+			b.Status = InProgress
+			return nil
+		case Skipped:
+			b.Status = Skipped
+			return nil
+		}
+	case InProgress:
+		switch to {
+		case Paused, Skipped:
+			b.Status = to
+			return nil
+		case Done:
+			endedAt := now
+			b.ActualEnd = &endedAt
+			b.Status = Done
+			return nil
+		}
+	case Paused:
+		switch to {
+		case InProgress, Skipped:
+			b.Status = to
+			return nil
+		case Done:
+			endedAt := now
+			b.ActualEnd = &endedAt
+			b.Status = Done
+			return nil
+		}
+	case Done:
+		switch to {
+		case InProgress:
+			if day.Timezone == "" {
+				return fmt.Errorf("%w: empty", ErrInvalidDayZone)
+			}
+			zone, err := time.LoadLocation(day.Timezone)
+			if err != nil {
+				return fmt.Errorf("%w: %q: %w", ErrInvalidDayZone, day.Timezone, err)
+			}
+			if day.Date == now.In(zone).Format("2006-01-02") {
+				b.ActualEnd = nil
+				b.Status = InProgress
+				return nil
+			}
+		}
+	}
+
+	return fmt.Errorf("%w: %q to %q", ErrIllegalTransition, b.Status, to)
+}
+
+// Extend pushes the planned end by one step. Only running or paused blocks
+// stretch, and the longer range must still fit the day, ignoring this block
+// itself. The longer end stays on refusal.
+func (b *Block) Extend(day []Block) error {
+	if b.Archived || (b.Status != InProgress && b.Status != Paused) {
+		return fmt.Errorf("%w: extend from %q", ErrIllegalTransition, b.Status)
+	}
+	others := make([]Block, 0, len(day))
+	for _, ob := range day {
+		if ob.ID == b.ID {
+			continue
+		}
+		others = append(others, ob)
+	}
+	if newEnd := b.PlannedEnd.Add(ExtendStep); IsOverlapping(b.PlannedStart, newEnd, others) {
+		return fmt.Errorf("%w: stretch to %s", ErrOverlap, newEnd.Format(time.Kitchen))
+	} else {
+		b.PlannedEnd = newEnd
+		return nil
+	}
+}
+
+// CarryOver copies an unfinished block to another day as a fresh todo, leaving
+// the source untouched. Finished, skipped and hidden sources refuse, as does a
+// copy that would overlap its new day.
+func (b Block) CarryOver(dayID utils.ID, start, end time.Time, target []Block) (*Block, error) {
+	if err := b.ValidateCarryOver(); err != nil {
+		return nil, err
+	}
+	if IsOverlapping(start, end, target) {
+		return nil, fmt.Errorf("%w: %s to %s", ErrOverlap, start.Format(time.Kitchen), end.Format(time.Kitchen))
+	}
+	src := b.ID
+	return NewBlock(NewBlockInput{Title: b.Title, DayID: dayID, PlannedStartAt: start, PlannedEndAt: end, CopiedFromID: &src})
+}
+
+// ValidateCarryOver checks source eligibility before resolving target clocks.
+func (b Block) ValidateCarryOver() error {
+	if b.Archived || b.Status == Done || b.Status == Skipped {
+		return fmt.Errorf("%w: status: %q", ErrCarryoverRefused, b.Status)
+	}
+	return nil
+}
+
+// IsOverlapping reports whether a planned range touches any visible block of
+// the day. Archived rows hold no time and are ignored.
+func IsOverlapping(startAt, endAt time.Time, existingBlocks []Block) bool {
+	for _, ob := range existingBlocks {
+		// Archived rows are not counted
+		if ob.Archived {
+			continue
+		}
+
+		if !ob.PlannedEnd.After(startAt) ||
+			!endAt.After(ob.PlannedStart) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// Now answers what runs at the moment: whoever is active wins, else the
+// planned block holding now.
+func Now(blocks []Block, now time.Time) *Block {
+	var planned *Block
+	for i := range blocks {
+		b := blocks[i]
+		if b.Archived {
+			continue
+		}
+		if b.Status == InProgress {
+			hit := b
+			return &hit
+		}
+		if planned == nil && (b.Status == Todo || b.Status == Paused) &&
+			!b.PlannedStart.After(now) && now.Before(b.PlannedEnd) {
+			hit := b
+			planned = &hit
+		}
+	}
+	return planned
+}
+
+// Next answers the earliest visible todo starting after now, or nothing when
+// the rest of the day holds no todo.
+func Next(blocks []Block, now time.Time) *Block {
+	var best *Block
+	for i := range blocks {
+		b := blocks[i]
+		if b.Archived || b.Status != Todo {
+			continue
+		}
+		if !b.PlannedStart.After(now) {
+			continue
+		}
+		if best == nil || b.PlannedStart.Before(best.PlannedStart) {
+			hit := b
+			best = &hit
+		}
+	}
+	return best
+}

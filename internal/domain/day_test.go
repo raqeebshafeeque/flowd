@@ -1,0 +1,134 @@
+package domain
+
+import (
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/raqeebshafeeque/flowd/internal/utils"
+)
+
+func TestProgress(t *testing.T) {
+	tests := []struct {
+		name         string
+		blocks       []Block
+		wantProgress int
+		wantOK       bool
+	}{
+		{name: "mixed day rounds", blocks: []Block{
+			stateBlock("a", Done, false), stateBlock("b", Done, false), stateBlock("c", Todo, false),
+			stateBlock("d", Skipped, false), stateBlock("e", Done, true),
+		}, wantProgress: 67, wantOK: true},
+		{name: "all done", blocks: []Block{stateBlock("a", Done, false), stateBlock("b", Done, false)}, wantProgress: 100, wantOK: true},
+		{name: "none done", blocks: []Block{stateBlock("a", Todo, false), stateBlock("b", Todo, false)}, wantProgress: 0, wantOK: true},
+		{name: "empty day shows dash", blocks: nil, wantProgress: 0, wantOK: false},
+		{name: "all skipped shows dash", blocks: []Block{stateBlock("a", Skipped, false)}, wantProgress: 0, wantOK: false},
+		{name: "all archived shows dash", blocks: []Block{stateBlock("a", Done, true)}, wantProgress: 0, wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := Progress(tt.blocks)
+			if ok != tt.wantOK || got != tt.wantProgress {
+				t.Errorf("got progress %d ok %v, want %d ok %v", got, ok, tt.wantProgress, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestNowNext(t *testing.T) {
+	active := []Block{
+		placedBlock("study", Todo, "09:00", "10:00"),
+		placedBlock("code", InProgress, "10:30", "11:30"),
+		placedBlock("gym", Todo, "14:00", "15:00"),
+	}
+	planned := []Block{
+		placedBlock("study", Todo, "09:00", "10:00"),
+		placedBlock("code", Todo, "10:30", "11:30"),
+		placedBlock("gym", Todo, "14:00", "15:00"),
+	}
+	planned = append(planned, Block{ID: "old", DayID: "day", Title: "old", Status: InProgress, PlannedStart: timeFromStr("12:00"), PlannedEnd: timeFromStr("13:00"), Archived: true})
+	tests := []struct {
+		name     string
+		blocks   []Block
+		now      time.Time
+		wantNow  string
+		wantNext string
+	}{
+		{name: "active wins past its window", blocks: active, now: timeFromStr("12:00"), wantNow: "code", wantNext: "gym"},
+		{name: "planned holds the moment", blocks: planned, now: timeFromStr("09:15"), wantNow: "study", wantNext: "code"},
+		{name: "past everything shows nothing", blocks: planned, now: timeFromStr("18:00"), wantNow: "", wantNext: ""},
+		{name: "empty day shows nothing", blocks: nil, now: timeFromStr("09:00"), wantNow: "", wantNext: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotNow, gotNext := Now(tt.blocks, tt.now), Next(tt.blocks, tt.now)
+			if blockID(gotNow) != tt.wantNow || blockID(gotNext) != tt.wantNext {
+				t.Errorf("got now %q next %q, want %q next %q", blockID(gotNow), blockID(gotNext), tt.wantNow, tt.wantNext)
+			}
+		})
+	}
+}
+
+func stateBlock(id string, status Status, archived bool) Block {
+	return Block{ID: utils.ID(id), DayID: "day", Title: id, Status: status, Archived: archived}
+}
+
+func placedBlock(id string, status Status, start, end string) Block {
+	return Block{
+		ID: utils.ID(id), DayID: "day", Title: id, Status: status,
+		PlannedStart: timeFromStr(start), PlannedEnd: timeFromStr(end),
+	}
+}
+
+func blockID(b *Block) string {
+	if b == nil {
+		return ""
+	}
+	return string(b.ID)
+}
+
+func TestNewDay(t *testing.T) {
+	tests := []struct {
+		name     string
+		date     string
+		timezone string
+		wantErr  error
+	}{
+		{name: "good day", date: "2026-10-14", timezone: "Asia/Kolkata", wantErr: nil},
+		{name: "empty date", date: "", timezone: "Asia/Kolkata", wantErr: ErrInvalidDayDate},
+		{name: "wrong date shape", date: "14-10-2026", timezone: "Asia/Kolkata", wantErr: ErrInvalidDayDate},
+		{name: "impossible month", date: "2026-13-01", timezone: "Asia/Kolkata", wantErr: ErrInvalidDayDate},
+		{name: "empty zone", date: "2026-10-14", timezone: "", wantErr: ErrInvalidDayZone},
+		{name: "unknown zone", date: "2026-10-14", timezone: "Earth/Somewhere", wantErr: ErrInvalidDayZone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewDay(tt.date, tt.timezone)
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("got error %v, want %v", err, tt.wantErr)
+				}
+				if got != nil {
+					t.Errorf("got non-nil day, want nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
+			}
+			if !strings.HasPrefix(string(got.ID), "dy_") {
+				t.Errorf("got id %q, want prefix %q", got.ID, "dy_")
+			}
+			if got.Date != tt.date || got.Timezone != tt.timezone {
+				t.Errorf("got %q in %q, want %q in %q", got.Date, got.Timezone, tt.date, tt.timezone)
+			}
+			if got.CreatedAt.IsZero() {
+				t.Errorf("got zero CreatedAt, want stamp")
+			}
+		})
+	}
+}
