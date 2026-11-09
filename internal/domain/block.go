@@ -179,14 +179,22 @@ func (b *Block) Extend(day []Block) error {
 // the source untouched. Finished, skipped and hidden sources refuse, as does a
 // copy that would overlap its new day.
 func (b Block) CarryOver(dayID utils.ID, start, end time.Time, target []Block) (*Block, error) {
-	if b.Archived || b.Status == Done || b.Status == Skipped {
-		return nil, fmt.Errorf("%w: status: %q", ErrCarryoverRefused, b.Status)
+	if err := b.ValidateCarryOver(); err != nil {
+		return nil, err
 	}
 	if IsOverlapping(start, end, target) {
 		return nil, fmt.Errorf("%w: %s to %s", ErrOverlap, start.Format(time.Kitchen), end.Format(time.Kitchen))
 	}
 	src := b.ID
 	return NewBlock(NewBlockInput{Title: b.Title, DayID: dayID, PlannedStartAt: start, PlannedEndAt: end, CopiedFromID: &src})
+}
+
+// ValidateCarryOver checks source eligibility before resolving target clocks.
+func (b Block) ValidateCarryOver() error {
+	if b.Archived || b.Status == Done || b.Status == Skipped {
+		return fmt.Errorf("%w: status: %q", ErrCarryoverRefused, b.Status)
+	}
+	return nil
 }
 
 // IsOverlapping reports whether a planned range touches any visible block of

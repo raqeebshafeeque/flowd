@@ -10,7 +10,6 @@ import (
 	"unicode"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
-	"github.com/raqeebshafeeque/flowd/internal/utils"
 )
 
 type dayView struct {
@@ -19,29 +18,17 @@ type dayView struct {
 	Blocks   []domain.Block `json:"blocks"`
 	Now      *domain.Block  `json:"now"`
 	Next     *domain.Block  `json:"next"`
-	Progress *int           `json:"progress"`
-	Overruns []utils.ID     `json:"overruns"`
+	domain.Review
 }
 
-func makeView(day domain.Day, blocks []domain.Block, now time.Time) dayView {
-	view := dayView{Date: day.Date, Timezone: day.Timezone, Blocks: blocks, Now: domain.Now(blocks, now), Next: domain.Next(blocks, now), Overruns: make([]utils.ID, 0)}
-	if score, ok := domain.Progress(blocks); ok {
-		view.Progress = &score
-	}
-	for _, block := range blocks {
-		if overrun(block, now) {
-			view.Overruns = append(view.Overruns, block.ID)
-		}
-	}
-	return view
+func makeView(day domain.Day, blocks []domain.Block, now time.Time) (dayView, error) {
+	view := dayView{Date: day.Date, Timezone: day.Timezone, Blocks: blocks, Now: domain.Now(blocks, now), Next: domain.Next(blocks, now)}
+	var err error
+	view.Review, err = domain.ReviewDay(day, blocks, now)
+	return view, err
 }
 
-func overrun(block domain.Block, now time.Time) bool {
-	if block.Status == domain.InProgress || block.Status == domain.Paused {
-		return now.After(block.PlannedEnd)
-	}
-	return block.Status == domain.Done && block.ActualEnd != nil && block.ActualEnd.After(block.PlannedEnd)
-}
+func overrun(block domain.Block, now time.Time) bool { return domain.IsOverrun(block, now) }
 
 func printView(out io.Writer, opts options, view dayView, now time.Time, zone *time.Location) error {
 	if opts.command == "now" || opts.command == "next" {
@@ -75,6 +62,11 @@ func printView(out io.Writer, opts options, view dayView, now time.Time, zone *t
 	if _, err := fmt.Fprintf(out, "%s  %s\nprogress: %s\nnow: %s\nnext: %s\n", view.Date, view.Timezone, progress, describe(view.Now, zone), describe(view.Next, zone)); err != nil {
 		return err
 	}
+	if opts.command == "review" {
+		if _, err := fmt.Fprintf(out, "done: %d  skipped: %d  unfinished: %d  missed: %d  overruns: %d\n", view.Done, view.Skipped, view.Unfinished, len(view.Missed), len(view.Overruns)); err != nil {
+			return err
+		}
+	}
 	if len(view.Blocks) == 0 {
 		_, err := fmt.Fprintln(out, "no blocks planned")
 		return err
@@ -83,6 +75,11 @@ func printView(out io.Writer, opts options, view dayView, now time.Time, zone *t
 	fmt.Fprintln(table, "#\tplanned\tstatus\ttitle\tid\tflags")
 	for index, block := range view.Blocks {
 		flag := ""
+		for _, id := range view.Missed {
+			if block.ID == id {
+				flag = "missed"
+			}
+		}
 		if overrun(block, now) {
 			flag = "overrun"
 		}

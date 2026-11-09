@@ -75,6 +75,14 @@ instant stamps both events. `extend` adds 15 minutes without changing status, re
 `events` reads ordered history, including archived work selected by its full id. An output error
 returns nonzero but does not undo a mutation already committed to SQLite.
 
+`copy [--start TIME] [--end TIME] BLOCK` advances one calendar date, preserving local clocks and
+an overnight end. The target uses its saved zone, or the source zone for a new day. Default clocks
+that disappear or repeat across DST are refused; offset timestamps select exact instants.
+A fresh todo and carryover event are saved together, with source provenance and no source edit.
+Repeated copies require a free interval. `review` computes counts, current/completed overruns and
+missed todos without saving statuses. Todos become missed only after their saved local day ends;
+progress is rounded done divided by visible minus skipped, or null when uncountable.
+
 ## How rows get saved
 
 Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.

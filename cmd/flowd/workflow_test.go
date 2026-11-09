@@ -26,6 +26,25 @@ func TestExecutableTracking(t *testing.T) {
 	binaryCommand(t, binary, path, "start", "1")
 	binaryCommand(t, binary, path, "start", "2")
 	binaryCommand(t, binary, path, "finish", "2")
+	binaryCommand(t, binary, path, "copy", "1")
+	var review struct{ Done, Unfinished int }
+	if err := json.Unmarshal(binaryCommand(t, binary, path, "review"), &review); err != nil {
+		t.Fatal(err)
+	}
+	if review.Done != 1 || review.Unfinished != 1 {
+		t.Error("review should report finished and paused work after copying")
+	}
+	output, err := exec.Command(binary, "--db", path, "--date", "2026-10-15", "--json", "list").CombinedOutput()
+	if err != nil {
+		t.Fatalf("read copied day: %v; %s", err, output)
+	}
+	var copied struct{ Blocks []domain.Block }
+	if err := json.Unmarshal(output, &copied); err != nil {
+		t.Fatal(err)
+	}
+	if len(copied.Blocks) != 1 || copied.Blocks[0].CopiedFromID == nil {
+		t.Error("copy must survive another process on the target date")
+	}
 	var events []domain.BlockEvent
 	if err := json.Unmarshal(binaryCommand(t, binary, path, "events", "2"), &events); err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ go build -o flowd ./cmd/flowd
 ./flowd --date 2026-10-14 start 1
 ./flowd --date 2026-10-14 finish 1
 ./flowd --date 2026-10-14 events 1
+./flowd --date 2026-10-14 review
 ./flowd --date 2026-10-14 list
 ./flowd --json now
 ```
@@ -21,6 +22,10 @@ Global options go before the command. `--db PATH` chooses a database; `--timezon
 chooses a new day's zone. Existing days retain their saved timezone. Empty day views create no
 planner rows. `delete BLOCK` archives without erasing history. A block selector is a visible row
 number, full id or unique visible-id prefix. Row numbers change; use full ids in scripts.
+`copy [--start TIME] [--end TIME] BLOCK` copies unfinished work to the next calendar day, keeping
+local clock times unless overridden. Use `24:00` only for an end, or an offset RFC 3339 timestamp
+for an overnight end or a repeated DST clock. Missing/repeated local clocks are refused.
+`review` excludes skipped work from progress; a never-started todo is missed after local day end.
 See `--help` for the commands currently available.
 
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise

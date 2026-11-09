@@ -38,6 +38,11 @@ Commands:
   start | pause | resume | finish | skip | reopen BLOCK
   extend BLOCK                  Extend running/paused work by 15 minutes
   events BLOCK                  Read ordered history (full id for archived work)
+  copy [--start T] [--end T] BLOCK  Copy unfinished work to the next calendar day
+  review                        Show counts, missed work and overrun history
+
+Copy preserves local clocks and overnight ends; offsets disambiguate DST repeats.
+Review excludes skipped work from progress; todos are missed only after local day end.
 
 Starting/resuming/reopening atomically pauses another runner on that day.
 Reopen is allowed only on the saved local day. Extension refuses overlap.
@@ -194,6 +199,9 @@ func (app application) execute(ctx context.Context, opts options) (err error) {
 	if opts.command == "edit" {
 		return app.edit(ctx, database, opts, day, blocks, zone, stamp)
 	}
+	if opts.command == "copy" {
+		return app.copy(ctx, database, opts, day, blocks, zone, stamp)
+	}
 	if opts.command == "add" {
 		return app.add(ctx, database, opts, day, zone, stamp)
 	}
@@ -201,7 +209,11 @@ func (app application) execute(ctx context.Context, opts options) (err error) {
 	case "start", "pause", "resume", "finish", "skip", "reopen":
 		return app.transition(ctx, database, opts, day, blocks, zone, stamp)
 	}
-	return printView(app.out, opts, makeView(day, blocks, stamp), stamp, zone)
+	view, err := makeView(day, blocks, stamp)
+	if err != nil {
+		return err
+	}
+	return printView(app.out, opts, view, stamp, zone)
 }
 
 // An unsaved empty day is display metadata, not an invented persistent identity.
