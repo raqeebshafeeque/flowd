@@ -52,6 +52,8 @@ the store, `flowd --help` lists keys and commands.
 Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.
 Creation never replaces an existing id or date. Missing lookups return `ErrDayNotFound`;
 other failures preserve their underlying causes. Reads retain saved identities and UTC timestamps.
+`BlockByID` includes archived rows; `BlocksByDay` lists only visible rows on the selected day.
+Planned order compares parsed instants, so whole-second and fractional timestamp text can coexist.
 
 - SQLite in WAL mode with `fsync` per save. Tables are `days`, `blocks` and `block_events` exactly
   as [domain.md](02-domain.md) shapes them.

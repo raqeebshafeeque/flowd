@@ -26,7 +26,7 @@ file, not the other way round.
 | `actual_end_utc` | TEXT nullable | Stamped on finish, cleared on reopen |
 | `status` | enum | `todo, in_progress, paused, done, skipped` |
 | `archived` | INTEGER 0 or 1 | 1 means hidden, default 0 |
-| `copied_from` | TEXT nullable FK to `blocks.id` | Only set by a carryover copy |
+| `copied_from_id` | TEXT nullable FK to `blocks.id` | Only set by a carryover copy |
 | `created_at_utc`, `updated_at_utc` | TEXT RFC3339 | Kept by the store |
 
 ### Day
@@ -75,7 +75,7 @@ too, with before and after matching and reason `extend`.
 | `done` | `in_progress` | reopen key, same local day only | Clear actual end |
 | `todo`, `in_progress`, `paused` | `skipped` | skip key | Keep actuals as they are |
 | any visible | archived | delete key | Set hidden flag, keep status |
-| `todo`, `in_progress`, `paused` | `todo` tomorrow | copy to tomorrow key | New row with `copied_from` set |
+| `todo`, `in_progress`, `paused` | `todo` tomorrow | copy to tomorrow key | New row with `copied_from_id` set |
 
 Stretching is not a move. It pushes `planned_end` by 15 minutes and checks overlap again.
 
