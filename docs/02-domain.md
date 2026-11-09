@@ -88,14 +88,14 @@ Stretching is not a move. It pushes `planned_end` by 15 minutes and checks overl
   reason `auto_pause`.
 - D3 Time: save UTC in RFC 3339, show local time. The day line follows the local date.
 - D4 Delete: delete only hides. Nothing gets hard removed here.
-- D5 Reopen: a finished block runs again only while today still matches its own day. Else the app
-  says no.
+- D5 Reopen: a finished block runs again only while today in its saved timezone matches its own
+  day. Archived blocks cannot transition or extend. Otherwise the app says no.
 - D6 Real times: actual start lands on first start and stays. Actual end lands on finish and clears
   on reopen. A skipped block stays skipped with frozen actuals.
 - D7 Carryover: copy makes a fresh todo for tomorrow, keeping the same clock times unless fresh ones
   get given. The source stays. Finished, skipped and hidden ones refuse to copy. A copy that would
-  overlap tomorrow gets refused with `ERR_OVERLAP`. After a zone flight the date stays `YYYY-MM-DD`
-  while stored UTC simply renders in the new local zone.
+  overlap tomorrow gets refused with `ERR_OVERLAP`. Existing days keep their saved timezone after
+  travel; dates and stored instants never slide automatically. A copy uses its target day's zone.
 - D8 Score: `round(100 times done divided by visible minus skipped)`. An empty day shows a dash. A
   finished overrun still counts as done while showing flagged.
 

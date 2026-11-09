@@ -60,8 +60,9 @@ type NewBlockInput struct {
 }
 
 func (inp NewBlockInput) Validate() error {
-	if strings.TrimSpace(inp.Title) == "" || utf8.RuneCountInString(inp.Title) > 120 {
-		return fmt.Errorf("%w: title: %s | title length : %d", ErrInvalidBlockTitle, inp.Title, len(inp.Title))
+	title := strings.TrimSpace(inp.Title)
+	if title == "" || utf8.RuneCountInString(title) > 120 {
+		return fmt.Errorf("%w: use 1 to 120 characters", ErrInvalidBlockTitle)
 	}
 
 	if inp.PlannedStartAt.Equal(inp.PlannedEndAt) || inp.PlannedStartAt.After(inp.PlannedEndAt) {
@@ -92,6 +93,9 @@ func NewBlock(input NewBlockInput) (*Block, error) {
 // UpdateStatus moves the block to a new status when the lifecycle table allows
 // it, stamping actual times from now. It reports ErrIllegalTransition otherwise.
 func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
+	if b.Archived {
+		return fmt.Errorf("%w: block is archived", ErrIllegalTransition)
+	}
 	switch b.Status {
 	case Todo:
 		switch to {
@@ -131,7 +135,14 @@ func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
 	case Done:
 		switch to {
 		case InProgress:
-			if day.Date == now.Format("2006-01-02") {
+			if day.Timezone == "" {
+				return fmt.Errorf("%w: empty", ErrInvalidDayZone)
+			}
+			zone, err := time.LoadLocation(day.Timezone)
+			if err != nil {
+				return fmt.Errorf("%w: %q: %w", ErrInvalidDayZone, day.Timezone, err)
+			}
+			if day.Date == now.In(zone).Format("2006-01-02") {
 				b.ActualEnd = nil
 				b.Status = InProgress
 				return nil
@@ -146,7 +157,7 @@ func (b *Block) UpdateStatus(to Status, now time.Time, day Day) error {
 // stretch, and the longer range must still fit the day, ignoring this block
 // itself. The longer end stays on refusal.
 func (b *Block) Extend(day []Block) error {
-	if b.Status != InProgress && b.Status != Paused {
+	if b.Archived || (b.Status != InProgress && b.Status != Paused) {
 		return fmt.Errorf("%w: extend from %q", ErrIllegalTransition, b.Status)
 	}
 	others := make([]Block, 0, len(day))
