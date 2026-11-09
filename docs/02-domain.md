@@ -49,7 +49,7 @@ from its blocks.
 | `seq` | INTEGER PK AUTOINCREMENT | Order |
 | `block_id` | TEXT FK | Which block moved |
 | `from_status`, `to_status` | enum | Before and after |
-| `occurred_at` | TEXT RFC3339 | When it moved |
+| `occurred_at_utc` | TEXT RFC3339 UTC | When it moved |
 | `reason` | TEXT | `user, auto_pause, carryover, reopen, extend` |
 
 Every status move writes exactly one diary row in the same save as the block. Stretching writes one

@@ -62,13 +62,13 @@ func scanDay(row *sql.Row) (*domain.Day, error) {
 
 // CreateDay inserts a day without replacing an existing identity or date.
 func (s *Store) CreateDay(ctx context.Context, day domain.Day) error {
-	var updated any
-	if day.UpdatedAt != nil {
-		updated = day.UpdatedAt.UTC().Format(time.RFC3339Nano)
-	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO days
+	return insertDay(ctx, s.db, day)
+}
+
+func insertDay(ctx context.Context, executor sqlExecutor, day domain.Day) error {
+	_, err := executor.ExecContext(ctx, `INSERT INTO days
 		(id, date, timezone, created_at_utc, updated_at_utc) VALUES (?, ?, ?, ?, ?)`,
-		day.ID, day.Date, day.Timezone, day.CreatedAt.UTC().Format(time.RFC3339Nano), updated)
+		day.ID, day.Date, day.Timezone, day.CreatedAt.UTC().Format(time.RFC3339Nano), nullableTime(day.UpdatedAt))
 	if err != nil {
 		return fmt.Errorf("create day %q: %w", day.ID, err)
 	}

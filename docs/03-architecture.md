@@ -37,12 +37,16 @@ Call direction, enforced by folders `internal/tui, internal/domain, internal/sto
 internal/scheduler`:
 
 ```text
-tui -> domain -> store
+tui -> domain
+tui -> store -> domain
 scheduler -> store (read only)
-domain never calls tui, store never calls domain
+domain never calls store or tui
 ```
 
 Every write walks screen to rules to save. The screen never writes SQL around the rules.
+Store reuses domain data types and pure final-plan validation; it does not choose transitions.
+Creation with an initial event, grouped changes and archive are atomic. A new day needed by a
+creation is saved in the same transaction. Automatic pause and start must use one grouped save.
 
 On the command line: `flowd` opens today, `flowd YYYY-MM-DD` opens that date, `flowd doctor` checks
 the store, `flowd --help` lists keys and commands.
@@ -60,7 +64,7 @@ Planned order compares parsed instants, so whole-second and fractional timestamp
 - One keypress means one save. The block change plus its diary row land together or neither lands.
 - Schema version sits in `PRAGMA user_version`. Moves go forward only at start, with a `.bak` copy
   taken first. Only one `.bak` is kept; each migrate overwrites it.
-- Indexes on `blocks(day_id, planned_start)` and `block_events(block_id, seq)`.
+- Indexes on `blocks(day_id, planned_start_utc)` and `block_events(block_id, seq)`.
 - File locking comes from SQLite itself. A second writer hears `ERR_LOCKED` in plain words.
 
 ## A keypress, start to finish
