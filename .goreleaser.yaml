@@ -1,0 +1,63 @@
+version: 2
+project_name: flowd
+
+before:
+  hooks:
+    - sh scripts/stage-release.sh {{ .Version }}
+
+builds:
+  - id: flowd
+    main: ./cmd/flowd
+    binary: flowd
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: flowd
+    ids: [flowd]
+    formats: [tar.gz]
+    name_template: "flowd_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - src: .release/package/VERSION
+        dst: .
+        strip_parent: true
+      - src: .release/package/skills/flowd/SKILL.md
+        dst: skills/flowd
+        strip_parent: true
+      - src: .release/package/skills/flowd/VERSION
+        dst: skills/flowd
+        strip_parent: true
+      - src: .release/package/skills/flowd/references/commands.md
+        dst: skills/flowd/references
+        strip_parent: true
+      - src: .release/package/skills/flowd/references/safety.md
+        dst: skills/flowd/references
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+  extra_files:
+    - glob: install.sh
+
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: raqeebshafeeque
+    name: flowd
+  draft: true
+  use_existing_draft: true
+  replace_existing_draft: false
+  replace_existing_artifacts: true
+  make_latest: false
+  mode: keep-existing
+  extra_files:
+    - glob: install.sh

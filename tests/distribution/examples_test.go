@@ -19,7 +19,11 @@ func buildVersion(t *testing.T, version string) string {
 	binary := filepath.Join(t.TempDir(), "flowd")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	command := exec.CommandContext(ctx, "go", "build", "-trimpath", "-ldflags", "-X main.version="+version, "-o", binary, "./cmd/flowd")
+	ldflags := ""
+	if version != "" {
+		ldflags = "-X main.version=" + version
+	}
+	command := exec.CommandContext(ctx, "go", "build", "-trimpath", "-ldflags", ldflags, "-o", binary, "./cmd/flowd")
 	command.Dir = projectRoot(t)
 	command.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if output, err := command.CombinedOutput(); err != nil {

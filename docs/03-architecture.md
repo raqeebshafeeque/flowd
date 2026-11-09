@@ -104,6 +104,24 @@ rerunning or using force. The two paths are not one crash-atomic transaction; fo
 can need manual reconciliation. Installing an older executable does not reverse data migrations.
 The installer never opens a database, touches backups/coordination files or edits shell startup.
 
+## Release packages
+
+GoReleaser 2.20.0 builds no-cgo Darwin/Linux amd64/arm64 archives from an approved version tag.
+`scripts/stage-release.sh` generates matching VERSION records under ignored `.release/` staging;
+it does not keep a second source version. The global hook avoids writing into dist before
+GoReleaser initializes it. The executable embeds the version through the existing main linker seam.
+
+Each `flowd_X.Y.Z_OS_ARCH.tar.gz` contains only flowd, VERSION, LICENSE and the complete skill
+with its own VERSION plus command/safety references. The standalone installer is also a release
+asset. `checksums.txt` covers it and every platform archive. Generated packages/staging are ignored,
+never committed. Published archives are not independently signed or notarized.
+
+`goreleaser check` validates configuration. Set `FLOWD_GORELEASER` to the pinned executable when
+running distribution tests to exercise real no-publish builds in a temporary tagged checkout.
+Without the tool, those integration tests explicitly skip rather than pretending packaging ran.
+The native archive is installed outside the checkout and exercised against a sandbox database;
+other target builds are not runtime evidence for those platforms.
+
 ## Agent operation
 
 `skills/flowd/SKILL.md` routes natural-language requests to the installed CLI. Its bundled command
