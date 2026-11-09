@@ -97,7 +97,7 @@ func parseArgs(args []string) (options, error) {
 	boolOption(command, "help", &opts.help)
 	boolOption(command, "h", &opts.help)
 	switch opts.command {
-	case "list", "now", "next", "add", "delete":
+	case "list", "now", "next", "add", "delete", "start", "pause", "resume", "finish", "skip", "reopen", "extend", "events":
 	case "edit":
 		stringOption(command, "title", &opts.editTitle)
 		stringOption(command, "start", &opts.editStart)
@@ -116,9 +116,9 @@ func parseArgs(args []string) (options, error) {
 		if len(opts.args) < 3 {
 			return opts, usage("add needs START END TITLE")
 		}
-	} else if opts.command == "delete" {
+	} else if opts.command != "list" && opts.command != "now" && opts.command != "next" && opts.command != "edit" {
 		if len(opts.args) != 1 {
-			return opts, usage("delete needs BLOCK")
+			return opts, usage("%s needs BLOCK", opts.command)
 		}
 	} else if opts.command == "edit" {
 		if len(opts.args) != 1 || (opts.editTitle == "" && opts.editStart == "" && opts.editEnd == "") {

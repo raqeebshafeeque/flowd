@@ -10,6 +10,9 @@ go build -o flowd ./cmd/flowd
 ./flowd
 ./flowd --date 2026-10-14 add 09:00 10:00 "Study"
 ./flowd --date 2026-10-14 edit --title "Deep study" 1
+./flowd --date 2026-10-14 start 1
+./flowd --date 2026-10-14 finish 1
+./flowd --date 2026-10-14 events 1
 ./flowd --date 2026-10-14 list
 ./flowd --json now
 ```

@@ -35,6 +35,12 @@ Commands:
   add START END TITLE           Create a block (HH:MM or offset RFC 3339)
   edit [--title T] [--start T] [--end T] BLOCK
   delete BLOCK                  Archive a block; retain its history
+  start | pause | resume | finish | skip | reopen BLOCK
+  extend BLOCK                  Extend running/paused work by 15 minutes
+  events BLOCK                  Read ordered history (full id for archived work)
+
+Starting/resuming/reopening atomically pauses another runner on that day.
+Reopen is allowed only on the saved local day. Extension refuses overlap.
 
 BLOCK is a visible row number, full id or unique visible-id prefix.
 Rows change after edits/deletion; use full ids for scripts.
@@ -160,11 +166,40 @@ func (app application) execute(ctx context.Context, opts options) (err error) {
 		}
 		return printBlock(app.out, opts, "archived", saved, zone)
 	}
+	if opts.command == "extend" || opts.command == "events" {
+		block, err := resolveBlock(ctx, database, day, blocks, opts.args[0], opts.command == "events")
+		if err != nil {
+			return err
+		}
+		if opts.command == "events" {
+			events, err := database.EventsByBlock(ctx, block.ID)
+			if err != nil {
+				return err
+			}
+			if opts.json {
+				return json.NewEncoder(app.out).Encode(events)
+			}
+			for _, event := range events {
+				if _, err := fmt.Fprintf(app.out, "%d %s %s -> %s (%s)\n", event.Seq, event.OccurredAt.In(zone).Format(time.RFC3339Nano), event.FromStatus, event.ToStatus, event.Reason); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		if err := block.Extend(blocks); err != nil {
+			return err
+		}
+		return app.save(ctx, database, opts, *block, eventFor(*block, block.Status, stamp, domain.ReasonExtend), "extended", zone)
+	}
 	if opts.command == "edit" {
 		return app.edit(ctx, database, opts, day, blocks, zone, stamp)
 	}
 	if opts.command == "add" {
 		return app.add(ctx, database, opts, day, zone, stamp)
+	}
+	switch opts.command {
+	case "start", "pause", "resume", "finish", "skip", "reopen":
+		return app.transition(ctx, database, opts, day, blocks, zone, stamp)
 	}
 	return printView(app.out, opts, makeView(day, blocks, stamp), stamp, zone)
 }

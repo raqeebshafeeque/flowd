@@ -68,6 +68,13 @@ that transaction when needed. `edit --title/--start/--end BLOCK` saves all reque
 an overlapping edit changes nothing. `delete BLOCK` archives and retains history; repeating a
 full-id deletion is harmless. Visible row numbers are temporary selectors; full ids are stable.
 
+`start`, `pause`, `resume`, `finish`, `skip` and `reopen` take a block selector. Commands enforce
+which source statuses they accept; reopening a done block also requires the saved local date.
+Starting, resuming or reopening pauses another runner in the same grouped transaction. One clock
+instant stamps both events. `extend` adds 15 minutes without changing status, refusing overlaps.
+`events` reads ordered history, including archived work selected by its full id. An output error
+returns nonzero but does not undo a mutation already committed to SQLite.
+
 ## How rows get saved
 
 Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.

@@ -18,6 +18,30 @@ func binaryCommand(t *testing.T, binary, path string, args ...string) []byte {
 	return output
 }
 
+func TestExecutableTracking(t *testing.T) {
+	binary := buildExecutable(t)
+	path := filepath.Join(t.TempDir(), "track.sqlite")
+	binaryCommand(t, binary, path, "add", "09:00", "10:00", "Study")
+	binaryCommand(t, binary, path, "add", "11:00", "12:00", "Code")
+	binaryCommand(t, binary, path, "start", "1")
+	binaryCommand(t, binary, path, "start", "2")
+	binaryCommand(t, binary, path, "finish", "2")
+	var events []domain.BlockEvent
+	if err := json.Unmarshal(binaryCommand(t, binary, path, "events", "2"), &events); err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 3 || events[2].ToStatus != domain.Done {
+		t.Error("history should survive start/switch/finish processes")
+	}
+	var view struct{ Blocks []domain.Block }
+	if err := json.Unmarshal(binaryCommand(t, binary, path, "list"), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Blocks) != 2 || view.Blocks[0].Status != domain.Paused || view.Blocks[1].Status != domain.Done {
+		t.Error("switch must durably pause the previous runner")
+	}
+}
+
 func TestExecutablePlanning(t *testing.T) {
 	binary := buildExecutable(t)
 	path := filepath.Join(t.TempDir(), "plan.sqlite")

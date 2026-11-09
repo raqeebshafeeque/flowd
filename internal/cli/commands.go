@@ -114,6 +114,67 @@ func (app application) save(ctx context.Context, database *store.Store, opts opt
 	return printBlock(app.out, opts, action, saved, zone)
 }
 
+func (app application) transition(ctx context.Context, database *store.Store, opts options, day domain.Day, blocks []domain.Block, zone *time.Location, stamp time.Time) error {
+	block, err := resolveBlock(ctx, database, day, blocks, opts.args[0], false)
+	if err != nil {
+		return err
+	}
+	from := block.Status
+	var to domain.Status
+	allowed := false
+	switch opts.command {
+	case "start":
+		to = domain.InProgress
+		allowed = from == domain.Todo
+	case "resume":
+		to = domain.InProgress
+		allowed = from == domain.Paused
+	case "reopen":
+		to = domain.InProgress
+		allowed = from == domain.Done
+	case "pause":
+		to = domain.Paused
+		allowed = from == domain.InProgress
+	case "finish":
+		to = domain.Done
+		allowed = from == domain.InProgress || from == domain.Paused
+	case "skip":
+		to = domain.Skipped
+		allowed = from == domain.Todo || from == domain.InProgress || from == domain.Paused
+	}
+	if !allowed {
+		return fmt.Errorf("%w: cannot %s from %s", domain.ErrIllegalTransition, opts.command, from)
+	}
+	if err := block.UpdateStatus(to, stamp, day); err != nil {
+		return err
+	}
+	reason := domain.ReasonUser
+	if opts.command == "reopen" {
+		reason = domain.ReasonReopen
+	}
+	changes := make([]store.BlockChange, 0, 2)
+	if to == domain.InProgress {
+		for _, other := range blocks {
+			if other.ID == block.ID || other.Status != domain.InProgress {
+				continue
+			}
+			if err := other.UpdateStatus(domain.Paused, stamp, day); err != nil {
+				return err
+			}
+			changes = append(changes, store.BlockChange{Block: other, Event: eventFor(other, domain.InProgress, stamp, domain.ReasonAutoPause)})
+		}
+	}
+	changes = append(changes, store.BlockChange{Block: *block, Event: eventFor(*block, from, stamp, reason)})
+	if err := database.SaveMoves(ctx, changes); err != nil {
+		return err
+	}
+	saved, err := database.BlockByID(ctx, block.ID)
+	if err != nil {
+		return err
+	}
+	return printBlock(app.out, opts, opts.command, saved, zone)
+}
+
 func printBlock(out io.Writer, opts options, action string, block *domain.Block, zone *time.Location) error {
 	if opts.json {
 		return json.NewEncoder(out).Encode(block)
