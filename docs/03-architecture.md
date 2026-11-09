@@ -11,7 +11,7 @@ Where new code lives, how the parts connect, and what happens when things break.
 ## Limits accepted
 
 - Go on Mac and Linux terminals first.
-- No network, no background service, no second app.
+- Planner commands use no network, background service or second app; install/CI use HTTPS.
 - SQLite is the only store. File lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, else
   `~/.local/share/flowd/flowd.sqlite`, mode 0600.
 - One writer. A second open copy gets a clear lock error. No merge.
@@ -19,7 +19,8 @@ Where new code lives, how the parts connect, and what happens when things break.
 ## The big picture
 
 Someone in a terminal plans and tracks the day. flowd reads the system clock for now and next, and
-reads and writes one local SQLite file plus its `.bak` beside it. Nothing touches the network.
+reads and writes one local SQLite file plus its `.bak` beside it. Planner commands stay offline;
+release distribution and installation use the network.
 
 ## Inside the binary
 
@@ -219,6 +220,9 @@ but model-backed agents may process planner data externally under their provider
 The distribution tests check skill structure and replay documented CLI effects against temporary
 plans. The evaluation checklist in the safety reference separates expected agent decisions from
 those deterministic checks. No independent model evaluation is implied by passing markdown tests.
+An opt-in `FLOWD_PI_MODULE` points distribution tests at an installed Pi SDK; its actual resource
+loader discovers the installed skill from an unrelated project under a temporary home, without
+creating a session or making a model request. It is not a dependency of normal installation/CI.
 
 ## JSON and exits
 

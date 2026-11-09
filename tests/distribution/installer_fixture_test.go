@@ -60,6 +60,9 @@ while [ "$#" -gt 0 ]; do
  esac
 done
 printf '%s\n' "$url" >> "$FLOWD_TEST_REQUESTS"
+if [ "$url" = 'https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh' ]; then
+ cp "$FLOWD_TEST_INSTALLER" "$output"; exit 0
+fi
 if [ "$url" = 'https://github.com/raqeebshafeeque/flowd/releases/latest' ]; then
  printf '%s' "$FLOWD_TEST_LATEST"; exit 0
 fi
@@ -79,7 +82,19 @@ cp "$FLOWD_TEST_RELEASES/$relative" "$output"`)
 	if arch == "amd64" {
 		arch = "x86_64"
 	}
-	f.environment = append(os.Environ(), "HOME="+f.home, "XDG_DATA_HOME="+filepath.Join(f.home, "data"), "PATH="+f.tools, "TMPDIR="+root, "FLOWD_TEST_OS="+osName, "FLOWD_TEST_ARCH="+arch, "FLOWD_TEST_RELEASES="+f.assets, "FLOWD_TEST_REQUESTS="+f.requests, "FLOWD_TEST_FORBIDDEN="+filepath.Join(root, "forbidden"), "FLOWD_TEST_LATEST=https://github.com/raqeebshafeeque/flowd/releases/tag/v0.1.0")
+	f.environment = append(os.Environ(),
+		"HOME="+f.home,
+		"XDG_DATA_HOME="+filepath.Join(f.home, "data"),
+		"PATH="+f.tools,
+		"TMPDIR="+root,
+		"FLOWD_TEST_OS="+osName,
+		"FLOWD_TEST_ARCH="+arch,
+		"FLOWD_TEST_RELEASES="+f.assets,
+		"FLOWD_TEST_INSTALLER="+filepath.Join(projectRoot(t), "install.sh"),
+		"FLOWD_TEST_REQUESTS="+f.requests,
+		"FLOWD_TEST_FORBIDDEN="+filepath.Join(root, "forbidden"),
+		"FLOWD_TEST_LATEST=https://github.com/raqeebshafeeque/flowd/releases/tag/v0.1.0",
+	)
 	f.release("0.1.0", nil)
 	return f
 }

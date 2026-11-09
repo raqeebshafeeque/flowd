@@ -2,68 +2,74 @@
 
 A local-only terminal day planner. One binary, fully offline; no sync or background service.
 
-## Run
+## Install
+
+Public downloads require a published release. On macOS/Linux (arm64 or amd64), installation needs
+curl, tar, standard shell utilities and `sha256sum` or `shasum`, not Go, GitHub credentials or sudo.
 
 ```sh
-go build -o flowd ./cmd/flowd
-./flowd --help
-./flowd
-./flowd --date 2026-10-14 add 09:00 10:00 "Study"
-./flowd --date 2026-10-14 edit --title "Deep study" 1
-./flowd --date 2026-10-14 start 1
-./flowd --date 2026-10-14 finish 1
-./flowd --date 2026-10-14 events 1
-./flowd --date 2026-10-14 review
-./flowd --date 2026-10-14 list
-./flowd --json now
+installer=$(mktemp)
+curl --proto '=https' --proto-redir '=https' -fsSL \
+  https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh -o "$installer"
+# Inspect the downloaded script before running it.
+sh "$installer"
+export PATH="$HOME/.local/bin:$PATH"
+flowd --version
 ```
 
-Global options go before the command. `--db PATH` chooses a database; `--timezone Asia/Kolkata`
-chooses a new day's zone. Existing days retain their saved timezone. Empty day views create no
-planner rows. `delete BLOCK` archives without erasing history. A block selector is a visible row
-number, full id or unique visible-id prefix. Row numbers change; use full ids in scripts.
-`copy [--start TIME] [--end TIME] BLOCK` copies unfinished work to the next calendar day, keeping
-local clock times unless overridden. Use `24:00` only for an end, or an offset RFC 3339 timestamp
-for an overnight end or a repeated DST clock. Missing/repeated local clocks are refused.
-`review` excludes skipped work from progress; a never-started todo is missed after local day end.
-`doctor` checks an existing database without creating data or changing its permissions.
-`backup` writes a private `.bak` SQLite snapshot, including committed WAL contents. A failed
-publication leaves the previous snapshot; a reported directory-sync failure may occur after the
-new snapshot is already published. These checks are not a physical power-loss test.
-`doctor --repair` explicitly restores `.bak`, discarding newer live changes and preserving old
-main/journal files in the reported private recovery directory. An interrupted repair blocks normal
-opening; run the same repair command to finish. Do not remove `.lock` or `.repair` files manually.
-Close external SQLite tools before repair; they do not participate in flowd ownership.
-`watch` refreshes once a second and releases database ownership between snapshots. Ctrl-C exits
-cleanly. Implicit dates follow local midnight; `--date` pins the view. Pipe output stays plain;
-`--json watch` emits one complete snapshot per line. See `--help` for command details.
+The installer verifies archive checksums and installs both `~/.local/bin/flowd` and the matching
+`~/.agents/skills/flowd/`. HTTPS/bootstrap trust is required; same-channel checksums are not
+independent publisher authentication. Installation never operates on planner data.
+
+## Update or pin
+
+Download the installer again for an update, then reuse its path in the same shell:
+
+```sh
+sh "$installer"
+sh "$installer" --version v0.1.0
+```
+
+Use `--bin-dir DIR` and `--skills-dir DIR` to override parent directories. Unmanaged collisions
+need review before `--force`; symlink/special-file destinations are always refused. Managed skill
+edits are replaced on upgrade. Failed restoration reports recovery paths; replacement across the
+two destinations is not crash-atomic. See [architecture](docs/03-architecture.md) for recovery.
+
+## Use
+
+```sh
+flowd --help
+flowd --date 2026-10-14 add 09:00 10:00 "Study"
+flowd --date 2026-10-14 start 1
+flowd --date 2026-10-14 finish 1
+flowd --date 2026-10-14 review
+flowd --json now
+```
+
+Global options precede the command. `--db PATH` selects a database; `--timezone Asia/Kolkata`
+chooses a new day's zone. Saved days retain their zone. Full block ids are stable; row numbers
+change. `delete` archives, `copy` explicitly carries unfinished work to the next calendar day,
+and `watch` refreshes until Ctrl-C. `doctor` inspects; `doctor --repair` requires deliberate
+approval to discard newer changes and restore `.bak`, preserving originals. Never remove lock
+or incomplete-repair files manually. See `--help` and the docs for all commands.
 
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
 `~/.local/share/flowd/flowd.sqlite`.
 
-## Release downloads
-
-Release installation uses `install.sh` with curl, tar, standard shell utilities and either
-`sha256sum` or `shasum`. It downloads a normal GitHub release, never builds source or uses sudo.
-Run the installer with `sh install.sh`; rerun it to update both the app and skill.
-`--version v0.1.0` pins a version; omitted versions resolve the latest normal release. Archives
-are checked against exact SHA-256 entries and a fixed package layout before execution.
-HTTPS and the downloaded bootstrap script are the initial trust boundary; checksums from the
-same release are not independent publisher authentication.
-Defaults are `~/.local/bin/flowd` and `~/.agents/skills/flowd/`. Override their parent directories
-with `--bin-dir DIR` and `--skills-dir DIR`. Review unmanaged collisions before using `--force`;
-symlink/special-file destinations are always refused. Managed skill edits are replaced on upgrade.
-Handled failures attempt to restore the previous pair; inspect reported recovery paths if that
-fails. Installation is not crash-atomic across directories and never changes planner data.
-
 ## Agents
 
-The portable skill source is in `skills/flowd/`. Released packages install it at
-`~/.agents/skills/flowd/` alongside a matching executable. A compatible harness must discover
-that directory; in Pi, use `/reload` after installation and `/skill:flowd` to select it explicitly.
-Source-checkout use is a developer workflow and requires an explicitly chosen binary.
-Skill instructions do not enforce permissions. Planner data shown to an external-model agent
-enters its context and follows the provider's policy.
+The portable source is in `skills/flowd/`. A compatible harness must discover the installed
+Agent Skills directory; in Pi, use `/reload` then `/skill:flowd` to select it explicitly.
+Source-checkout use requires explicit developer intent and a chosen binary. Skills do not enforce
+permissions. Planner data shown to an external-model agent enters its context/provider policy.
+
+## Development
+
+Building source is optional for contributors, not an installer fallback:
+
+```sh
+go build -o flowd ./cmd/flowd
+```
 
 ## Docs
 

@@ -18,7 +18,9 @@ import (
 	"time"
 )
 
-func noPublishPackages(t *testing.T) string {
+func noPublishPackages(t *testing.T) string { t.Helper(); return noPublishVersion(t, "0.1.0") }
+
+func noPublishVersion(t *testing.T, version string) string {
 	t.Helper()
 	tool := os.Getenv("FLOWD_GORELEASER")
 	if tool == "" {
@@ -60,7 +62,7 @@ func noPublishPackages(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	for _, args := range [][]string{{"init", "-q"}, {"config", "user.name", "Fixture"}, {"config", "user.email", "fixture@example.invalid"}, {"add", "."}, {"commit", "-qm", "fixture"}, {"tag", "v0.1.0"}, {"remote", "add", "origin", "https://github.com/raqeebshafeeque/flowd.git"}} {
+	for _, args := range [][]string{{"init", "-q"}, {"config", "user.name", "Fixture"}, {"config", "user.email", "fixture@example.invalid"}, {"add", "."}, {"commit", "-qm", "fixture"}, {"tag", "v" + version}, {"remote", "add", "origin", "https://github.com/raqeebshafeeque/flowd.git"}} {
 		command := exec.Command("git", args...)
 		command.Dir = directory
 		if output, err := command.CombinedOutput(); err != nil {
