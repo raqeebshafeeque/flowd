@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/raqeebshafeeque/flowd/internal/store"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
 func TestExecutableWatchInterrupt(t *testing.T) {

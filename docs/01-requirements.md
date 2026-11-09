@@ -1,6 +1,7 @@
 # Requirements - flowd
 
-What the app must do and how well it must do it.
+What the app must do and how well it must do it. CLI commands expose these rules now; single-key
+bindings and screens describe the planned TUI.
 
 ## Functional
 
@@ -16,7 +17,8 @@ How to tell it works:
 - Adding a block with good times shows it in plan order and it survives a restart.
 - Saving a second block that overlaps the first gets a clear refusal. Overlap means half open
   `[start, end)`, so 09:00 to 10:00 beside 10:00 to 11:00 is fine.
-- Changing a block into an overlap gets refused too, per the overlap rule in [domain.md](02-domain.md) (D1).
+- Changing a block into an overlap gets refused too, per the overlap rule in
+  [domain.md](02-domain.md) (D1).
 - Removing a block hides it from the plan while it stays in the store. See the delete rule in
   [domain.md](02-domain.md) (D4).
 
@@ -47,10 +49,11 @@ How to tell it works:
 Unfinished work moves to tomorrow only by an explicit copy. Nothing slides on its own.
 
 How to tell it works:
-- Copying a todo, running or paused block makes a fresh todo tomorrow with `copied_from` pointing
+- Copying a todo, running or paused block makes a fresh todo tomorrow with `copied_from_id` pointing
   back. The new block keeps the same clock times by default unless fresh times get given.
 - The source stays as it was. Done, skipped and archived blocks refuse to copy.
-- Copying twice makes two separate blocks, each its own row.
+- Copying twice into free intervals makes two separate blocks, each its own row. A repeated copy
+  into the same occupied interval still refuses overlap.
 
 ### F5 Review the day
 
@@ -106,7 +109,7 @@ How well it must feel. Each item carries a number so testing stays honest.
 - S1: One file to install plus `flowd doctor`. Doctor checks the file exists and stays readable and
   writable, runs `PRAGMA integrity_check`, checks schema version and permissions. Prints `OK` or the
   first problem with a fix hint. Exit 0 on OK else 1.
-- S2: Data only changes with explicit `flowd doctor --repair`, which brings back the `.bak`.
+- S2: Doctor changes data only with explicit `flowd doctor --repair`, which brings back the `.bak`.
 - S3: Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, else `~/.local/share/flowd/flowd.sqlite`.
   Backups sit beside it as `.bak`.
 

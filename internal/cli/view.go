@@ -106,7 +106,7 @@ func describe(block *domain.Block, zone *time.Location) string {
 
 func clean(value string) string {
 	return strings.Map(func(character rune) rune {
-		if unicode.IsControl(character) {
+		if unicode.IsControl(character) || unicode.In(character, unicode.Zl, unicode.Zp) {
 			return ' '
 		}
 		return character

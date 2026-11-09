@@ -21,10 +21,9 @@ func Inspect(ctx context.Context, path string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := checkRepair(path); err != nil {
-		return err
-	}
-	if err := privateFile(path); err != nil {
+	// Missing data should not create even a coordination file, unless a repair
+	// marker explains why the main file is temporarily absent.
+	if _, err := os.Stat(path); err != nil && checkRepair(path) == nil {
 		return err
 	}
 	lock, err := lockDatabase(path)
@@ -32,6 +31,12 @@ func Inspect(ctx context.Context, path string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, lock.Close()) }()
+	if err := checkRepair(path); err != nil {
+		return err
+	}
+	if err := privateFile(path); err != nil {
+		return err
+	}
 	return inspectFile(ctx, path)
 }
 

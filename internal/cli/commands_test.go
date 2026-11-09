@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
-
-	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"testing"
 
+	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
@@ -56,6 +55,8 @@ func TestInvalidFirstAddition(t *testing.T) {
 		{"bad clock", "25:00", "26:00", "Study", "ERR_USAGE"},
 		{"empty title", "09:00", "10:00", " ", "ERR_TITLE"},
 		{"multiline title", "09:00", "10:00", "Study\nCode", "ERR_USAGE"},
+		{"unicode line separator", "09:00", "10:00", "Study\u2028Code", "ERR_USAGE"},
+		{"invalid unicode", "09:00", "10:00", string([]byte{0xff}), "ERR_USAGE"},
 		{"long title", "09:00", "10:00", strings.Repeat("a", 121), "ERR_TITLE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

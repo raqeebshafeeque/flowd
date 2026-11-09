@@ -135,6 +135,11 @@ func prepareRepair(ctx context.Context, path string) (_ string, err error) {
 	if err := safeSibling(backup); err != nil {
 		return "", err
 	}
+	owner, err := lockDatabase(backup)
+	if err != nil {
+		return "", err
+	}
+	defer func() { err = errors.Join(err, owner.Close()) }()
 	if err := privateFile(backup); err != nil {
 		return "", err
 	}

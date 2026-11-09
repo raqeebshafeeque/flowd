@@ -24,6 +24,24 @@ func (s *Store) backup(ctx context.Context, rename func(string, string) error, s
 	if err := safeSibling(destination); err != nil {
 		return "", err
 	}
+	owner, err := lockDatabase(destination)
+	if err != nil {
+		return "", err
+	}
+	defer func() { err = errors.Join(err, owner.Close()) }()
+	if err := checkRepair(destination); err != nil {
+		return "", err
+	}
+	for _, suffix := range []string{"-wal", "-shm", "-journal"} {
+		if err := safeSibling(destination + suffix); err != nil {
+			return "", err
+		}
+		if _, err := os.Lstat(destination + suffix); err == nil {
+			return "", fmt.Errorf("%w: backup has journals; close or recover the backup before replacing it", ErrLocked)
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+	}
 	temporary, err := snapshot(ctx, s, filepath.Dir(s.path))
 	if err != nil {
 		return "", err

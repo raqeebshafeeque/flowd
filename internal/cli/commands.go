@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/store"
@@ -18,8 +19,11 @@ import (
 
 func titleText(text string) (string, error) {
 	text = strings.TrimSpace(text)
+	if !utf8.ValidString(text) {
+		return "", usage("titles must be valid Unicode text")
+	}
 	for _, character := range text {
-		if unicode.IsControl(character) {
+		if unicode.IsControl(character) || unicode.In(character, unicode.Zl, unicode.Zp) {
 			return "", usage("titles must be single-line text without control characters")
 		}
 	}

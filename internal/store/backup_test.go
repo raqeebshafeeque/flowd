@@ -4,13 +4,48 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/raqeebshafeeque/flowd/internal/domain"
-	"golang.org/x/sys/unix"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/raqeebshafeeque/flowd/internal/domain"
+	"golang.org/x/sys/unix"
 )
+
+func TestBackupDestinationOwnership(t *testing.T) {
+	db := blockTestStore(t)
+	ctx := context.Background()
+	path, err := db.Backup(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	held, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Backup(ctx); !errors.Is(err, ErrLocked) {
+		t.Errorf("backup overwrote an owned snapshot: %v", err)
+	}
+	held.Close()
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+"-wal", []byte("unrecovered snapshot journal"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Backup(ctx); !errors.Is(err, ErrLocked) {
+		t.Errorf("backup must not publish under a stale snapshot journal: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Error("refused publication changed the previous snapshot")
+	}
+}
 
 func TestBackupFailures(t *testing.T) {
 	db := blockTestStore(t)

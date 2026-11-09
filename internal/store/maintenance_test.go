@@ -19,6 +19,15 @@ func TestInspect(t *testing.T) {
 			t.Error("inspection created a directory")
 		}
 	})
+	t.Run("active repair ownership takes precedence", func(t *testing.T) {
+		db := blockTestStore(t)
+		if err := os.WriteFile(db.Path()+".repair", []byte("{}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := Inspect(ctx, db.Path()); !errors.Is(err, ErrLocked) {
+			t.Errorf("inspection must respect active repair ownership: %v", err)
+		}
+	})
 	t.Run("healthy loose and held", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "day.sqlite")
 		db, err := Open(ctx, path)

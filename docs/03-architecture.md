@@ -28,33 +28,29 @@ One binary with small parts:
 - CLI: parses flags and commands, coordinates domain operations and formats text or JSON.
   `cmd/flowd` handles signals and process exit; `internal/cli` accepts a clock and output writers.
 
-- TUI: draws the day with now, next and review, and takes keys. No SQL here and no rule math here.
 - Domain: checks the D1 to D8 rules and works out now, next, overrun and score. Pure logic, no file
   or screen calls.
 - Store: owns SQLite for `days`, `blocks` and `block_events`. Owns saves, schema version in `PRAGMA
-  user_version` and moves between versions. Table SQL lives in `internal/store/schema.sql`.
-- Scheduler: a tiny now and next calc from Store plus the clock with a 1 second tick. No saves, no
-  background service.
+  user_version`. Table SQL lives in `internal/store/schema.sql`; there is no later migration yet.
 
-Call direction, enforced by folders `internal/tui, internal/domain, internal/store,
-internal/scheduler`:
+The planned TUI will draw these same rules and take single keys. Watch currently supplies the
+one-second CLI refresh; it needs no separate scheduler package or background service.
+
+Call direction, reflected in `internal/cli`, `internal/domain` and `internal/store`:
 
 ```text
 cli -> domain
-cli -> store
-tui -> domain
-tui -> store -> domain
-scheduler -> store (read only)
-domain never calls store or tui
+cli -> store -> domain
+domain never calls store or cli
 ```
 
-Every write walks screen to rules to save. The screen never writes SQL around the rules.
+Every command write walks parsing to rules to save. Presentation never writes SQL around rules.
 Store reuses domain data types and pure final-plan validation; it does not choose transitions.
 Creation with an initial event, grouped changes and archive are atomic. A new day needed by a
 creation is saved in the same transaction. Automatic pause and start must use one grouped save.
 
 On the command line: `flowd` opens today, `flowd YYYY-MM-DD` opens that date, `flowd doctor` checks
-the store, `flowd --help` lists keys and commands.
+the store, `flowd --help` lists commands and options.
 
 CLI options precede the command. Read commands are `list` (the default), `now` and `next`.
 `--date YYYY-MM-DD` or a positional date selects a day. `--db PATH` overrides the default file;
@@ -64,7 +60,7 @@ is a detected IANA system zone, falling back to UTC. The binary embeds fallback 
 Text shows local planned times, progress and overrun flags; read views do not insert planner rows.
 
 `add START END TITLE` creates a todo block with its first history event, including a new day in
-that transaction when needed. `edit --title/--start/--end BLOCK` saves all requested fields together;
+that transaction when needed. `edit --title/--start/--end BLOCK` saves requested fields together;
 an overlapping edit changes nothing. `delete BLOCK` archives and retains history; repeating a
 full-id deletion is harmless. Visible row numbers are temporary selectors; full ids are stable.
 
@@ -83,6 +79,35 @@ Repeated copies require a free interval. `review` computes counts, current/compl
 missed todos without saving statuses. Todos become missed only after their saved local day ends;
 progress is rounded done divided by visible minus skipped, or null when uncountable.
 
+## JSON and exits
+
+`--json` keeps successful data on stdout and diagnostics on stderr. Help remains human-readable.
+The response shapes are:
+
+| Command | JSON response |
+|---|---|
+| Default/list, review, each watch line | `date`, `timezone`, `blocks`, `now`, `next`, `progress`, `done`, `skipped`, `unfinished`, `missed`, `overruns` |
+| now/next | A block with an `overrun` boolean, or null |
+| add/edit/delete/tracking/extend/copy | The saved block |
+| events | Event array in increasing `seq` order |
+| doctor/backup | `{"ok":true,"path":"..."}` |
+| doctor --repair | The same object with `recovery` naming preserved originals |
+| --version | `{"version":"..."}` |
+
+Block fields are `id`, `day_id`, `title`, `status`, `archived`, `copied_from_id`,
+`planned_start`, `planned_end`, `actual_start`, `actual_end`, `created_at` and `updated_at`.
+Times are UTC RFC 3339 with fractional seconds retained; absent optional fields are null.
+Events carry `seq`, `block_id`, `from_status`, `to_status`, `occurred_at` and `reason`.
+Collections are arrays, including when empty. `missed` and `overruns` contain block ids.
+Progress is an integer percentage or null, never a fabricated zero for an uncountable day.
+
+Exit 0 means success; 2 is input/usage failure; 1 is operational failure. Cancelled one-shot
+commands exit 130; interrupting watch exits 0. Input codes are `ERR_USAGE`, `ERR_TITLE` and
+`ERR_TIME`. Operational codes are `ERR_OVERLAP`, `ERR_ILLEGAL_TRANSITION`, `ERR_CARRYOVER`,
+`ERR_STATE`, `ERR_NOT_FOUND`, `ERR_LOCKED`, `ERR_CORRUPT`, `ERR_VERSION`, `ERR_DISK_FULL`,
+`ERR_PERMISSION`, `ERR_REPAIR` and `ERR_IO`; cancellation uses `ERR_CANCELLED`.
+A success-output failure returns nonzero even when its database save already committed.
+
 ## How rows get saved
 
 Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.
@@ -98,7 +123,7 @@ Planned order compares parsed instants, so whole-second and fractional timestamp
   Other versions are refused. A future upgrade must take a backup before changing existing data.
 - Indexes on `blocks(day_id, planned_start_utc)` and `block_events(block_id, seq)`.
 - SQLite still manages transaction locks. A private persistent `.lock` sibling also carries a
-  nonblocking OS lock, covering the whole command and future offline repair. Never delete it on
+  nonblocking OS lock, covering the whole command and offline repair. Never delete it on
   release: another process could be holding the old inode. Only cooperating flowd operations use
   this maintenance protocol; external SQLite tools must be closed before offline repair.
 - Normal open creates missing directories at 0700 and the database at 0600. Existing parent modes
@@ -118,7 +143,7 @@ reopening; `quick_check(1)` runs before use. Unfinished transactions do not beco
 
 CLI watch builds one fresh snapshot, closes storage, writes the frame, then waits about one second.
 Other commands can own the file between refreshes. A busy later refresh is retried without output
-flooding; an initially busy watch exits with the lock error. Each refresh captures the current clock,
+flooding; an initially busy watch exits with the lock error. Each refresh captures the current clock
 so jumps recalculate once without replaying missed ticks. Implicit dates follow local midnight;
 explicit dates stay pinned. Only terminal text uses redraw controls; pipes are plain and JSON is
 one snapshot per line. Ctrl-C cancels the wait and exits cleanly.
@@ -142,7 +167,9 @@ one snapshot per line. Ctrl-C cancels the wait and exits cleanly.
   Prints `OK` or the first problem with a fix hint. Exit 0 on OK, else 1. Data changes only with
   explicit `--repair`, which brings back the `.bak`.
 - `backup` uses SQLite `VACUUM INTO` to include committed WAL changes, not a raw main-file copy.
-  It writes a private temporary snapshot, syncs it, replaces `.bak`, then syncs the parent directory.
+  It writes a private temporary snapshot, syncs it, replaces `.bak`, then syncs the parent
+  directory. Publication also owns the backup path and refuses leftover backup journals, rather
+  than replacing an active snapshot or allowing stale journals to replay into a new one.
   Pre-publication failure retains the old backup. A directory-sync error after replacement reports
   that publication already happened. Full integrity and foreign-key checks use a separate
   read-only connection, never normal schema initialization or permission tightening.
@@ -161,9 +188,27 @@ one snapshot per line. Ctrl-C cancels the wait and exits cleanly.
 | Kill mid keypress with `SIGKILL` | A save is atomic | Last saved state stays whole, at most one key lost | Loop writes with `kill -9`, reopen and diff |
 | Disk full | Write fails | That save fails, old data stays, plain `ERR_DISK_FULL` shows | Fill a small tmpfs and try a write |
 | Clock jumps | Jump past 30s | One recalc, no flood | Step a fake clock |
-| SQLite broken | Open or check fails | Print `ERR_CORRUPT` with path, point at doctor, touch nothing | Flip bytes in a copy and open it |
-| Second copy open | SQLite lock | Second copy exits with `ERR_LOCKED` | Open twice in a test |
+| SQLite broken | Open or check fails | Print `ERR_CORRUPT` with path, point at doctor, never reset data | Flip bytes in a copy and open it |
+| Second copy open | Ownership lock | Second copy exits with `ERR_LOCKED` | Open twice in a test |
 | Schema newer than app | Version check | Refuse with `ERR_VERSION` and an upgrade hint | Bump a version fixture |
+
+## Checks
+
+Run `go test ./... -count=1`, `go test -race ./... -count=1`, `go vet ./...` and
+`go build ./...`. Built-executable tests use temporary files, exercise the complete workflow and
+send an actual interrupt to watch. A subprocess kill test checks committed and unfinished
+block/event changes; staged repair tests exercise resumption after journal movement.
+
+`go test ./internal/cli -run TestRepresentativeHistory -v -count=1` creates 730 days and 2000
+blocks, inspects the store and records snapshot timings without a machine-independent threshold.
+On this macOS arm64 host with Go 1.27.0, the fixture database was 598,016 bytes. One run measured
+11.27ms mean in-process snapshots and 40.70ms mean / 486.73ms maximum across 20 built processes.
+Those observations do not establish the cold-open or TUI keypress targets.
+
+The no-cgo arm64 binary built with `-trimpath -ldflags='-s -w -X main.version=readiness'` was
+7,954,674 bytes, including timezone data. macOS amd64 and Linux amd64/arm64 cross-builds passed; Linux runtime, quiet memory,
+physical full-disk and power-loss checks were not performed. SQLite capacity-limit and synthetic
+ENOSPC tests are narrower write-failure evidence, not physical-disk tests.
 
 ## Choices made
 

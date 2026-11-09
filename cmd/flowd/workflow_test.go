@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/raqeebshafeeque/flowd/internal/domain"
-	"github.com/raqeebshafeeque/flowd/internal/store"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/raqeebshafeeque/flowd/internal/domain"
+	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
 func binaryCommand(t *testing.T, binary, path string, args ...string) []byte {

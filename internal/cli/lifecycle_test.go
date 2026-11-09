@@ -3,10 +3,11 @@ package cli
 import (
 	"context"
 	"encoding/json"
-	"github.com/raqeebshafeeque/flowd/internal/domain"
-	"github.com/raqeebshafeeque/flowd/internal/store"
 	"testing"
 	"time"
+
+	"github.com/raqeebshafeeque/flowd/internal/domain"
+	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
 func TestExtendAndEvents(t *testing.T) {
