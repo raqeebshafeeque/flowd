@@ -45,10 +45,16 @@ Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
 
 Release installation uses `install.sh` with curl, tar, standard shell utilities and either
 `sha256sum` or `shasum`. It downloads a normal GitHub release, never builds source or uses sudo.
+Run the installer with `sh install.sh`; rerun it to update both the app and skill.
 `--version v0.1.0` pins a version; omitted versions resolve the latest normal release. Archives
 are checked against exact SHA-256 entries and a fixed package layout before execution.
 HTTPS and the downloaded bootstrap script are the initial trust boundary; checksums from the
 same release are not independent publisher authentication.
+Defaults are `~/.local/bin/flowd` and `~/.agents/skills/flowd/`. Override their parent directories
+with `--bin-dir DIR` and `--skills-dir DIR`. Review unmanaged collisions before using `--force`;
+symlink/special-file destinations are always refused. Managed skill edits are replaced on upgrade.
+Handled failures attempt to restore the previous pair; inspect reported recovery paths if that
+fails. Installation is not crash-atomic across directories and never changes planner data.
 
 ## Agents
 

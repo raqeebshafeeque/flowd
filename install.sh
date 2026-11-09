@@ -9,6 +9,11 @@ force=false
 bin_dir=
 skills_dir=
 stage=
+binary_stage=
+skill_stage=
+publication=false
+new_binary=false
+new_skill=false
 
 fail() { printf 'flowd install: %s\n' "$*" >&2; exit 1; }
 usage_error() { printf 'flowd install: %s\n' "$*" >&2; exit 2; }
@@ -50,7 +55,38 @@ prerequisites() {
 
 # Called indirectly by the EXIT trap installed during preparation.
 # shellcheck disable=SC2329
-cleanup() { [ -z "$stage" ] || rm -rf "$stage"; }
+cleanup() {
+    status=$?
+    trap - EXIT INT TERM
+    restored=true
+    if [ "$publication" = true ]; then
+        if [ "$new_skill" = true ]; then rm -rf "$skill_target" || restored=false; fi
+        if [ -n "$skill_stage" ] && [ -e "$skill_stage/old" ]; then
+            if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then restored=false
+            elif ! mv "$skill_stage/old" "$skill_target"; then restored=false
+            fi
+        fi
+        if [ "$new_binary" = true ]; then rm -f "$binary_target" || restored=false; fi
+        if [ -n "$binary_stage" ] && [ -e "$binary_stage/old" ]; then
+            if [ -e "$binary_target" ] || [ -L "$binary_target" ]; then restored=false
+            elif ! mv "$binary_stage/old" "$binary_target"; then restored=false
+            fi
+        fi
+        if [ "$restored" = true ]; then
+            printf '%s\n' 'flowd install: prior installation restored after failed publication' >&2
+        else
+            printf 'flowd install: restoration incomplete; inspect binary %s and skill %s\nrecovery: %s %s\n' \
+                "$binary_target" "$skill_target" "$binary_stage" "$skill_stage" >&2
+            status=1
+        fi
+    fi
+    [ -z "$stage" ] || rm -rf "$stage"
+    if [ "$restored" = true ]; then
+        [ -z "$binary_stage" ] || rm -rf "$binary_stage"
+        [ -z "$skill_stage" ] || rm -rf "$skill_stage"
+    fi
+    exit "$status"
+}
 
 fetch() {
     curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 2 \
@@ -137,9 +173,57 @@ prepare_install() {
     validate_payload
 }
 
+publish_payload() {
+    [ -n "${HOME:-}" ] || fail 'HOME must be set for user installation'
+    bin_dir=${bin_dir:-"$HOME/.local/bin"}
+    skills_dir=${skills_dir:-"$HOME/.agents/skills"}
+    mkdir -p "$bin_dir" "$skills_dir" || fail 'cannot create install directories'
+    bin_dir=$(CDPATH='' cd "$bin_dir" && pwd -P)
+    skills_dir=$(CDPATH='' cd "$skills_dir" && pwd -P)
+    binary_target=$bin_dir/flowd
+    skill_target=$skills_dir/flowd
+    if [ -L "$binary_target" ] || [ -L "$skill_target" ]; then fail 'destination symlinks are refused, even with --force'; fi
+    if [ -e "$binary_target" ] && [ ! -f "$binary_target" ]; then fail 'executable destination is not a regular file'; fi
+    if [ -e "$skill_target" ] && [ ! -d "$skill_target" ]; then fail 'skill destination is not a real directory'; fi
+    managed=false
+    record=$skill_target/.flowd-install
+    if [ -f "$record" ] && [ ! -L "$record" ] && [ -f "$skill_target/VERSION" ] && [ ! -L "$skill_target/VERSION" ]; then
+        previous_version=$(cat "$skill_target/VERSION")
+        if normal_version "$previous_version"; then
+            printf 'flowd-install-v1\n%s\n%s\n' "$previous_version" "$binary_target" > "$stage/previous-record"
+            if cmp -s "$stage/previous-record" "$record"; then managed=true; fi
+        fi
+    fi
+    if [ "$force" = false ] && [ "$managed" = false ]; then
+        if [ -e "$binary_target" ] || [ -e "$skill_target" ]; then fail 'unmanaged flowd destination exists; review it before using --force'; fi
+    fi
+    binary_stage=$(mktemp -d "$bin_dir/.flowd-bin.XXXXXX") || fail 'cannot stage executable beside destination'
+    skill_stage=$(mktemp -d "$skills_dir/.flowd-skill.XXXXXX") || fail 'cannot stage skill beside destination'
+    cp "$payload/flowd" "$binary_stage/new" || fail 'cannot stage executable'
+    chmod 755 "$binary_stage/new" || fail 'cannot set executable mode'
+    cp -R "$payload/skills/flowd" "$skill_stage/new" || fail 'cannot stage skill'
+    chmod -R u=rwX,go=rX "$skill_stage/new" || fail 'cannot set skill modes'
+    printf 'flowd-install-v1\n%s\n%s\n' "$version" "$binary_target" > "$skill_stage/new/.flowd-install" || fail 'cannot record installation ownership'
+    chmod 600 "$skill_stage/new/.flowd-install" || fail 'cannot set ownership record mode'
+    publication=true
+    if [ -e "$binary_target" ]; then mv "$binary_target" "$binary_stage/old" || fail 'cannot retain prior executable'; fi
+    if [ -e "$skill_target" ]; then mv "$skill_target" "$skill_stage/old" || fail 'cannot retain prior skill'; fi
+    new_binary=true
+    mv "$binary_stage/new" "$binary_target" || fail 'cannot publish executable'
+    new_skill=true
+    mv "$skill_stage/new" "$skill_target" || fail 'cannot publish skill'
+    publication=false
+    printf 'Installed flowd %s\nbinary: %s\nskill: %s\n' "$version" "$binary_target" "$skill_target"
+    case :${PATH:-}: in
+        *:"$bin_dir":*) ;;
+        *) printf 'Add %s to PATH; shell configuration was not changed.\n' "$bin_dir" ;;
+    esac
+    printf '%s\n' 'Refresh your Agent Skills discovery (Pi: /reload, then /skill:flowd).'
+}
+
 main() {
     prepare_install "$@"
-    fail "verified release; publication to ${bin_dir:-\"$HOME/.local/bin\"} and ${skills_dir:-\"$HOME/.agents/skills\"} is not available in this development revision"
+    publish_payload
 }
 
 main "$@"

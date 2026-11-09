@@ -92,6 +92,18 @@ the archive into controlled staging paths, never blindly unpacked into a destina
 checksums detect corruption/mismatch, not a compromised publisher. Installation uses the network;
 the planner executable itself remains offline.
 
+Installation stages new files beside their destination parents, retains prior targets, then
+renames the binary and complete skill directory into place. An ownership/version record identifies
+managed installs. Unmanaged collisions need `--force`; final symlinks/special files are never
+followed. Replacing the complete skill removes obsolete references without touching other skills.
+Managed skill customizations are replaced; keep personal notes outside that directory.
+
+A handled publication error or interrupt attempts to restore the prior pair. If restoration fails,
+private recovery files remain and diagnostics identify the real partial state. Inspect them before
+rerunning or using force. The two paths are not one crash-atomic transaction; forced termination
+can need manual reconciliation. Installing an older executable does not reverse data migrations.
+The installer never opens a database, touches backups/coordination files or edits shell startup.
+
 ## Agent operation
 
 `skills/flowd/SKILL.md` routes natural-language requests to the installed CLI. Its bundled command
