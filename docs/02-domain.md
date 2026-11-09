@@ -36,7 +36,8 @@ file, not the other way round.
 | `id` | TEXT (ULID) PK | Never reused, same scheme as blocks |
 | `date` | TEXT `YYYY-MM-DD` UNIQUE | Local calendar date, one row per day |
 | `timezone` | TEXT IANA | Saved at creation, like `Asia/Kolkata` |
-| `created_at_utc` | TEXT | |
+| `created_at_utc` | TEXT RFC3339 UTC | Preserves creation time |
+| `updated_at_utc` | TEXT nullable RFC3339 UTC | Absent until updated |
 
 Blocks hang off the day through `day_id`. The day itself carries no status; review gets worked out
 from its blocks.

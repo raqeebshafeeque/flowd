@@ -49,6 +49,10 @@ the store, `flowd --help` lists keys and commands.
 
 ## How rows get saved
 
+Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.
+Creation never replaces an existing id or date. Missing lookups return `ErrDayNotFound`;
+other failures preserve their underlying causes. Reads retain saved identities and UTC timestamps.
+
 - SQLite in WAL mode with `fsync` per save. Tables are `days`, `blocks` and `block_events` exactly
   as [domain.md](02-domain.md) shapes them.
 - One keypress means one save. The block change plus its diary row land together or neither lands.
