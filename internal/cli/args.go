@@ -12,10 +12,11 @@ import (
 var errUsage = errors.New("invalid command")
 
 type options struct {
-	command             string
-	args                []string
-	path, date, zone    string
-	json, help, version bool
+	command                       string
+	args                          []string
+	path, date, zone              string
+	editTitle, editStart, editEnd string
+	json, help, version           bool
 }
 
 func usage(format string, args ...any) error {
@@ -96,7 +97,11 @@ func parseArgs(args []string) (options, error) {
 	boolOption(command, "help", &opts.help)
 	boolOption(command, "h", &opts.help)
 	switch opts.command {
-	case "list", "now", "next":
+	case "list", "now", "next", "add", "delete":
+	case "edit":
+		stringOption(command, "title", &opts.editTitle)
+		stringOption(command, "start", &opts.editStart)
+		stringOption(command, "end", &opts.editEnd)
 	default:
 		return opts, usage("unknown command %q", opts.command)
 	}
@@ -107,7 +112,19 @@ func parseArgs(args []string) (options, error) {
 		return opts, nil
 	}
 	opts.args = command.Args()
-	if len(opts.args) != 0 {
+	if opts.command == "add" {
+		if len(opts.args) < 3 {
+			return opts, usage("add needs START END TITLE")
+		}
+	} else if opts.command == "delete" {
+		if len(opts.args) != 1 {
+			return opts, usage("delete needs BLOCK")
+		}
+	} else if opts.command == "edit" {
+		if len(opts.args) != 1 || (opts.editTitle == "" && opts.editStart == "" && opts.editEnd == "") {
+			return opts, usage("edit needs flags --title/--start/--end followed by BLOCK")
+		}
+	} else if len(opts.args) != 0 {
 		return opts, usage("%s takes no positional arguments", opts.command)
 	}
 	return opts, nil

@@ -32,6 +32,12 @@ Usage: flowd [global options] [command]
 Commands:
   list        Show the selected day (default)
   now | next  Show current or next work
+  add START END TITLE           Create a block (HH:MM or offset RFC 3339)
+  edit [--title T] [--start T] [--end T] BLOCK
+  delete BLOCK                  Archive a block; retain its history
+
+BLOCK is a visible row number, full id or unique visible-id prefix.
+Rows change after edits/deletion; use full ids for scripts.
 
 Global options (before the command):
   --db PATH             Database path; default: XDG data directory
@@ -139,6 +145,26 @@ func (app application) execute(ctx context.Context, opts options) (err error) {
 		if err != nil {
 			return err
 		}
+	}
+	if opts.command == "delete" {
+		block, err := resolveBlock(ctx, database, day, blocks, opts.args[0], true)
+		if err != nil {
+			return err
+		}
+		if err := database.ArchiveBlock(ctx, block.ID, stamp); err != nil {
+			return err
+		}
+		saved, err := database.BlockByID(ctx, block.ID)
+		if err != nil {
+			return err
+		}
+		return printBlock(app.out, opts, "archived", saved, zone)
+	}
+	if opts.command == "edit" {
+		return app.edit(ctx, database, opts, day, blocks, zone, stamp)
+	}
+	if opts.command == "add" {
+		return app.add(ctx, database, opts, day, zone, stamp)
 	}
 	return printView(app.out, opts, makeView(day, blocks, stamp), stamp, zone)
 }

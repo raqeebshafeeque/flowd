@@ -63,6 +63,11 @@ is a detected IANA system zone, falling back to UTC. The binary embeds fallback 
 `--json` produces parseable stdout, with null for absent now/next and an uncountable score.
 Text shows local planned times, progress and overrun flags; read views do not insert planner rows.
 
+`add START END TITLE` creates a todo block with its first history event, including a new day in
+that transaction when needed. `edit --title/--start/--end BLOCK` saves all requested fields together;
+an overlapping edit changes nothing. `delete BLOCK` archives and retains history; repeating a
+full-id deletion is harmless. Visible row numbers are temporary selectors; full ids are stable.
+
 ## How rows get saved
 
 Day persistence uses `CreateDay`, `DayByDate` and `DayByID` in `internal/store/day.go`.
