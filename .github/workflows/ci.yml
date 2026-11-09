@@ -58,7 +58,7 @@ jobs:
           go version
           go env GOOS GOARCH
       - name: Formatting
-        run: test -z "$(gofmt -l cmd internal tests)"
+        run: test -z "$(gofmt -l cmd internal tests scripts)"
       - name: Tests
         run: go test ./... -count=1
       - name: Race checks

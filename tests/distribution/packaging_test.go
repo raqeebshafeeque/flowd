@@ -211,6 +211,19 @@ func TestGeneratedChecksumsAndInstall(t *testing.T) {
 	}
 }
 
+func TestReleasePRMetadataAccepted(t *testing.T) {
+	directory := noPublishPackages(t)
+	checkout := filepath.Dir(directory)
+	if err := os.WriteFile(filepath.Join(checkout, ".release-please-manifest.json"), []byte("{\".\":\"0.1.0\"}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("go", "test", "./tests/distribution", "-run", "^TestReleasePolicy$", "-count=1")
+	command.Dir = checkout
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated release PR metadata must pass CI: %v; %s", err, output)
+	}
+}
+
 func TestReleaseConfiguration(t *testing.T) {
 	config := projectFile(t, ".goreleaser.yaml")
 	for _, contract := range []string{"CGO_ENABLED=0", "darwin", "linux", "amd64", "arm64", "main.version=", "checksums.txt", "install.sh", "use_existing_draft: true", "draft: true"} {

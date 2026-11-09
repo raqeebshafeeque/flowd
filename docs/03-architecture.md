@@ -120,6 +120,70 @@ Code-check workflows use read-only permissions, no release secrets and no privil
 checkout. Checkout/setup-go actions are pinned to reviewed commits. Branch protection and actual
 GitHub check runs need owner activation; validating YAML locally does not establish either.
 
+## Release approval and publication
+
+Release Please v5.0.0 is pinned in the trusted main workflow and uses the root manifest/config.
+Its bundled release library supports draft releases and immediate tag creation; both are enabled.
+The initial version is 0.1.0, with cecab34 as the changelog history boundary. The bootstrap commit
+also carries a one-time `Release-As: 0.1.0` footer; do not put a permanent release-as override in
+configuration. The simple strategy may generate its own version.txt on a release PR; it is
+bot-managed metadata, never a manually edited executable version. Packaging derives from the tag.
+
+Below 1.0, fixes bump patch, features bump minor and declared breaking changes bump minor with a
+clear warning. At/after 1.0, breaking changes bump major. Squash titles/body must preserve the
+Conventional Commit subject and any `BREAKING CHANGE` or bootstrap footer. Release Please maintains
+one release PR as features accumulate; merging that PR approves publication, not every main push.
+
+```text
+feature PR -> tested main -> release PR -> approved tag + draft
+                                                |
+                                  build/upload/download/verify
+                                                |
+                                    publish complete release
+```
+
+The expiring fine-grained `RELEASE_PLEASE_TOKEN` secret needs only this repository's Contents and
+Pull requests write access. The owner creates it in GitHub and configures the Actions secret;
+never paste it into chat, workflow files or commit history. Document/rotate its expiry. Unlike
+GITHUB_TOKEN-created PRs, this credential lets bot PR updates trigger required CI. The workflow
+fails clearly if it is absent, rather than silently producing an untested release PR. A GitHub
+App credential is a possible later improvement. Keep default token permissions read-only.
+
+The publisher receives only job-scoped Contents write access. It validates a normal tag before
+checkout, then verifies exact HEAD, main ancestry, the approved SHA when available and the
+manifest version. It reruns source checks at that tag, not a newer main commit. Release creation
+outputs connect the jobs directly; publication does not rely on a separate bot-tag workflow event.
+
+GoReleaser uploads into the existing draft. `scripts/releasecheck` is a CI-only Go tool that checks
+all four downloaded archives, exact payload/version records, standalone installer/checksums and
+native version/help in an isolated home without release credentials. `publish-release.sh` publishes
+and marks latest only after those checks pass. Do not manually publish the draft in the UI, which
+would bypass that gate. A failed upload remains a draft, so anonymous latest installation still
+selects the previous complete release. No release exists until actual owner activation succeeds.
+
+An owner can dispatch Release on main with the existing tag to retry a draft. All releases share
+a non-cancelling concurrency group. Draft assets may be replaced during retry, but a published
+version is only verified/no-op; conflicting public bytes are refused, never silently overwritten.
+Correct an incorrect published version with a patch release, not by moving its tag.
+
+### First public activation
+
+1. Review all tracked history for secrets, personal data and license rights before visibility
+   changes. This exposes history, not only the current files; any findings block publication.
+2. With explicit owner approval, make the repository public, configure the scoped secret and the
+   required check names above. Do not broaden default token access or bypass failed protections.
+3. Merge/push the approved bootstrap with its one-time footer. Observe the bot's actual 0.1.0
+   release PR and required CI, review its changelog and approve that PR before merging.
+4. Observe the immediate immutable tag, draft-only asset upload, verification and final public
+   release. Check all public URLs without authentication; local fixtures cannot establish this.
+5. Download/run the public installer in a temporary home, verify the matching skill and native
+   executable, and exercise a sandbox planner operation. Record native versus cross-build checks.
+
+Local readiness leaves these owner/external gates pending. Missing credentials or repository
+settings are blockers, not reasons to mark live activation complete. No tests configure secrets,
+change visibility, create real release tags or publish remotely. Checksums are integrity checks,
+not independent publisher identity; signing/notarization remain separate work.
+
 ## Release packages
 
 GoReleaser 2.20.0 builds no-cgo Darwin/Linux amd64/arm64 archives from an approved version tag.

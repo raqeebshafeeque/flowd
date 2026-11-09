@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/v17.6.0/schemas/config.json",
+  "release-type": "simple",
+  "bootstrap-sha": "cecab34a073c342e135a814b0b03a8de0cd0e95b",
+  "initial-version": "0.1.0",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "draft": true,
+  "force-tag-creation": true,
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "packages": {
+    ".": {
+      "package-name": "flowd",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}
