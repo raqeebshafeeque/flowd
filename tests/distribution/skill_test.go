@@ -28,10 +28,12 @@ func projectFile(t *testing.T, path string) string {
 }
 
 func TestSkillPreflight(t *testing.T) {
- text:=projectFile(t,"skills/flowd/SKILL.md")
- for _,rule:=range []string{"command -v flowd","flowd --json --version","VERSION","mismatch","no writes","developer","one-shot","cancellation"}{
-  if !strings.Contains(text,rule){t.Errorf("missing preflight/lifetime rule %q",rule)}
- }
+	text := projectFile(t, "skills/flowd/SKILL.md")
+	for _, rule := range []string{"command -v flowd", "flowd --json --version", "VERSION", "mismatch", "no writes", "developer", "one-shot", "cancellation"} {
+		if !strings.Contains(text, rule) {
+			t.Errorf("missing preflight/lifetime rule %q", rule)
+		}
+	}
 }
 
 func TestSkillSafetyCases(t *testing.T) {

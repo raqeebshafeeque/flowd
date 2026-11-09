@@ -41,6 +41,15 @@ cleanly. Implicit dates follow local midnight; `--date` pins the view. Pipe outp
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
 `~/.local/share/flowd/flowd.sqlite`.
 
+## Release downloads
+
+Release installation uses `install.sh` with curl, tar, standard shell utilities and either
+`sha256sum` or `shasum`. It downloads a normal GitHub release, never builds source or uses sudo.
+`--version v0.1.0` pins a version; omitted versions resolve the latest normal release. Archives
+are checked against exact SHA-256 entries and a fixed package layout before execution.
+HTTPS and the downloaded bootstrap script are the initial trust boundary; checksums from the
+same release are not independent publisher authentication.
+
 ## Agents
 
 The portable skill source is in `skills/flowd/`. Released packages install it at

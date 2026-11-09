@@ -79,6 +79,19 @@ Repeated copies require a free interval. `review` computes counts, current/compl
 missed todos without saving statuses. Todos become missed only after their saved local day ends;
 progress is rounded done divided by visible minus skipped, or null when uncountable.
 
+## Distribution downloads
+
+`install.sh` uses public GitHub release URLs, normal version tags and explicit Darwin/Linux CPU
+mapping. It rejects unsupported hosts, invalid versions and HTTP failures without source-build
+fallback. Its only runtime prerequisites are POSIX shell, curl, tar, ordinary filesystem/text
+utilities and a SHA-256 utility. Go, GitHub CLI, Python and jq are not installer dependencies.
+
+Downloads are staged privately. The exact archive checksum, member set/types, version records,
+skill references and native help/version are checked before installation. Files are streamed from
+the archive into controlled staging paths, never blindly unpacked into a destination. Same-channel
+checksums detect corruption/mismatch, not a compromised publisher. Installation uses the network;
+the planner executable itself remains offline.
+
 ## Agent operation
 
 `skills/flowd/SKILL.md` routes natural-language requests to the installed CLI. Its bundled command
