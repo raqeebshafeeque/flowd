@@ -41,6 +41,15 @@ cleanly. Implicit dates follow local midnight; `--date` pins the view. Pipe outp
 Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
 `~/.local/share/flowd/flowd.sqlite`.
 
+## Agents
+
+The portable skill source is in `skills/flowd/`. Released packages install it at
+`~/.agents/skills/flowd/` alongside a matching executable. A compatible harness must discover
+that directory; in Pi, use `/reload` after installation and `/skill:flowd` to select it explicitly.
+Source-checkout use is a developer workflow and requires an explicitly chosen binary.
+Skill instructions do not enforce permissions. Planner data shown to an external-model agent
+enters its context and follows the provider's policy.
+
 ## Docs
 
 - [Vision](docs/00-vision.md)

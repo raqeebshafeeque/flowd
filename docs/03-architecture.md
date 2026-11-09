@@ -79,6 +79,24 @@ Repeated copies require a free interval. `review` computes counts, current/compl
 missed todos without saving statuses. Todos become missed only after their saved local day ends;
 progress is rounded done divided by visible minus skipped, or null when uncountable.
 
+## Agent operation
+
+`skills/flowd/SKILL.md` routes natural-language requests to the installed CLI. Its bundled command
+and safety references require fresh JSON, full ids, explicit date/zone interpretation and result
+verification. Advice is not consent to save. Multi-command work is sequential, not one transaction;
+uncertain output must be reconciled before repeating add/copy. Repair needs informed authorization.
+The skill checks its packaged VERSION against the executable before writes. A missing/mismatched
+install is not permission to build or install software automatically.
+
+Compatible harnesses can load `~/.agents/skills/flowd/` from other working directories; source
+checkout use without release metadata is explicitly developer-only. Pi supports reload and explicit
+skill selection. These instructions are not an execution sandbox. flowd itself remains offline,
+but model-backed agents may process planner data externally under their provider policy.
+
+The distribution tests check skill structure and replay documented CLI effects against temporary
+plans. The evaluation checklist in the safety reference separates expected agent decisions from
+those deterministic checks. No independent model evaluation is implied by passing markdown tests.
+
 ## JSON and exits
 
 `--json` keeps successful data on stdout and diagnostics on stderr. Help remains human-readable.
@@ -206,7 +224,8 @@ On this macOS arm64 host with Go 1.27.0, the fixture database was 598,016 bytes.
 Those observations do not establish the cold-open or TUI keypress targets.
 
 The no-cgo arm64 binary built with `-trimpath -ldflags='-s -w -X main.version=readiness'` was
-7,954,674 bytes, including timezone data. macOS amd64 and Linux amd64/arm64 cross-builds passed; Linux runtime, quiet memory,
+7,954,674 bytes, including timezone data. macOS amd64 and Linux amd64/arm64 cross-builds passed;
+Linux runtime, quiet memory,
 physical full-disk and power-loss checks were not performed. SQLite capacity-limit and synthetic
 ENOSPC tests are narrower write-failure evidence, not physical-disk tests.
 
