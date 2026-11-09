@@ -59,24 +59,30 @@ other failures preserve their underlying causes. Reads retain saved identities a
 `BlockByID` includes archived rows; `BlocksByDay` lists only visible rows on the selected day.
 Planned order compares parsed instants, so whole-second and fractional timestamp text can coexist.
 
-- SQLite in WAL mode with `fsync` per save. Tables are `days`, `blocks` and `block_events` exactly
-  as [domain.md](02-domain.md) shapes them.
+- SQLite uses WAL with `synchronous=FULL` to synchronize commits. Go does not separately sync the
+  live database file. Tables follow [domain.md](02-domain.md).
 - One keypress means one save. The block change plus its diary row land together or neither lands.
-- Schema version sits in `PRAGMA user_version`. Moves go forward only at start, with a `.bak` copy
-  taken first. Only one `.bak` is kept; each migrate overwrites it.
+- Version 0 installs schema version 1 atomically; version 1 is reopened without a data rewrite.
+  Other versions are refused. A future upgrade must take a backup before changing existing data.
 - Indexes on `blocks(day_id, planned_start_utc)` and `block_events(block_id, seq)`.
-- File locking comes from SQLite itself. A second writer hears `ERR_LOCKED` in plain words.
+- SQLite still manages transaction locks. A private persistent `.lock` sibling also carries a
+  nonblocking OS lock, covering the whole command and future offline repair. Never delete it on
+  release: another process could be holding the old inode. Only cooperating flowd operations use
+  this maintenance protocol; external SQLite tools must be closed before offline repair.
+- Normal open creates missing directories at 0700 and the database at 0600. Existing parent modes
+  are not changed. Paths are canonicalized; hard-linked databases and unsafe lock paths are refused.
+- One connection is retained per store. Failed opens and close release all owned resources.
 
 ## A keypress, start to finish
 
 Start: a start key arrives. Domain checks overlap and the one runner rule. Store saves block plus
 diary row in one go. The screen works out now and next again and draws.
 
-Fresh open: the file opens or gets made, version gets checked, schema moves forward with a backup
-when needed, today loads by local date and the screen draws.
+Fresh open: the private file opens or gets made under ownership, a quick integrity check runs,
+and the version and expected schema are checked. The selected local day can then load.
 
-After a kill: the file opens, a quick `integrity_check` runs, the last saved state loads and draws.
-Only the key pressed mid kill can be missing.
+After a kill: OS ownership is released automatically. SQLite recovers committed WAL data on
+reopening; `quick_check(1)` runs before use. Unfinished transactions do not become partial saves.
 
 Clock watch: now and next get worked out on every key plus once a second while idle. A jump past 30
 seconds causes one calm recalc, never a burst.
@@ -85,12 +91,16 @@ seconds causes one calm recalc, never a burst.
 
 - UTC in RFC 3339 on disk, local zone on screen through the day zone.
 - The day flips on local date at draw time. Blocks never slide alone. Only an explicit copy moves
-  one, per the carryover rules in [requirements.md](01-requirements.md) (F4) and [domain.md](02-domain.md) (D7).
+  one, per the carryover rules in [requirements.md](01-requirements.md) (F4) and
+  [domain.md](02-domain.md) (D7).
 
 ## Errors and the doctor
 
 - Errors read like `ERR_SOMETHING` plus plain words, on stderr and as a human line on screen. Codes
-  used: `ERR_OVERLAP`, `ERR_ILLEGAL_TRANSITION`, `ERR_LOCKED`, `ERR_CORRUPT`, `ERR_DISK_FULL`, `ERR_VERSION`.
+  used: `ERR_OVERLAP`, `ERR_ILLEGAL_TRANSITION`, `ERR_LOCKED`, `ERR_CORRUPT`, `ERR_DISK_FULL`,
+  `ERR_VERSION`.
+- Store returns errors and preserves their original SQLite, filesystem or parsing causes. It does
+  not print or log errors; the application boundary assigns display codes and hints.
 - Logs go to stderr. No tracking, nothing personal leaves the file.
 - `flowd doctor` checks path and permissions, `integrity_check`, schema version and a lock probe.
   Prints `OK` or the first problem with a fix hint. Exit 0 on OK, else 1. Data changes only with

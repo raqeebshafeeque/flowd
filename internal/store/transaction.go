@@ -15,7 +15,7 @@ type sqlExecutor interface {
 func (s *Store) transact(ctx context.Context, work func(*sql.Tx) error) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin planner save: %w", err)
+		return fmt.Errorf("begin planner save: %w", classify(err))
 	}
 	defer func() {
 		if cleanup := tx.Rollback(); cleanup != nil && !errors.Is(cleanup, sql.ErrTxDone) {
@@ -23,10 +23,10 @@ func (s *Store) transact(ctx context.Context, work func(*sql.Tx) error) (err err
 		}
 	}()
 	if err := work(tx); err != nil {
-		return err
+		return classify(err)
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit planner save: %w", err)
+		return fmt.Errorf("commit planner save: %w", classify(err))
 	}
 	return nil
 }

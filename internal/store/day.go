@@ -19,7 +19,7 @@ const dayColumns = "id, date, timezone, created_at_utc, updated_at_utc"
 func (s *Store) DayByDate(ctx context.Context, date string) (*domain.Day, error) {
 	day, err := scanDay(s.db.QueryRowContext(ctx, "SELECT "+dayColumns+" FROM days WHERE date = ?", date))
 	if err != nil {
-		return nil, fmt.Errorf("find day by date %q: %w", date, err)
+		return nil, fmt.Errorf("find day by date %q: %w", date, classify(err))
 	}
 	return day, nil
 }
@@ -28,7 +28,7 @@ func (s *Store) DayByDate(ctx context.Context, date string) (*domain.Day, error)
 func (s *Store) DayByID(ctx context.Context, id utils.ID) (*domain.Day, error) {
 	day, err := scanDay(s.db.QueryRowContext(ctx, "SELECT "+dayColumns+" FROM days WHERE id = ?", id))
 	if err != nil {
-		return nil, fmt.Errorf("find day by id %q: %w", id, err)
+		return nil, fmt.Errorf("find day by id %q: %w", id, classify(err))
 	}
 	return day, nil
 }
@@ -70,7 +70,7 @@ func insertDay(ctx context.Context, executor sqlExecutor, day domain.Day) error 
 		(id, date, timezone, created_at_utc, updated_at_utc) VALUES (?, ?, ?, ?, ?)`,
 		day.ID, day.Date, day.Timezone, day.CreatedAt.UTC().Format(time.RFC3339Nano), nullableTime(day.UpdatedAt))
 	if err != nil {
-		return fmt.Errorf("create day %q: %w", day.ID, err)
+		return fmt.Errorf("create day %q: %w", day.ID, classify(err))
 	}
 	return nil
 }

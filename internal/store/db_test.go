@@ -82,6 +82,10 @@ func TestOpen(t *testing.T) {
 
 func TestOpenErrors(t *testing.T) {
 	directory := t.TempDir()
+	parentFile := filepath.Join(directory, "not-a-directory")
+	if err := os.WriteFile(parentFile, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	cancelledContext, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -98,14 +102,15 @@ func TestOpenErrors(t *testing.T) {
 			wantErr: context.Canceled,
 		},
 		{
-			name: "directory cannot be a database file",
-			ctx:  context.Background(),
-			path: directory,
+			name:    "directory cannot be a database file",
+			ctx:     context.Background(),
+			path:    directory,
+			wantErr: ErrInvalidPath,
 		},
 		{
-			name: "missing parent directory refuses open",
+			name: "a regular file cannot be a parent directory",
 			ctx:  context.Background(),
-			path: filepath.Join(directory, "missing", "flowd.sqlite"),
+			path: filepath.Join(parentFile, "flowd.sqlite"),
 		},
 	}
 
@@ -131,13 +136,9 @@ func TestOpenErrors(t *testing.T) {
 				return
 			}
 
-			var sqliteError *sqlite.Error
-			if !errors.As(err, &sqliteError) {
-				t.Fatalf("want the original SQLite error preserved, got %v", err)
-			}
-			// Extended SQLite codes keep the primary code in the lowest byte.
-			if code := sqliteError.Code() & 0xff; code != sqlite3.SQLITE_CANTOPEN {
-				t.Errorf("got SQLite code %d, want %d", code, sqlite3.SQLITE_CANTOPEN)
+			var pathError *os.PathError
+			if !errors.As(err, &pathError) {
+				t.Errorf("want original filesystem cause, got %v", err)
 			}
 		})
 	}

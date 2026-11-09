@@ -155,12 +155,12 @@ func (s *Store) EventsByBlock(ctx context.Context, id utils.ID) ([]domain.BlockE
 		}
 		parsed, err := time.Parse(time.RFC3339Nano, stamp)
 		if err != nil {
-			return nil, fmt.Errorf("parse event time: %w", err)
+			return nil, fmt.Errorf("parse event time: %w", classify(err))
 		}
 		event.OccurredAt = parsed.UTC()
 		events = append(events, event)
 	}
-	return events, rows.Err()
+	return events, classify(rows.Err())
 }
 
 func checkPlan(ctx context.Context, tx *sql.Tx, dayID utils.ID) error {

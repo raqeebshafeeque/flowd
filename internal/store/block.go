@@ -18,7 +18,7 @@ var ErrBlockNotFound = errors.New("block not found")
 func (s *Store) BlockByID(ctx context.Context, id utils.ID) (*domain.Block, error) {
 	block, err := scanBlock(s.db.QueryRowContext(ctx, "SELECT "+blockColumns+" FROM blocks WHERE id = ?", id))
 	if err != nil {
-		return nil, fmt.Errorf("find block by id %q: %w", id, err)
+		return nil, fmt.Errorf("find block by id %q: %w", id, classify(err))
 	}
 	return block, nil
 }
@@ -33,7 +33,7 @@ func (s *Store) BlocksByDay(ctx context.Context, id utils.ID) ([]domain.Block, e
 	}
 	blocks, err := readBlocks(ctx, s.db, id)
 	if err != nil {
-		return nil, fmt.Errorf("list blocks for day %q: %w", id, err)
+		return nil, fmt.Errorf("list blocks for day %q: %w", id, classify(err))
 	}
 	return blocks, nil
 }
