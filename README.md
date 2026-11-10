@@ -10,7 +10,7 @@ account or background service. Use it directly or through an agent that supports
 flowd supports macOS and Linux on arm64 and amd64. You'll need curl, tar, gzip and either
 `shasum` or `sha256sum`. You don't need Go or sudo.
 
-Once the first [release](https://github.com/raqeebshafeeque/flowd/releases) is available, run:
+Download and run the installer:
 
 ```sh
 installer=$(mktemp)
