@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/raqeebshafeeque/flowd/compare/v0.1.0...v0.1.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **install:** improve progress and setup feedback ([#5](https://github.com/raqeebshafeeque/flowd/issues/5)) ([bda9d6e](https://github.com/raqeebshafeeque/flowd/commit/bda9d6e7cfbbc38fd45b65ac6ebeefc0119a1e30))
+
 ## 0.1.0 (2026-11-10)
 
 
