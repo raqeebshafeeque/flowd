@@ -13,17 +13,12 @@ flowd supports macOS and Linux on arm64 and amd64. You'll need curl, tar, gzip a
 Download and run the installer:
 
 ```sh
-installer=$(mktemp)
-curl --proto '=https' --proto-redir '=https' -fsSL \
-  https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh -o "$installer"
-# Take a look at the script before running it.
-sh "$installer"
-export PATH="$HOME/.local/bin:$PATH"
-flowd --version
+curl -fsSL https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh | sh
 ```
 
-The installer adds both the executable and its matching agent skill. It prints their locations
-when it finishes. If needed, add the export line to your shell's startup file for new terminals.
+The installer adds the executable and its matching agent skill, then prints their locations.
+If prompted, add `~/.local/bin` to your shell's PATH before using flowd. You can check the installed
+version with `flowd --version`.
 
 ## Plan your day
 
@@ -128,19 +123,20 @@ add it to your agent's skill settings.
 
 ## Update
 
-Download and run the installer again using the Install section. It updates the executable and
-skill together without changing your database. To choose a specific release:
+Run the command in the Install section again to get the latest release. It updates the executable
+and skill together without changing your database. To choose a specific release:
 
 ```sh
-sh "$installer" --version v0.1.0
+curl -fsSL https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh \
+  | sh -s -- --version v0.1.0
 ```
 
 Updates replace the installed skill files, so keep personal notes outside that folder. If the
 installer finds files it doesn't recognize, check them before choosing `--force`.
 
-Downloads are checked against release checksums. They still rely on GitHub and the publisher
-being trustworthy. See the [installation notes](docs/03-architecture.md#distribution-downloads)
-for more details.
+The installer checks release archives against their checksums. Installation still relies on
+GitHub and the publisher being trustworthy. See the
+[installation notes](docs/03-architecture.md#distribution-downloads) for more details.
 
 ## Development
 

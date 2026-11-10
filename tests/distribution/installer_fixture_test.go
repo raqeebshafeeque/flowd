@@ -61,7 +61,10 @@ while [ "$#" -gt 0 ]; do
 done
 printf '%s\n' "$url" >> "$FLOWD_TEST_REQUESTS"
 if [ "$url" = 'https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh' ]; then
- cp "$FLOWD_TEST_INSTALLER" "$output"; exit 0
+ if [ -n "$output" ]; then cp "$FLOWD_TEST_INSTALLER" "$output"
+ else cat "$FLOWD_TEST_INSTALLER"
+ fi
+ exit 0
 fi
 if [ "$url" = 'https://github.com/raqeebshafeeque/flowd/releases/latest' ]; then
  printf '%s' "$FLOWD_TEST_LATEST"; exit 0

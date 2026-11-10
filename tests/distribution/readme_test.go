@@ -27,12 +27,16 @@ func TestReadmeInstallationExamples(t *testing.T) {
 	if len(blocks) < 3 {
 		t.Fatal("missing install, update and use examples")
 	}
+	if len(strings.Split(strings.TrimSpace(blocks[0][1]), "\n")) != 1 || !strings.Contains(blocks[0][1], "| sh") {
+		t.Fatal("installation should use a single piped command")
+	}
 	script := "set -eu\n"
 	for _, block := range blocks {
 		script += block[1] + "\n"
 	}
 	command := exec.Command("/bin/sh", "-c", script)
-	command.Env = f.environment
+	// Follow the guide's PATH setup before running the usage examples.
+	command.Env = append(f.environment, "PATH="+filepath.Join(f.home, ".local", "bin")+string(os.PathListSeparator)+f.tools)
 	command.Dir = f.root
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("README examples: %v; %s", err, output)
