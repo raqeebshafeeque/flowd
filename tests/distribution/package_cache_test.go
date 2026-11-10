@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -117,8 +118,12 @@ func TestPackageCacheVersions(t *testing.T) {
 			t.Errorf("version %s changed masters", version)
 		}
 		masters[version] = master
-		if info, err := os.Stat(master); err != nil || info.Mode().Perm() != 0o700 {
-			t.Fatalf("master is not private: %v; %v", info, err)
+		info, err := os.Stat(master)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0o700 {
+			t.Fatalf("master permissions = %#o, want 0700", got)
 		}
 		contents, err := os.ReadFile(filepath.Join(master, "dist", "VERSION"))
 		if err != nil || string(contents) != version {
@@ -229,8 +234,11 @@ func TestPackageCachePrivateCheckouts(t *testing.T) {
 				}
 			}
 			info, err := os.Stat(filepath.Join(root, "flowd"))
-			if err != nil || info.Mode().Perm() != 0o755 {
-				t.Errorf("executable mode lost: %v; %v", info, err)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := info.Mode().Perm(); got != 0o755 {
+				t.Errorf("executable permissions = %#o, want 0755", got)
 			}
 		}
 	})
@@ -285,6 +293,41 @@ func TestPackageBuilderDoesNotPublishOrReceiveTokens(t *testing.T) {
 	}
 	if contents, err := os.ReadFile(filepath.Join(directory, "fixture-verified")); err != nil || string(contents) != "checked" {
 		t.Fatalf("controlled no-publish tool did not run: %q; %v", contents, err)
+	}
+}
+
+func TestPackageCopyPreservesModes(t *testing.T) {
+	command := exec.Command(os.Args[0], "-test.run=^TestPackageCopyUmaskHelper$", "-test.v")
+	command.Env = append(os.Environ(), "FLOWD_TEST_PACKAGE_COPY_UMASK=true")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("fixture copy with private umask: %v; %s", err, output)
+	}
+}
+
+func TestPackageCopyUmaskHelper(t *testing.T) {
+	if os.Getenv("FLOWD_TEST_PACKAGE_COPY_UMASK") != "true" {
+		t.Skip("isolated umask subprocess helper")
+	}
+	source := t.TempDir()
+	path := filepath.Join(source, "flowd")
+	if err := os.WriteFile(path, []byte("executable fixture"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	previous := syscall.Umask(0o077)
+	defer syscall.Umask(previous)
+	destination := t.TempDir()
+	if err := copyPackageFixture(source, destination); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filepath.Join(destination, "flowd"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o755 {
+		t.Fatalf("copied executable permissions = %#o, want 0755", got)
 	}
 }
 

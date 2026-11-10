@@ -196,7 +196,7 @@ func copyPackageFile(source, destination string, mode fs.FileMode) error {
 		return errors.Join(err, input.Close())
 	}
 	_, err = io.Copy(output, input)
-	return errors.Join(err, output.Close(), input.Close())
+	return errors.Join(err, output.Chmod(mode), output.Close(), input.Close())
 }
 
 // close runs after all suite consumers have finished, including when tests fail.
