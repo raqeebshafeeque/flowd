@@ -9,6 +9,34 @@ import (
 	"testing"
 )
 
+func TestReleaseWorkflowRoles(t *testing.T) {
+	workflow := projectFile(t, ".github/workflows/release.yml")
+	if !strings.HasPrefix(workflow, "name: Releases\n") {
+		t.Error("release workflow must be named Releases")
+	}
+	runName := workflowBlock(t, workflow, "run-name:", "\non:")
+	for _, contract := range []string{"github.event_name == 'workflow_dispatch'", "format('Retry release {0}', inputs.tag)", "'Releases for main'"} {
+		if !strings.Contains(runName, contract) {
+			t.Errorf("missing release run identity %q", contract)
+		}
+	}
+	if strings.Contains(runName, "needs.") || strings.Contains(runName, "steps.") {
+		t.Error("run titles cannot depend on outputs produced later")
+	}
+	for _, job := range []struct {
+		id   string
+		name string
+	}{
+		{"prepare", "Update release PR"},
+		{"publish", "Build and publish"},
+	} {
+		block := workflowBlock(t, workflow, "  "+job.id+":\n", "    steps:\n")
+		if !strings.Contains(block, "name: "+job.name+"\n") {
+			t.Errorf("job %s must be named %s", job.id, job.name)
+		}
+	}
+}
+
 func TestReleaseWorkflowTrust(t *testing.T) {
 	workflow := projectFile(t, ".github/workflows/release.yml")
 	for _, contract := range []string{"RELEASE_PLEASE_TOKEN", "refs/heads/main", "contents: read", "persist-credentials: false", "cancel-in-progress: false", "release_created", "tag_name", "45996ed1f6d02564a971a2fa1b5860e934307cf7", "govulncheck@v1.9.0 -test ./..."} {
