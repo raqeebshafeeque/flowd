@@ -38,6 +38,7 @@ exec `+shellLiteral(realMV)+` "$@"`)
 	if err == nil {
 		t.Fatalf("injected second-path failure succeeded: %s", output)
 	}
+	assertNoInstallSuccess(t, output)
 	after, err := os.ReadFile(binary)
 	if err != nil || !bytes.Equal(before, after) {
 		t.Error("failed upgrade did not restore prior binary")
@@ -76,6 +77,7 @@ exec `+shellLiteral(realMV)+` "$@"`)
 	if err == nil || !strings.Contains(output, "restoration incomplete") || !strings.Contains(output, "recovery:") {
 		t.Fatalf("rollback failure must disclose retained recovery paths: %v; %s", err, output)
 	}
+	assertNoInstallSuccess(t, output)
 	backups, _ := filepath.Glob(filepath.Join(f.home, ".local/bin/.flowd-bin.*/old"))
 	if len(backups) != 1 {
 		t.Error("rollback failure removed the retained prior executable")
@@ -110,6 +112,10 @@ exec `+shellLiteral(realMV)+` "$@"`)
 	output, err := f.install("--version", "0.1.0")
 	if err == nil {
 		t.Fatalf("interrupted installation reported success: %s", output)
+	}
+	assertNoInstallSuccess(t, output)
+	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 143 {
+		t.Errorf("SIGTERM status = %v, want exit 143", err)
 	}
 	version, err := os.ReadFile(filepath.Join(f.home, ".agents/skills/flowd/VERSION"))
 	if err != nil || string(version) != "0.1.0\n" {
