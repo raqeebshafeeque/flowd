@@ -1,4 +1,7 @@
-name: Release
+name: Releases
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' &&
+      format('Retry release {0}', inputs.tag) || 'Releases for main' }}
 
 on:
   push:
@@ -19,6 +22,7 @@ concurrency:
 
 jobs:
   prepare:
+    name: Update release PR
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -47,6 +51,7 @@ jobs:
           target-branch: main
 
   publish:
+    name: Build and publish
     needs: prepare
     if: >-
       ${{ always() && github.ref == 'refs/heads/main' &&

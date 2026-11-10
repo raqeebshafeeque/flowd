@@ -117,26 +117,60 @@ The installer never opens a database, touches its backups/coordination files or 
 
 ## Continuous checks
 
-Short-lived PRs target main. Squash titles use Conventional Commits; the title check receives
-untrusted text as a quoted environment value, never executable workflow interpolation.
-`Conventional title`, `Native (ubuntu-latest)` and `Native (macos-latest)` are the owner-configured
-required checks. A solo owner needs those checks, not an impossible separate reviewer requirement.
+Short-lived PRs target main. Squash titles use Conventional Commits. `PR title` validates the
+current title when a PR opens, gains source commits, reopens or has its title/body edited. It
+receives that text as a quoted environment value, never executable workflow interpolation. A
+body-only edit still validates the title, so it cannot clear a failed check by skipping validation.
 
-Native jobs run full/race Go tests, vet/build and formatting, record actual OS/architecture, and
-exercise release/installer integration. Known Go vulnerabilities are checked with pinned
-`govulncheck` v1.9.0 against the current advisory database. Build with the Go patch level declared
-in go.mod or newer. `scripts/ci-tools.sh DIRECTORY` fetches GoReleaser 2.20.0,
-actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific SHA-256 pins.
-Review/update pins deliberately when upgrading tools. These are CI/developer prerequisites only.
+`CI` runs when a PR into main opens, gains source commits or reopens, and on main pushes.
+Metadata edits neither start native jobs nor cancel existing ones. A newer source update can
+cancel older CI for the same PR or branch. Title checks use a separate concurrency group.
+Run names identify the PR number or main rather than repeating the same commit title.
+
+The required checks are `Conventional title`, `Linux checks` and `macOS checks`. The native names
+stay independent of runner image labels. Both platforms run full/race Go tests, vet/build,
+vulnerability checks and native release/installer integration, recording their actual environment.
+Formatting, ShellCheck, actionlint and static release-configuration lint run once on Linux.
+No documentation/skill path filter skips their executable examples or the native test suites.
+
+CI only handles PRs targeting main. Retargeting a PR does not itself request native CI: if current
+results are missing, reopen the PR or push a source update. A title/body edit is not a substitute.
+Keep strict up-to-date protection and let missing or failing required checks block merging.
+
+### Required check migration
+
+For the workflow cleanup, LockMain initially still requires the old native names:
+
+| Old context | Replacement |
+| --- | --- |
+| Native (ubuntu-latest) | Linux checks |
+| Native (macos-latest) | macOS checks |
+
+After both new checks and Conventional title pass on the cleanup PR's latest source, the owner
+replaces only these two contexts. Keep LockMain active, the GitHub Actions check source, strict
+up-to-date checks and the other PR rules unchanged, with no bypasses. Do not add passing aliases
+or skipped placeholders for the old contexts. Other open PRs can need a source refresh.
+
+Rollback also needs coordination: revert through a PR and select the required context names the
+reverted source actually produces. Missing contexts remain blocking in either direction; do not
+disable protection to merge. Rule updates and merging each need owner approval.
+
+Known Go vulnerabilities are checked with pinned `govulncheck` v1.9.0 against the current advisory
+database. Build with the Go patch level declared in go.mod or newer. `scripts/ci-tools.sh DIRECTORY`
+fetches GoReleaser 2.20.0, actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific
+SHA-256 pins. Review/update pins deliberately when upgrading tools. Missing required CI tools fail
+rather than skipping package coverage. These are CI/developer prerequisites only.
 
 Code-check workflows use read-only permissions, no release secrets and no privileged untrusted
-checkout. Checkout/setup-go actions are pinned to reviewed commits. Branch protection and actual
-GitHub check runs need owner activation; validating YAML locally does not establish either.
+checkout. Checkout/setup-go actions are pinned to reviewed commits. Validating YAML locally does
+not establish real event routing or protection: check those on GitHub during approved rollout.
 
 ## Release approval and publication
 
-Release Please v5.0.0 is pinned in the trusted main workflow and uses the root manifest/config.
-Its bundled release library supports draft releases and immediate tag creation; both are enabled.
+The `Releases` workflow runs Release Please v5.0.0 in its `Update release PR` job, using the root
+manifest/config. `Build and publish` runs for an approved release or an owner retry, not an ordinary
+main change. Main runs are named `Releases for main`; manual retries identify their selected tag.
+The bundled release library supports draft releases and immediate tag creation; both are enabled.
 The initial version is 0.1.0. Squash the setup PR onto existing main; use its existing initial
 commit `2bd113c` as the bootstrap history boundary so it survives that squash. Local learning
 commits do not become separate main commits. The setup squash commit must carry a one-time
@@ -176,10 +210,11 @@ and marks latest only after those checks pass. Do not manually publish the draft
 would bypass that gate. A failed upload remains a draft, so anonymous latest installation still
 selects the previous complete release. No release exists until actual owner activation succeeds.
 
-An owner can dispatch Release on main with the existing tag to retry a draft. All releases share
-a non-cancelling concurrency group. Draft assets may be replaced during retry, but a published
-version is only verified/no-op; conflicting public bytes are refused, never silently overwritten.
-Correct an incorrect published version with a patch release, not by moving its tag.
+An owner can dispatch `Releases` on main with an existing tag to retry a draft. The file remains
+`release.yml`, so CLI dispatch still uses `gh workflow run release.yml --ref main -f tag=vX.Y.Z`.
+All releases share a non-cancelling concurrency group. Retrying can replace draft assets.
+A published version is only verified: matching bytes need no changes and conflicting public bytes
+are refused. Correct an incorrect published version with a patch release, not by moving its tag.
 
 ### First public activation
 
@@ -215,10 +250,22 @@ release asset. `checksums.txt` covers it and every platform archive. Generated p
 ignored, never committed. Published archives are not independently signed or notarized.
 
 `goreleaser check` validates configuration. Set `FLOWD_GORELEASER` to the pinned executable when
-running distribution tests to exercise real no-publish builds in a temporary tagged checkout.
-Without the tool, those integration tests explicitly skip rather than pretending packaging ran.
-The native archive is installed outside the checkout and exercised against a sandbox database;
-other target builds are not runtime evidence for those platforms.
+running distribution tests. Each test process prepares one no-publish package master per requested
+version, even with concurrent requests. Tests get private checkout/artifact copies, so a metadata
+or archive change cannot leak into later tests. Masters outlive individual tests and are removed
+at normal suite exit, including a failed suite. Build failures are shared without retries or
+exposing partial packages. The three-minute preparation bound does not depend on the first test.
+
+The current suite requests 0.1.0 and 0.2.0, so each full or race process builds two fixtures.
+The optional Pi test reuses 0.1.0. There is no cross-process or Actions artifact cache. Reuse does
+not make child binaries race-instrumented, and real publishing still builds its approved tag fresh.
+Fixture commands clear publication-token variables and never publish.
+
+Without a packaging tool, optional local tests explicitly skip. A missing configured tool or a
+missing tool in CI fails rather than pretending packaging ran. The native archive is installed
+outside the checkout and exercised against a sandbox database; other target builds are not runtime
+evidence for those platforms. Compare build counts and same-environment timings when measuring
+this optimization rather than treating a single run as a performance guarantee.
 
 ## Agent operation
 

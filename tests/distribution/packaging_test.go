@@ -2,11 +2,11 @@ package distribution
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -15,69 +15,28 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 )
 
 func noPublishPackages(t *testing.T) string { t.Helper(); return noPublishVersion(t, "0.1.0") }
 
 func noPublishVersion(t *testing.T, version string) string {
 	t.Helper()
-	tool := os.Getenv("FLOWD_GORELEASER")
-	if tool == "" {
-		var err error
-		tool, err = exec.LookPath("goreleaser")
-		if err != nil {
-			t.Skip("set FLOWD_GORELEASER for actual packaging checks")
-		}
+	tool, err := packageTool()
+	if errors.Is(err, errOptionalPackageTool) {
+		t.Skip(err)
 	}
-	directory := t.TempDir()
-	list := exec.Command("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z")
-	list.Dir = projectRoot(t)
-	output, err := list.Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range bytes.Split(output, []byte{0}) {
-		if len(name) == 0 {
-			continue
-		}
-		path := string(name)
-		source := filepath.Join(projectRoot(t), path)
-		info, err := os.Lstat(source)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !info.Mode().IsRegular() {
-			t.Fatalf("unsupported source fixture %s", path)
-		}
-		content, err := os.ReadFile(source)
-		if err != nil {
-			t.Fatal(err)
-		}
-		destination := filepath.Join(directory, path)
-		if err := os.MkdirAll(filepath.Dir(destination), 0o700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(destination, content, info.Mode().Perm()); err != nil {
-			t.Fatal(err)
-		}
+	source := projectRoot(t)
+	build := func(ctx context.Context, directory, version string) error {
+		return buildPackageFixture(ctx, source, tool, directory, version)
 	}
-	for _, args := range [][]string{{"init", "-q"}, {"config", "user.name", "Fixture"}, {"config", "user.email", "fixture@example.invalid"}, {"add", "."}, {"commit", "-qm", "fixture"}, {"tag", "v" + version}, {"remote", "add", "origin", "https://github.com/raqeebshafeeque/flowd.git"}} {
-		command := exec.Command("git", args...)
-		command.Dir = directory
-		if output, err := command.CombinedOutput(); err != nil {
-			t.Fatalf("git fixture: %v; %s", err, output)
-		}
+	checkout, err := suitePackages.checkout(version, build, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
-	command := exec.CommandContext(ctx, tool, "release", "--skip=publish", "--clean")
-	command.Dir = directory
-	command.Env = append(os.Environ(), "GITHUB_TOKEN=", "GITLAB_TOKEN=", "GITEA_TOKEN=")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("no-publish build: %v; %s", err, output)
-	}
-	return filepath.Join(directory, "dist")
+	return filepath.Join(checkout, "dist")
 }
 
 func TestNoPublishBuild(t *testing.T) {

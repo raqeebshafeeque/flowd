@@ -1,0 +1,26 @@
+name: PR title
+run-name: "Check title for PR #${{ github.event.pull_request.number }}"
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    name: Conventional title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate literal PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: sh scripts/check-pr-title.sh "$PR_TITLE"
