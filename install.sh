@@ -17,11 +17,52 @@ publication=false
 new_binary=false
 new_skill=false
 install_complete=false
+interactive=false
+progress_active=false
 
-progress_start() { printf '[%s/4] %s...\n' "$1" "$2"; }
+progress_init() {
+    if [ -t 1 ] && [ -n "${TERM:-}" ] && [ "$TERM" != dumb ] && [ -z "${NO_COLOR:-}" ]; then
+        interactive=true
+    fi
+}
+
+progress_start() {
+    if [ "$interactive" = true ]; then
+        printf '  \033[36m›\033[0m %s... ' "$2"
+        progress_active=true
+    else
+        printf '[%s/4] %s...\n' "$1" "$2"
+    fi
+}
+
+progress_pause() {
+    if [ "$progress_active" = true ]; then
+        printf '\r\033[2K'
+        progress_active=false
+    fi
+}
+
+progress_end() {
+    if [ "$progress_active" = true ]; then
+        printf '\033[0m\n'
+        progress_active=false
+    fi
+}
+
+progress_done() {
+    if [ "$interactive" = true ]; then
+        progress_pause
+        printf '  \033[32m✓ %s\033[0m\n' "$1"
+    fi
+}
 
 show_success() {
-    printf '\n  Installed flowd %s!\n\n  Binary  %s\n  Skill   %s\n\n' "$version" "$binary_target" "$skill_target"
+    if [ "$interactive" = true ]; then
+        printf '\n  \033[1;32mInstalled flowd %s!\033[0m\n' "$version"
+    else
+        printf '\n  Installed flowd %s!\n' "$version"
+    fi
+    printf '\n  Binary  %s\n  Skill   %s\n\n' "$binary_target" "$skill_target"
     case :${PATH:-}: in
         *:"$bin_dir":*) printf '  PATH    Already on PATH: %s\n' "$bin_dir" ;;
         *) printf "  PATH    Add %s to your shell's PATH.\n" "$bin_dir" ;;
@@ -29,8 +70,8 @@ show_success() {
     printf '%s\n' '  Next    Reload your AI harness to load the flowd skill.'
 }
 
-fail() { printf 'flowd install: %s\n' "$*" >&2; exit 1; }
-usage_error() { printf 'flowd install: %s\n' "$*" >&2; exit 2; }
+fail() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 1; }
+usage_error() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 2; }
 help() {
     printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--bin-dir DIR] [--skills-dir DIR] [--force]' \
         'Downloads a public release; defaults to ~/.local/bin and ~/.agents/skills.' \
@@ -72,6 +113,7 @@ prerequisites() {
 cleanup() {
     status=$?
     trap - EXIT INT TERM
+    progress_pause
     restored=true
     if [ "$publication" = true ]; then
         if [ "$new_skill" = true ]; then rm -rf "$skill_target" || restored=false; fi
@@ -106,7 +148,10 @@ cleanup() {
             status=1
         fi
     done
-    if [ "$status" -eq 0 ] && [ "$install_complete" = true ]; then show_success; fi
+    if [ "$status" -eq 0 ] && [ "$install_complete" = true ]; then
+        progress_done 'Installed binary and skill'
+        show_success
+    fi
     exit "$status"
 }
 
@@ -182,6 +227,7 @@ prepare_install() {
         version=${version#v}
         normal_version "$version" || usage_error 'version must be a normal X.Y.Z release'
     fi
+    progress_init
     progress_start 1 'Selecting release'
     if [ -z "$version" ]; then
         location=$(fetch -o /dev/null -w '%{url_effective}' "$repository/releases/latest") || fail 'cannot resolve latest public release'
@@ -201,6 +247,7 @@ prepare_install() {
         aarch64|arm64) architecture=arm64 ;;
         *) fail 'unsupported CPU architecture' ;;
     esac
+    progress_done "Selected v$version for $platform_name $architecture"
     asset=flowd_${version}_${platform}_${architecture}.tar.gz
     stage=$(mktemp -d "${TMPDIR:-/tmp}/flowd-install.XXXXXX") || fail 'cannot create private staging'
     trap 'cleanup' EXIT
@@ -211,9 +258,11 @@ prepare_install() {
     progress_start 2 "Downloading flowd $version for $platform_name $architecture"
     fetch -o "$stage/checksums.txt" "$base/checksums.txt" || fail 'release checksums unavailable; no files installed'
     fetch -o "$stage/archive.tar.gz" "$base/$asset" || fail 'release archive unavailable; no files installed'
+    progress_done 'Downloaded release'
     progress_start 3 'Verifying checksum and package'
     verify_checksum
     validate_payload
+    progress_done 'Verified checksum and package'
 }
 
 publish_payload() {

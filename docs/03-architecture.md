@@ -126,6 +126,12 @@ the canonical binary parent to add when missing, or confirms that directory is a
 This is directory membership, not a promise that another earlier entry cannot shadow flowd.
 Guidance stays shell-neutral and asks users to reload their AI harness without naming a product.
 
+A capable stdout terminal shows the active stage in cyan and completed stages with green ticks.
+Piping the installer into sh does not disable this, since stdin is not used to detect the display.
+Redirected output, nonempty NO_COLOR and unset/dumb TERM use plain numbered lines with no ANSI
+controls. Rendering uses shell builtins only, without a background spinner, tput or guessed
+percentages. Native PTY tests use the test-only script utility, not an installer prerequisite.
+
 ## Continuous checks
 
 Short-lived PRs target main. Squash titles use Conventional Commits. `PR title` validates the
