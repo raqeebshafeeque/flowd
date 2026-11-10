@@ -247,10 +247,22 @@ release asset. `checksums.txt` covers it and every platform archive. Generated p
 ignored, never committed. Published archives are not independently signed or notarized.
 
 `goreleaser check` validates configuration. Set `FLOWD_GORELEASER` to the pinned executable when
-running distribution tests to exercise real no-publish builds in a temporary tagged checkout.
-Without the tool, those integration tests explicitly skip rather than pretending packaging ran.
-The native archive is installed outside the checkout and exercised against a sandbox database;
-other target builds are not runtime evidence for those platforms.
+running distribution tests. Each test process prepares one no-publish package master per requested
+version, even with concurrent requests. Tests get private checkout/artifact copies, so a metadata
+or archive change cannot leak into later tests. Masters outlive individual tests and are removed
+at normal suite exit, including a failed suite. Build failures are shared without retries or
+exposing partial packages. The three-minute preparation bound does not depend on the first test.
+
+The current suite requests 0.1.0 and 0.2.0, so each full or race process builds two fixtures.
+The optional Pi test reuses 0.1.0. There is no cross-process or Actions artifact cache. Reuse does
+not make child binaries race-instrumented, and real publishing still builds its approved tag fresh.
+Fixture commands clear publication-token variables and never publish.
+
+Without a packaging tool, optional local tests explicitly skip. A missing configured tool or a
+missing tool in CI fails rather than pretending packaging ran. The native archive is installed
+outside the checkout and exercised against a sandbox database; other target builds are not runtime
+evidence for those platforms. Compare build counts and same-environment timings when measuring
+this optimization rather than treating a single run as a performance guarantee.
 
 ## Agent operation
 
