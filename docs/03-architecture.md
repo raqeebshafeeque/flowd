@@ -117,21 +117,53 @@ The installer never opens a database, touches its backups/coordination files or 
 
 ## Continuous checks
 
-Short-lived PRs target main. Squash titles use Conventional Commits; the title check receives
-untrusted text as a quoted environment value, never executable workflow interpolation.
-`Conventional title`, `Native (ubuntu-latest)` and `Native (macos-latest)` are the owner-configured
-required checks. A solo owner needs those checks, not an impossible separate reviewer requirement.
+Short-lived PRs target main. Squash titles use Conventional Commits. `PR title` validates the
+current title when a PR opens, gains source commits, reopens or has its title/body edited. It
+receives that text as a quoted environment value, never executable workflow interpolation. A
+body-only edit still validates the title, so it cannot clear a failed check by skipping validation.
 
-Native jobs run full/race Go tests, vet/build and formatting, record actual OS/architecture, and
-exercise release/installer integration. Known Go vulnerabilities are checked with pinned
-`govulncheck` v1.9.0 against the current advisory database. Build with the Go patch level declared
-in go.mod or newer. `scripts/ci-tools.sh DIRECTORY` fetches GoReleaser 2.20.0,
-actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific SHA-256 pins.
-Review/update pins deliberately when upgrading tools. These are CI/developer prerequisites only.
+`CI` runs when a PR into main opens, gains source commits or reopens, and on main pushes.
+Metadata edits neither start native jobs nor cancel existing ones. A newer source update can
+cancel older CI for the same PR or branch. Title checks use a separate concurrency group.
+Run names identify the PR number or main rather than repeating the same commit title.
+
+The required checks are `Conventional title`, `Linux checks` and `macOS checks`. The native names
+stay independent of runner image labels. Both platforms run full/race Go tests, vet/build,
+vulnerability checks and native release/installer integration, recording their actual environment.
+Formatting, ShellCheck, actionlint and static release-configuration lint run once on Linux.
+No documentation/skill path filter skips their executable examples or the native test suites.
+
+CI only handles PRs targeting main. Retargeting a PR does not itself request native CI: if current
+results are missing, reopen the PR or push a source update. A title/body edit is not a substitute.
+Keep strict up-to-date protection and let missing or failing required checks block merging.
+
+### Required check migration
+
+For the workflow cleanup, LockMain initially still requires the old native names:
+
+| Old context | Replacement |
+| --- | --- |
+| Native (ubuntu-latest) | Linux checks |
+| Native (macos-latest) | macOS checks |
+
+After both new checks and Conventional title pass on the cleanup PR's latest source, the owner
+replaces only these two contexts. Keep LockMain active, the GitHub Actions check source, strict
+up-to-date checks and the other PR rules unchanged, with no bypasses. Do not add passing aliases
+or skipped placeholders for the old contexts. Other open PRs can need a source refresh.
+
+Rollback also needs coordination: revert through a PR and select the required context names the
+reverted source actually produces. Missing contexts remain blocking in either direction; do not
+disable protection to merge. Rule updates and merging each need owner approval.
+
+Known Go vulnerabilities are checked with pinned `govulncheck` v1.9.0 against the current advisory
+database. Build with the Go patch level declared in go.mod or newer. `scripts/ci-tools.sh DIRECTORY`
+fetches GoReleaser 2.20.0, actionlint 1.7.12 and ShellCheck 0.11.0 using committed platform-specific
+SHA-256 pins. Review/update pins deliberately when upgrading tools. Missing required CI tools fail
+rather than skipping package coverage. These are CI/developer prerequisites only.
 
 Code-check workflows use read-only permissions, no release secrets and no privileged untrusted
-checkout. Checkout/setup-go actions are pinned to reviewed commits. Branch protection and actual
-GitHub check runs need owner activation; validating YAML locally does not establish either.
+checkout. Checkout/setup-go actions are pinned to reviewed commits. Validating YAML locally does
+not establish real event routing or protection: check those on GitHub during approved rollout.
 
 ## Release approval and publication
 

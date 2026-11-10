@@ -1,8 +1,12 @@
 name: CI
+run-name: >-
+  ${{ github.event_name == 'pull_request' &&
+      format('CI for PR #{0}', github.event.pull_request.number) || 'CI for main' }}
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    branches: [main]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -14,24 +18,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  title:
-    name: Conventional title
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Validate literal PR title
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: sh scripts/check-pr-title.sh "$PR_TITLE"
   native:
-    name: Native (${{ matrix.os }})
+    name: ${{ matrix.check }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            check: Linux checks
+          - os: macos-latest
+            check: macOS checks
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -48,6 +44,7 @@ jobs:
           echo "$RUNNER_TEMP/flowd-tools" >> "$GITHUB_PATH"
           echo "FLOWD_GORELEASER=$RUNNER_TEMP/flowd-tools/goreleaser" >> "$GITHUB_ENV"
       - name: Distribution lint and configuration
+        if: runner.os == 'Linux'
         run: |
           shellcheck install.sh scripts/*.sh
           actionlint
@@ -58,6 +55,7 @@ jobs:
           go version
           go env GOOS GOARCH
       - name: Formatting
+        if: runner.os == 'Linux'
         run: test -z "$(gofmt -l cmd internal tests scripts)"
       - name: Tests
         run: go test ./... -count=1
