@@ -252,7 +252,7 @@ publish_payload() {
     printf 'Installed flowd %s\nbinary: %s\nskill: %s\n' "$version" "$binary_target" "$skill_target"
     case :${PATH:-}: in
         *:"$bin_dir":*) ;;
-        *) printf 'Add %s to PATH; shell configuration was not changed.\n' "$bin_dir" ;;
+        *) printf "Add %s to your shell's PATH.\n" "$bin_dir" ;;
     esac
     printf '%s\n' 'Refresh your Agent Skills discovery (Pi: /reload, then /skill:flowd).'
 }
