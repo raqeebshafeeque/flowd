@@ -16,9 +16,10 @@ Download and run the installer:
 curl -fsSL https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh | sh
 ```
 
-The installer adds the executable and its matching agent skill, then prints their locations.
-If prompted, add `~/.local/bin` to your shell's PATH before using flowd. You can check the installed
-version with `flowd --version`.
+The installer shows progress while selecting, downloading, verifying and installing the release.
+It prints the executable and skill locations, then confirms PATH is set or tells you which folder
+to add. It does not change your shell settings. Reload your AI harness to load the flowd skill,
+and check the installed version with `flowd --version`.
 
 ## Plan your day
 

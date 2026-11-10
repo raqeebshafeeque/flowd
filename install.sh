@@ -16,6 +16,18 @@ skill_lock=
 publication=false
 new_binary=false
 new_skill=false
+install_complete=false
+
+progress_start() { printf '[%s/4] %s...\n' "$1" "$2"; }
+
+show_success() {
+    printf '\n  Installed flowd %s!\n\n  Binary  %s\n  Skill   %s\n\n' "$version" "$binary_target" "$skill_target"
+    case :${PATH:-}: in
+        *:"$bin_dir":*) printf '  PATH    Already on PATH: %s\n' "$bin_dir" ;;
+        *) printf "  PATH    Add %s to your shell's PATH.\n" "$bin_dir" ;;
+    esac
+    printf '%s\n' '  Next    Reload your AI harness to load the flowd skill.'
+}
 
 fail() { printf 'flowd install: %s\n' "$*" >&2; exit 1; }
 usage_error() { printf 'flowd install: %s\n' "$*" >&2; exit 2; }
@@ -94,6 +106,7 @@ cleanup() {
             status=1
         fi
     done
+    if [ "$status" -eq 0 ] && [ "$install_complete" = true ]; then show_success; fi
     exit "$status"
 }
 
@@ -165,16 +178,24 @@ validate_payload() {
 prepare_install() {
     parse_args "$@"
     prerequisites
+    if [ -n "$version" ]; then
+        version=${version#v}
+        normal_version "$version" || usage_error 'version must be a normal X.Y.Z release'
+    fi
+    progress_start 1 'Selecting release'
     if [ -z "$version" ]; then
         location=$(fetch -o /dev/null -w '%{url_effective}' "$repository/releases/latest") || fail 'cannot resolve latest public release'
         case "$location" in
             "$repository/releases/tag/v"*) version=${location#"$repository/releases/tag/v"} ;;
             *) fail 'unexpected latest release URL' ;;
         esac
-    else version=${version#v}
     fi
     normal_version "$version" || usage_error 'version must be a normal X.Y.Z release'
-    case "$(uname -s)" in Darwin) platform=darwin ;; Linux) platform=linux ;; *) fail 'unsupported operating system' ;; esac
+    case "$(uname -s)" in
+        Darwin) platform=darwin; platform_name=macOS ;;
+        Linux) platform=linux; platform_name=Linux ;;
+        *) fail 'unsupported operating system' ;;
+    esac
     case "$(uname -m)" in
         x86_64|amd64) architecture=amd64 ;;
         aarch64|arm64) architecture=arm64 ;;
@@ -187,8 +208,10 @@ prepare_install() {
     trap 'exit 143' TERM
     stage=$(CDPATH='' cd "$stage" && pwd -P) || fail 'cannot resolve private staging'
     base=$repository/releases/download/v$version
+    progress_start 2 "Downloading flowd $version for $platform_name $architecture"
     fetch -o "$stage/checksums.txt" "$base/checksums.txt" || fail 'release checksums unavailable; no files installed'
     fetch -o "$stage/archive.tar.gz" "$base/$asset" || fail 'release archive unavailable; no files installed'
+    progress_start 3 'Verifying checksum and package'
     verify_checksum
     validate_payload
 }
@@ -249,16 +272,12 @@ publish_payload() {
     new_skill=true
     mv "$skill_stage/new" "$skill_target" || fail 'cannot publish skill'
     publication=false
-    printf 'Installed flowd %s\nbinary: %s\nskill: %s\n' "$version" "$binary_target" "$skill_target"
-    case :${PATH:-}: in
-        *:"$bin_dir":*) ;;
-        *) printf "Add %s to your shell's PATH.\n" "$bin_dir" ;;
-    esac
-    printf '%s\n' 'Refresh your Agent Skills discovery (Pi: /reload, then /skill:flowd).'
+    install_complete=true
 }
 
 main() {
     prepare_install "$@"
+    progress_start 4 'Installing binary and skill'
     publish_payload
 }
 

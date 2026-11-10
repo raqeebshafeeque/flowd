@@ -115,6 +115,17 @@ rerunning or using force. The two paths are not one crash-atomic transaction; fo
 can need manual reconciliation. Installing an older executable does not reverse data migrations.
 The installer never opens a database, touches its backups/coordination files or edits shell startup.
 
+Feedback follows selection, download, verification and installation in that order. Each stage is
+visible before its work begins. Normal progress and setup guidance go to stdout, while errors and
+recovery details remain on stderr. The success panel is printed only after file publication and
+owned staging/lock cleanup succeed. A cleanup failure can leave installed files in place without
+full success; inspect the reported problem rather than assuming no installation happened.
+
+The panel prints the selected version, actual binary/skill paths and PATH status. It identifies
+the canonical binary parent to add when missing, or confirms that directory is already on PATH.
+This is directory membership, not a promise that another earlier entry cannot shadow flowd.
+Guidance stays shell-neutral and asks users to reload their AI harness without naming a product.
+
 ## Continuous checks
 
 Short-lived PRs target main. Squash titles use Conventional Commits. `PR title` validates the

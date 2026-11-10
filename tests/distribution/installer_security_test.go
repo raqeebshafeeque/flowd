@@ -152,18 +152,25 @@ exec `+shellLiteral(realMV)+` "$@"`)
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
+	reader := bufio.NewReader(output)
 	defer func() {
 		if _, err := io.WriteString(input, "continue\n"); err != nil {
 			t.Error(err)
 		}
 		input.Close()
+		io.Copy(io.Discard, reader)
 		if err := command.Wait(); err != nil {
 			t.Errorf("owning installer failed: %v; %s", err, &stderr)
 		}
 	}()
-	ready, err := bufio.NewReader(output).ReadString('\n')
-	if err != nil || ready != "publication-ready\n" {
-		t.Fatalf("publication handshake: %v; %q", err, ready)
+	for {
+		ready, err := reader.ReadString('\n')
+		if err != nil {
+			t.Fatalf("publication handshake: %v; %q", err, ready)
+		}
+		if ready == "publication-ready\n" {
+			break
+		}
 	}
 	second, err := f.install("--version", "0.1.0", "--force")
 	if err == nil || !strings.Contains(second, "install lock") {
