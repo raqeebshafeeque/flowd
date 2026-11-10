@@ -167,8 +167,10 @@ not establish real event routing or protection: check those on GitHub during app
 
 ## Release approval and publication
 
-Release Please v5.0.0 is pinned in the trusted main workflow and uses the root manifest/config.
-Its bundled release library supports draft releases and immediate tag creation; both are enabled.
+The `Releases` workflow runs Release Please v5.0.0 in its `Update release PR` job, using the root
+manifest/config. `Build and publish` runs for an approved release or an owner retry, not an ordinary
+main change. Main runs are named `Releases for main`; manual retries identify their selected tag.
+The bundled release library supports draft releases and immediate tag creation; both are enabled.
 The initial version is 0.1.0. Squash the setup PR onto existing main; use its existing initial
 commit `2bd113c` as the bootstrap history boundary so it survives that squash. Local learning
 commits do not become separate main commits. The setup squash commit must carry a one-time
@@ -208,10 +210,11 @@ and marks latest only after those checks pass. Do not manually publish the draft
 would bypass that gate. A failed upload remains a draft, so anonymous latest installation still
 selects the previous complete release. No release exists until actual owner activation succeeds.
 
-An owner can dispatch Release on main with the existing tag to retry a draft. All releases share
-a non-cancelling concurrency group. Draft assets may be replaced during retry, but a published
-version is only verified/no-op; conflicting public bytes are refused, never silently overwritten.
-Correct an incorrect published version with a patch release, not by moving its tag.
+An owner can dispatch `Releases` on main with an existing tag to retry a draft. The file remains
+`release.yml`, so CLI dispatch still uses `gh workflow run release.yml --ref main -f tag=vX.Y.Z`.
+All releases share a non-cancelling concurrency group. Retrying can replace draft assets.
+A published version is only verified: matching bytes need no changes and conflicting public bytes
+are refused. Correct an incorrect published version with a patch release, not by moving its tag.
 
 ### First public activation
 
