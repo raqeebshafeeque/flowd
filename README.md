@@ -1,83 +1,162 @@
 # flowd
 
-A local-only terminal day planner. One binary, fully offline; no sync or background service.
+Plan your day in the terminal, work through your tasks, and see what got done.
+
+flowd stores your plan on your computer in a SQLite database. It works offline, without an
+account or background service. Use it directly or through an agent that supports Agent Skills.
 
 ## Install
 
-Public downloads require a published release. On macOS/Linux (arm64 or amd64), installation needs
-curl, tar, gzip, standard shell utilities and `sha256sum` or `shasum`, not Go, GitHub credentials
-or sudo.
+flowd supports macOS and Linux on arm64 and amd64. You'll need curl, tar, gzip and either
+`shasum` or `sha256sum`. You don't need Go or sudo.
+
+Once the first [release](https://github.com/raqeebshafeeque/flowd/releases) is available, run:
 
 ```sh
 installer=$(mktemp)
 curl --proto '=https' --proto-redir '=https' -fsSL \
   https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh -o "$installer"
-# Inspect the downloaded script before running it.
+# Take a look at the script before running it.
 sh "$installer"
 export PATH="$HOME/.local/bin:$PATH"
 flowd --version
 ```
 
-The installer verifies archive checksums and installs both `~/.local/bin/flowd` and the matching
-`~/.agents/skills/flowd/`. HTTPS/bootstrap trust is required; same-channel checksums are not
-independent publisher authentication. Installation never operates on planner data. Project and
-third-party license notices are retained in the installed skill directory.
+The installer adds both the executable and its matching agent skill. It prints their locations
+when it finishes. If needed, add the export line to your shell's startup file for new terminals.
 
-## Update or pin
+## Plan your day
 
-Download the installer again for an update, then reuse its path in the same shell:
+Add blocks with a start time, an end time and a title:
 
 ```sh
-sh "$installer"
+flowd add 09:00 10:00 "Study"
+flowd add 10:00 11:00 "Code"
+flowd list
+```
+
+Commands use today by default. flowd checks for overlapping times when you add or edit a block.
+
+When you begin working, start the block using its row number. Finish it when you're done:
+
+```sh
+flowd start 1
+flowd finish 1
+flowd review
+```
+
+Use `flowd pause 1` and `flowd resume 1` to take a break. Starting another block automatically
+pauses the one already running on that day.
+
+`flowd now` shows your current work. `flowd next` shows what's coming up. `flowd watch` keeps the
+plan on screen until you press Ctrl+C.
+
+To view another day, use `flowd --date 2027-01-15 list`. Global options go before the command.
+You can choose a new day's timezone with `--timezone Asia/Kolkata`. Saved days keep their timezone.
+
+For scripts, use `flowd --json list` and full block ids instead of row numbers, which can change.
+Run `flowd --help` for more commands, including editing, archiving and copying unfinished work.
+
+## Use an agent
+
+The installer puts the flowd skill in `~/.agents/skills/flowd/`. It guides your agent through the
+same CLI commands.
+
+In Pi, reload the skills and ask for your plan:
+
+```text
+/reload
+/skill:flowd Show my plan for today
+```
+
+Other agents may need `~/.agents/skills` added to their skill settings. If your agent uses an
+external AI service, planner data it reads also enters that service's context.
+
+## Where your files live
+
+### Database
+
+flowd chooses the database in this order:
+
+1. The path passed with `--db`.
+2. `$XDG_DATA_HOME/flowd/flowd.sqlite`, if `XDG_DATA_HOME` is an absolute path.
+3. `~/.local/share/flowd/flowd.sqlite` otherwise.
+
+These defaults apply on both macOS and Linux. The database is created on your first planner
+command, including `list`. Installation, help and version checks don't create it.
+
+To select another database for a command:
+
+```sh
+flowd --db "$HOME/work-plan.sqlite" list
+```
+
+This doesn't move your existing plan or change the default for later commands. Relative paths
+are resolved from your current working directory.
+
+### Logs and history
+
+There is no application log file or logs directory. Errors go to your terminal through stderr.
+Block history is saved in the database and can be read with `flowd events 1`.
+
+SQLite may create `-wal` and `-shm` files beside the database. A `.lock` file coordinates commands.
+flowd and SQLite manage these files, so you don't need to remove them.
+
+### Backups
+
+```sh
+flowd backup
+flowd doctor
+```
+
+`backup` saves a copy beside the selected database with `.bak` added to its name, replacing the
+previous backup. `doctor` checks the database without restoring anything.
+
+Restoring a backup discards newer changes. See the
+[recovery guide](docs/03-architecture.md#errors-and-the-doctor) before restoring one.
+
+### Executable and skill
+
+| File | Default location |
+| --- | --- |
+| Executable | `~/.local/bin/flowd` |
+| Agent skill | `~/.agents/skills/flowd/` |
+
+These paths use your home directory, not `XDG_DATA_HOME`. The installer accepts `--bin-dir DIR`
+and `--skills-dir DIR` to choose other parent folders. If you choose another skill location,
+add it to your agent's skill settings.
+
+## Update
+
+Download and run the installer again using the Install section. It updates the executable and
+skill together without changing your database. To choose a specific release:
+
+```sh
 sh "$installer" --version v0.1.0
 ```
 
-Use `--bin-dir DIR` and `--skills-dir DIR` to override parent directories. Unmanaged collisions
-need review before `--force`; symlink/special-file destinations are always refused. Managed skill
-edits are replaced on upgrade. Failed restoration reports recovery paths; replacement across the
-two destinations is not crash-atomic. Concurrent installers are refused; an interrupted install
-may leave an install lock needing inspection. See [architecture](docs/03-architecture.md) for
-recovery.
+Updates replace the installed skill files, so keep personal notes outside that folder. If the
+installer finds files it doesn't recognize, check them before choosing `--force`.
 
-## Use
-
-```sh
-flowd --help
-flowd --date 2026-10-14 add 09:00 10:00 "Study"
-flowd --date 2026-10-14 start 1
-flowd --date 2026-10-14 finish 1
-flowd --date 2026-10-14 review
-flowd --json now
-```
-
-Global options precede the command. `--db PATH` selects a database; `--timezone Asia/Kolkata`
-chooses a new day's zone. Saved days retain their zone. Full block ids are stable; row numbers
-change. `delete` archives, `copy` explicitly carries unfinished work to the next calendar day,
-and `watch` refreshes until Ctrl-C. `doctor` inspects; `doctor --repair` requires deliberate
-approval to discard newer changes and restore `.bak`, preserving originals. Never remove lock
-or incomplete-repair files manually. See `--help` and the docs for all commands.
-
-Data lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, otherwise
-`~/.local/share/flowd/flowd.sqlite`.
-
-## Agents
-
-The portable source is in `skills/flowd/`. A compatible harness must discover the installed
-Agent Skills directory; in Pi, use `/reload` then `/skill:flowd` to select it explicitly.
-Source-checkout use requires explicit developer intent and a chosen binary. Skills do not enforce
-permissions. Planner data shown to an external-model agent enters its context/provider policy.
+Downloads are checked against release checksums. They still rely on GitHub and the publisher
+being trustworthy. See the [installation notes](docs/03-architecture.md#distribution-downloads)
+for more details.
 
 ## Development
 
-Building source is optional for contributors, not an installer fallback. Use Go 1.27.3 or newer:
+To build from source, use Go 1.27.3 or newer:
 
 ```sh
 go build -o flowd ./cmd/flowd
+go test ./...
 ```
 
-## Docs
+## More about the project
 
-- [Vision](docs/00-vision.md)
-- [Requirements](docs/01-requirements.md)
-- [Domain rules](docs/02-domain.md)
-- [Architecture](docs/03-architecture.md)
+* [Vision](docs/00-vision.md)
+* [Requirements](docs/01-requirements.md)
+* [Domain rules](docs/02-domain.md)
+* [Architecture](docs/03-architecture.md)
+
+flowd uses the [MIT license](LICENSE). Dependency notices are in
+[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
