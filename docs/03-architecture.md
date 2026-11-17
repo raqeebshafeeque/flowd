@@ -31,7 +31,18 @@ How the parts fit together.
 - Closing a day at midnight happens the next time the file is opened, so it works even if flowd
   was not running. Every operation does this first.
 - Times are stored as UTC text in RFC 3339 format.
-- Only one process writes at a time. A second one gets a clear message that the file is busy.
+- Before a transaction commits, the whole day is checked against the domain rules and every item's
+  history is replayed. A change that breaks a rule never reaches the disk.
+- A change carries a copy of the item as it was read. If the saved item has changed since then, the
+  change is refused instead of overwriting newer work.
+- Only one process uses the file at a time. A second one gets a clear message that the file is
+  busy. The lock lives in a separate `.lock` file next to the database, which is never deleted.
+- The database is created private to you, and its folder too. A file that others can read is
+  refused.
+- When flowd opens a file that already exists, it first checks it read only: SQLite looks for
+  damage and flowd checks the schema version and tables. An empty, damaged or foreign file is
+  refused and left exactly as it was.
+- Hard links and special files are refused. A symbolic link to a real database is followed.
 
 ## Errors
 
