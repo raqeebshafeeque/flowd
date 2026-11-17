@@ -187,3 +187,16 @@ func TestADurationLongerThanTheDayIsRefused(t *testing.T) {
 	s.ok("add", "15h", "Exactly enough")
 	s.fails(2, "ERR_DURATION_LIMIT", "add", "1m", "One more")
 }
+
+func TestLicensesArePrintedFromTheProgram(t *testing.T) {
+	s := newSession(t)
+	out := s.ok("--licenses")
+	for _, want := range []string{"flowd is built with code from the projects below", "Go standard library", "modernc.org/sqlite", "charm.land/bubbletea", "Permission is hereby granted"} {
+		if !contains(out, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	if _, err := os.Stat(s.db); !os.IsNotExist(err) {
+		t.Fatal("--licenses must not touch the database")
+	}
+}

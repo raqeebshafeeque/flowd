@@ -1,10 +1,6 @@
-Third-party notices for flowd
-
-Third-party components retain their own licenses, not flowd's MIT license.
-The upstream texts below are preserved verbatim. Upstream notice bundles can
-also describe optional components. Regenerate after changing Go or dependencies:
-
-    go run ./scripts/notices > THIRD_PARTY_NOTICES
+flowd is built with code from the projects below. Each keeps its own
+license, separate from flowd's MIT license, and the license texts are
+reproduced here word for word.
 
 ======================================================================
 Go standard library and runtime - LICENSE

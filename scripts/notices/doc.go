@@ -1,5 +1,6 @@
 // Command notices prints the licenses of every third-party module built into
-// flowd, for THIRD_PARTY_NOTICES. Run it from the repository root:
+// flowd. The text is built into flowd and shown by flowd --licenses. Run it
+// from the repository root after changing Go or a dependency:
 //
-//	go run ./scripts/notices > THIRD_PARTY_NOTICES
+//	go run ./scripts/notices > internal/cli/licenses.txt
 package main

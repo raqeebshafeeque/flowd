@@ -123,7 +123,8 @@ How the parts fit together.
 ## Distribution
 
 - Each release has an archive per operating system and processor, with checksums. The archive holds
-  the program, the Agent Skill, a VERSION file and the licenses.
+  the program, the Agent Skill, a VERSION file and flowd's license. The licenses of the libraries
+  flowd is built with are inside the program and printed by `flowd --licenses`.
 - An `install.sh` script downloads, checks and installs the program and the Agent Skill without
   needing Go. It refuses an archive whose checksum or contents do not match, runs the new program
   once in an empty private home to check its version, and only then puts the files in place.
