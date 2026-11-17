@@ -190,3 +190,16 @@ func TestTheDurationHintShowsWhileEmpty(t *testing.T) {
 		t.Fatal("the empty Duration should show an example")
 	}
 }
+
+func TestAHiddenCharacterIsNamedUnderTheTitle(t *testing.T) {
+	w := newWorkspace(t)
+	w.refresh()
+	w.press(key("n"))
+	w.m.Update(tea.PasteMsg{Content: "Study\u202e"})
+	w.press(tab())
+	w.typeText("1h")
+	w.run(w.press(ctrl('s')))
+	if w.m.form == nil || w.m.form.focus != 0 || !strings.Contains(w.m.form.errors[0], "U+202E") {
+		t.Fatalf("the title error should name the character: %+v", w.m.form)
+	}
+}

@@ -24,6 +24,11 @@ What days and items are, and the rules they always follow.
 ## Item
 
 - An id, the day it belongs to and a title of 1 to 120 characters.
+- A title is visible text only. Hidden, zero-width, direction-changing, tag, private-use and control
+  characters are refused, because they can make a title read differently from what it holds or hide
+  instructions from an AI agent. Normal text in any language and real emoji are fine.
+- A title saved by an older version that still holds such characters is shown with a visible
+  placeholder like `<U+202E>` instead. Nothing on disk is changed until the item is changed.
 - A duration in whole minutes, always more than zero.
 - A status: todo, in progress, paused, done, skipped or incomplete.
 - When it was first started. This never changes once it is set.

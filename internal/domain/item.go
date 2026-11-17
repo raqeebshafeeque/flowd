@@ -72,10 +72,25 @@ type Item struct {
 	UpdatedAt       *time.Time `json:"updated_at"`
 }
 
-// ValidateTitle checks that a title is one line of 1 to 120 characters.
+// ValidateTitle checks a new or changed title: one line of 1 to 120
+// visible characters, with no hidden or direction-changing ones.
 func ValidateTitle(title string) error {
-	trimmed := strings.TrimSpace(title)
-	if !utf8.ValidString(title) || trimmed == "" || utf8.RuneCountInString(trimmed) > MaxTitleLength || strings.ContainsAny(title, "\r\n") {
+	if err := checkTitle(title); err != nil {
+		return err
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(title)) > MaxTitleLength {
+		return fmt.Errorf("%w: use one line of 1 to %d characters", ErrInvalidTitle, MaxTitleLength)
+	}
+	if problem := CheckText(title); problem != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidTitle, problem)
+	}
+	return nil
+}
+
+// checkTitle is the shape every saved title has, even one saved by an older
+// version and shown with placeholders today: valid text on one line.
+func checkTitle(title string) error {
+	if !utf8.ValidString(title) || strings.TrimSpace(title) == "" || strings.ContainsAny(title, "\r\n") {
 		return fmt.Errorf("%w: use one line of 1 to %d characters", ErrInvalidTitle, MaxTitleLength)
 	}
 	return nil
@@ -258,7 +273,7 @@ func (it Item) checkClock(now time.Time) error {
 // Check reports whether the saved fields agree with each other.
 func (it Item) Check() error {
 	bad := func(why string) error { return fmt.Errorf("%w: item %s %s", ErrInvalidEvidence, it.ID, why) }
-	if err := ValidateTitle(it.Title); err != nil {
+	if err := checkTitle(it.Title); err != nil {
 		return err
 	}
 	if it.DurationMinutes <= 0 {
