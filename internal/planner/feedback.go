@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/store"
@@ -78,6 +79,9 @@ func Describe(err error) Feedback {
 	for _, k := range kinds {
 		if errors.Is(err, k.cause) {
 			f = Feedback{Code: k.code, Exit: k.exit, Summary: k.summary, Hint: k.hint}
+			if f.Hint == "" {
+				f.Hint = detail(err, k.cause)
+			}
 			break
 		}
 	}
@@ -92,3 +96,14 @@ func Describe(err error) Feedback {
 }
 
 func quote(text string) string { return strconv.Quote(text) }
+
+// detail is the part of an error message after its cause, as a sentence,
+// for example "Cannot start an item that is in progress".
+func detail(err, cause error) string {
+	text := err.Error()
+	_, rest, found := strings.Cut(text, cause.Error()+": ")
+	if !found || rest == "" {
+		return ""
+	}
+	return strings.ToUpper(rest[:1]) + rest[1:]
+}

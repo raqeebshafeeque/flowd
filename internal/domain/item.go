@@ -115,7 +115,7 @@ func (it Item) Clone() Item {
 // target is the status an action leads to from the item's current state.
 func (it Item) target(a Action) (Status, error) {
 	refuse := func() (Status, error) {
-		return "", fmt.Errorf("%w: cannot %s a %s item", ErrIllegalTransition, a, it.Status)
+		return "", fmt.Errorf("%w: cannot %s an item that is %s", ErrIllegalTransition, a, strings.ReplaceAll(string(it.Status), "_", " "))
 	}
 	switch {
 	case a == Start && it.Status == Todo:

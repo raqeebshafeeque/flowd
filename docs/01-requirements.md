@@ -12,7 +12,9 @@ with the same rules.
 - Durations are whole minutes and can be written as `30`, `30m`, `2h` or `1h30m`.
 - You can add, edit and remove items. Removing an item hides it but keeps it in the file.
 - You can plan today and future days. Past days are only for looking back.
-- `flowd` opens today and `flowd 2026-10-12` opens that date.
+- `flowd` opens today and `flowd 2026-10-12` opens that date. Commands that need an item take its
+  row number from the list or its full ID. Row numbers follow the list order, so starting an item can
+  move it up.
 
 ### F2. Track with one key
 
@@ -47,6 +49,9 @@ with the same rules.
 
 - Every command can print JSON with `--json`, so scripts and agents never have to parse text.
 - Errors have stable codes and exit codes. Bad input exits with 2 and a refused action exits with 1.
+  An error is printed to stderr as its code, one sentence and a hint.
+- If a save fails in a way that leaves it unknown whether it landed, flowd says so plainly instead
+  of reporting success or failure.
 - A refused or failed action never prints output that looks like success.
 - flowd ships with an Agent Skill that teaches an agent how to use these commands safely.
 - An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
