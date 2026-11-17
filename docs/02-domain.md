@@ -32,6 +32,8 @@ What days and items are, and the rules they always follow.
 
 - Every change adds one event in the same save as the change itself.
 - An event records the item, the old and new status, the time and the reason.
+- It also keeps a full copy of the item before and after the change. That lets flowd replay the
+  history and refuse any event that no real action could have produced.
 - The reasons are user, auto pause, reopen and day end.
 - Events are never edited or deleted. Work and elapsed are always worked out from them.
 
@@ -63,6 +65,10 @@ What days and items are, and the rules they always follow.
 - Order. Started items come first, ordered by their first start. Items not started yet follow, in
   the order they were created. Pausing, finishing or editing never moves an item.
 - Time. Times are stored in UTC and shown in local time.
+- Whole seconds. Every time is recorded to the nearest second, so work and elapsed are always whole
+  seconds and read the same everywhere.
+- Broken history. If the events of an item do not add up, flowd reports an error instead of
+  guessing a number.
 - Delete. Deleting only hides an item. Nothing is ever removed.
 
 ## An example day

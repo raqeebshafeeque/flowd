@@ -1,0 +1,118 @@
+package domain
+
+import (
+	"errors"
+	"testing"
+	"time"
+)
+
+func minutes(n int64) int64 { return n * int64(time.Minute) }
+
+func TestWorkAndElapsed(t *testing.T) {
+	// Ten minutes running, twenty paused, five running: 15 minutes of work and
+	// 35 elapsed, as the docs describe.
+	it, events := history(t, Start, "09:00:00", Pause, "09:10:00", Resume, "09:30:00", Finish, "09:35:00")
+	m, err := Measure(it, events, at("12:00:00"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.WorkNS != minutes(15) || m.ElapsedNS == nil || *m.ElapsedNS != minutes(35) {
+		t.Fatalf("got work %v elapsed %v", time.Duration(m.WorkNS), m.ElapsedNS)
+	}
+}
+
+func TestRunningItemGrowsUntilNow(t *testing.T) {
+	it, events := history(t, Start, "09:00:00", Pause, "09:10:00", Resume, "09:30:00")
+	m, err := Measure(it, events, at("09:45:00").Add(400*time.Millisecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.WorkNS != minutes(25) || *m.ElapsedNS != minutes(45) {
+		t.Fatalf("got work %v elapsed %v", time.Duration(m.WorkNS), time.Duration(*m.ElapsedNS))
+	}
+}
+
+func TestNeverStartedHasNoElapsed(t *testing.T) {
+	it, events := history(t)
+	m, err := Measure(it, events, at("12:00:00"))
+	if err != nil || m.WorkNS != 0 || m.ElapsedNS != nil {
+		t.Fatalf("got %+v, %v", m, err)
+	}
+	skipped, events := history(t, Skip, "09:00:00")
+	if m, err := Measure(skipped, events, at("12:00:00")); err != nil || m.WorkNS != 0 || m.ElapsedNS != nil {
+		t.Fatalf("a skipped item that never started: %+v, %v", m, err)
+	}
+}
+
+func TestReopenedItemKeepsItsGapsInElapsed(t *testing.T) {
+	it, events := history(t, Start, "09:00:00", Finish, "09:20:00", Reopen, "10:00:00", Finish, "10:10:00")
+	m, err := Measure(it, events, at("12:00:00"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.WorkNS != minutes(30) || *m.ElapsedNS != minutes(70) {
+		t.Fatalf("got work %v elapsed %v", time.Duration(m.WorkNS), time.Duration(*m.ElapsedNS))
+	}
+}
+
+func TestArchivingStopsWork(t *testing.T) {
+	it, events := history(t, Start, "09:00:00")
+	before := it.Clone()
+	_ = it.Archive(at("09:20:00"))
+	events = append(events, Record(&before, it, at("09:20:00"), at("09:20:00"), ReasonUser))
+	events[len(events)-1].Seq = int64(len(events))
+	m, err := Measure(it, events, at("12:00:00"))
+	if err != nil || m.WorkNS != minutes(20) || *m.ElapsedNS != minutes(20) {
+		t.Fatalf("got %+v, %v", m, err)
+	}
+}
+
+func TestBrokenHistoryIsRefused(t *testing.T) {
+	it, events := history(t, Start, "09:00:00", Pause, "09:10:00")
+	cases := map[string]func([]Event) []Event{
+		"missing the latest event": func(e []Event) []Event { return e[:len(e)-1] },
+		"missing the creation":     func(e []Event) []Event { return e[1:] },
+		"out of order":             func(e []Event) []Event { return []Event{e[0], e[2], e[1]} },
+		"repeated sequence":        func(e []Event) []Event { e[2].Seq = e[1].Seq; return e },
+		"another item's event": func(e []Event) []Event {
+			e[1].ItemID, e[1].After.ID, e[1].Before.ID = "it_other", "it_other", "it_other"
+			return e
+		},
+	}
+	for name, breakIt := range cases {
+		copied := append([]Event(nil), events...)
+		for i := range copied {
+			copied[i] = Record(copied[i].Before, copied[i].After, copied[i].OccurredAt, copied[i].RecordedAt, copied[i].Reason)
+			copied[i].Seq = events[i].Seq
+		}
+		if _, err := Measure(it, breakIt(copied), at("12:00:00")); !errors.Is(err, ErrInvalidEvidence) {
+			t.Errorf("%s was accepted: %v", name, err)
+		}
+	}
+	if _, err := Measure(it, events, at("07:00:00")); !errors.Is(err, ErrInvalidEvidence) {
+		t.Error("measuring before the item existed must be refused")
+	}
+}
+
+func TestSummary(t *testing.T) {
+	done, doneEvents := history(t, Start, "09:00:00", Finish, "09:30:00")
+	todo, _ := history(t)
+	deleted := newTestItem(t, "Gone")
+	_ = deleted.Archive(at("09:00:00"))
+	m, err := Measure(done, doneEvents, at("12:00:00"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := NewSummary()
+	for _, add := range []struct {
+		it Item
+		m  Metrics
+	}{{done, m}, {todo, Metrics{}}, {deleted, Metrics{}}} {
+		if err := s.Add(add.it, add.m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if s.Counts[Done] != 1 || s.Counts[Todo] != 1 || s.Counts[Skipped] != 0 || s.DurationMinutes.Int64() != 120 || s.WorkNS != minutes(30) {
+		t.Fatalf("unexpected summary: %+v %v", s.Counts, s.DurationMinutes)
+	}
+}
