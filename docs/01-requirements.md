@@ -10,6 +10,10 @@ with the same rules.
 - Each item has a title and a duration, which is how long you want to spend on it today.
 - A duration is a budget, not a time slot. There are no start or end times to plan.
 - Durations are whole minutes and can be written as `30`, `30m`, `2h` or `1h30m`.
+- A day only has so much time. A new or longer Duration cannot be more than what is left of the day,
+  after what the other unfinished items still hold. The refusal says how much is left, like
+  `Only 2h30m left on this day`. Items already saved are never changed by this, and shortening or
+  renaming an item always works.
 - Titles are visible text. A title with a hidden or direction-changing character is refused, and the
   error names the character and its position.
 - You can add, edit and remove items. Removing an item hides it but keeps it in the file.

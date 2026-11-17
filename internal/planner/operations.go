@@ -45,6 +45,10 @@ type Intent struct {
 // ErrPastDay means a past date was asked to change.
 var ErrPastDay = errors.New("past days can only be looked at")
 
+// ErrDurationExceedsDay means a Duration is longer than the time left on its
+// day. It also counts as an invalid Duration, so it is shown at that field.
+var ErrDurationExceedsDay = errors.New("the duration is longer than the time left on this day")
+
 // Do carries out an intent and reports exactly what happened.
 func (c Client) Do(ctx context.Context, intent Intent) (Result, error) {
 	s, err := c.open(ctx, intent.Selection)
@@ -96,6 +100,9 @@ func (s *session) add(ctx context.Context, intent Intent) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	if err := s.fits(ctx, minutes, ""); err != nil {
+		return Result{}, err
+	}
 	day := s.day
 	var newDay *domain.Day
 	if day.ID == "" {
@@ -135,6 +142,13 @@ func (s *session) edit(ctx context.Context, intent Intent) (Result, error) {
 	if intent.Duration != nil {
 		if minutes, err = ParseDuration(*intent.Duration); err != nil {
 			return Result{}, err
+		}
+		// Only a longer Duration is checked, so an item on an already full
+		// day can always be shortened or renamed.
+		if minutes > item.DurationMinutes {
+			if err := s.fits(ctx, minutes, item.ID); err != nil {
+				return Result{}, err
+			}
 		}
 	}
 	if err := item.Edit(title, minutes, s.now); err != nil {
@@ -207,4 +221,45 @@ func ParseDuration(text string) (int64, error) {
 		return 0, InputError(err, "Invalid duration "+quote(text), "Use whole minutes or hours, like 30m, 2h or 1h30m")
 	}
 	return minutes, nil
+}
+
+// remaining is the time a Duration may use on the day on screen. The item
+// being edited does not count against itself.
+func (s *session) remaining(ctx context.Context, editing domain.ID) (int64, error) {
+	var others []domain.Reservation
+	if s.day.ID != "" {
+		items, err := s.db.Items(ctx, s.day.ID)
+		if err != nil {
+			return 0, err
+		}
+		history, err := s.db.DayEvents(ctx, s.day.ID)
+		if err != nil {
+			return 0, err
+		}
+		for _, item := range items {
+			if item.ID == editing || !item.Status.Unfinished() {
+				continue
+			}
+			metrics, err := domain.Measure(s.day, item, history[item.ID], s.now)
+			if err != nil {
+				return 0, err
+			}
+			others = append(others, domain.Reservation{Status: item.Status, DurationMinutes: item.DurationMinutes, WorkNS: metrics.WorkNS})
+		}
+	}
+	return domain.RemainingMinutes(s.day, s.now, others)
+}
+
+// fits refuses a Duration longer than the time left, saying how much is left.
+func (s *session) fits(ctx context.Context, minutes int64, editing domain.ID) error {
+	left, err := s.remaining(ctx, editing)
+	if err != nil || minutes <= left {
+		return err
+	}
+	cause := errors.Join(ErrDurationExceedsDay, domain.ErrInvalidDuration)
+	if left == 0 {
+		return Refusal(cause, "No time left on this day", "Plan this on another day, or free some time by skipping or deleting an item")
+	}
+	text, _ := domain.FormatDuration(left)
+	return Refusal(cause, "Only "+text+" left on this day", "Enter "+text+" or less, or plan this on another day")
 }

@@ -59,6 +59,17 @@ What days and items are, and the rules they always follow.
 | todo, in progress or paused | end of the day | incomplete |
 | any visible item | delete | archived, status unchanged |
 
+## How much of a day is left
+
+- The time left is from now until the day's midnight. A day that has not started yet has all of its
+  time, 23 to 25 hours.
+- From that, every other unfinished item holds its share: a todo item its whole Duration, a running
+  or paused item the part it has not worked yet. Done, skipped, incomplete and deleted items hold
+  nothing.
+- A new item's Duration, or a larger Duration on an edit, has to fit in what is left. The item being
+  edited does not count against itself.
+- This only ever refuses a change. It never touches items that are already saved.
+
 ## Rules
 
 - One runner. Only one item can run at a time. Starting another one pauses it automatically.

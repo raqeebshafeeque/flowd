@@ -203,3 +203,19 @@ func TestAHiddenCharacterIsNamedUnderTheTitle(t *testing.T) {
 		t.Fatalf("the title error should name the character: %+v", w.m.form)
 	}
 }
+
+func TestTooLongADurationIsExplainedAtTheField(t *testing.T) {
+	w := newWorkspace(t) // 09:00, fifteen hours left
+	w.refresh()
+	w.press(key("n"))
+	w.typeText("Too much")
+	w.press(tab())
+	w.typeText("30h")
+	w.run(w.press(ctrl('s')))
+	if w.m.form == nil || w.m.form.focus != 1 || !strings.Contains(w.m.form.errors[1], "Only 15h left on this day") {
+		t.Fatalf("got %+v", w.m.form)
+	}
+	if w.m.form.fields[1].value() != "30h" || len(w.m.state.View.Items) != 0 {
+		t.Fatal("the typed value must stay and nothing may be saved")
+	}
+}

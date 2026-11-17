@@ -61,6 +61,7 @@ var kinds = []struct {
 	{ErrPastDay, "ERR_PAST_DAY", 2, "Past days can only be looked at", "Plan new work for today or a later date"},
 	{domain.ErrUnsafeText, "ERR_TITLE", 2, "Titles cannot hold hidden or direction-changing characters", ""},
 	{domain.ErrInvalidTitle, "ERR_TITLE", 2, "Titles are one line of 1 to 120 characters", ""},
+	{ErrDurationExceedsDay, "ERR_DURATION_LIMIT", 2, "The duration is longer than the time left on this day", ""},
 	{domain.ErrInvalidDuration, "ERR_DURATION", 2, "Durations are whole minutes, like 30m, 2h or 1h30m", ""},
 	{ErrInput, "ERR_USAGE", 2, "That command is not valid", "See flowd --help"},
 	{ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},

@@ -153,3 +153,116 @@ func TestEveryStatusActionWorksThroughThePlanner(t *testing.T) {
 		t.Fatal("pausing a paused item must be refused", err)
 	}
 }
+
+func addDuration(f *fixture, selection Selection, duration string) (Result, error) {
+	return f.client.Do(ctx, Intent{Operation: Add, Selection: selection, Title: text("Task"), Duration: text(duration)})
+}
+
+func TestADurationCannotBeLongerThanWhatIsLeftToday(t *testing.T) {
+	f := newFixture(t)
+	f.at("20:00:00") // four hours to midnight
+	_, err := addDuration(f, Selection{}, "30h")
+	if !errors.Is(err, ErrDurationExceedsDay) || !errors.Is(err, domain.ErrInvalidDuration) {
+		t.Fatalf("30h was not refused as too long: %v", err)
+	}
+	if fb := Describe(err); fb.Code != "ERR_DURATION_LIMIT" || fb.Exit != 2 || fb.Summary != "Only 4h left on this day" {
+		t.Fatalf("got %+v", fb)
+	}
+	if _, err := addDuration(f, Selection{}, "4h"); err != nil {
+		t.Fatal("exactly the time left must be accepted:", err)
+	}
+	_, err = addDuration(f, Selection{}, "1m")
+	if fb := Describe(err); fb.Summary != "No time left on this day" {
+		t.Fatalf("a full day should say so: %+v", fb)
+	}
+	if state := f.read(Selection{}); len(state.View.Items) != 1 {
+		t.Fatal("a refused add saved something")
+	}
+}
+
+func TestOnlyUnfinishedWorkHoldsTime(t *testing.T) {
+	f := newFixture(t)
+	f.at("20:00:00")
+	done, _ := addDuration(f, Selection{}, "2h")
+	skipped, _ := addDuration(f, Selection{}, "1h")
+	if _, err := addDuration(f, Selection{}, "1h"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := addDuration(f, Selection{}, "1m"); err == nil {
+		t.Fatal("the day is full")
+	}
+	f.must(Start, done.Item.ID)
+	f.must(Finish, done.Item.ID)
+	f.must(Skip, skipped.Item.ID)
+	if _, err := addDuration(f, Selection{}, "3h"); err != nil {
+		t.Fatal("done and skipped items must free their time:", err)
+	}
+}
+
+func TestARunningItemHoldsOnlyWhatIsNotWorkedYet(t *testing.T) {
+	f := newFixture(t)
+	f.at("20:00:00")
+	r, _ := addDuration(f, Selection{}, "2h")
+	f.must(Start, r.Item.ID)
+	f.at("21:00:00") // three hours left, one worked, one still held
+	if _, err := addDuration(f, Selection{}, "2h1m"); !errors.Is(err, ErrDurationExceedsDay) {
+		t.Fatal("the unworked hour must still be held", err)
+	}
+	if _, err := addDuration(f, Selection{}, "2h"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFutureDaysHaveTheWholeDay(t *testing.T) {
+	f := newFixture(t)
+	later := Selection{Date: "2026-11-20"}
+	if _, err := addDuration(f, later, "24h1m"); !errors.Is(err, ErrDurationExceedsDay) {
+		t.Fatal("more than a day was accepted", err)
+	}
+	if _, err := addDuration(f, later, "20h"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := addDuration(f, later, "4h1m"); !errors.Is(err, ErrDurationExceedsDay) {
+		t.Fatal("the future day ignored its other items", err)
+	}
+}
+
+func TestEditsAreCheckedOnlyWhenTheyGrow(t *testing.T) {
+	f := newFixture(t)
+	f.at("20:00:00")
+	a, _ := addDuration(f, Selection{}, "1h")
+	addDuration(f, Selection{}, "1h") // two hours free for A to grow into
+	grow := func(d string) error {
+		_, err := f.change(Edit, a.Item.ID, func(i *Intent) { i.Duration = text(d) })
+		return err
+	}
+	if err := grow("3h1m"); !errors.Is(err, ErrDurationExceedsDay) {
+		t.Fatal("growing past the time left was accepted", err)
+	}
+	if err := grow("3h"); err != nil {
+		t.Fatal("an item must not count against itself:", err)
+	}
+	if err := grow("30m"); err != nil {
+		t.Fatal("shortening must always work:", err)
+	}
+}
+
+func TestAnOverPlannedDayCanStillBeRenamed(t *testing.T) {
+	f := newFixture(t)
+	r, _ := addDuration(f, Selection{}, "10h")
+	f.at("20:00:00") // the 10h item now holds more than is left
+	if _, err := f.change(Edit, r.Item.ID, func(i *Intent) { i.Title = text("Renamed") }); err != nil {
+		t.Fatal("a title only edit must work on a full day:", err)
+	}
+	if _, err := f.change(Edit, r.Item.ID, func(i *Intent) { i.Duration = text("9h") }); err != nil {
+		t.Fatal("shortening must work on a full day:", err)
+	}
+}
+
+func TestBadDurationTextIsStillAFormatError(t *testing.T) {
+	f := newFixture(t)
+	_, err := addDuration(f, Selection{}, "lots")
+	if errors.Is(err, ErrDurationExceedsDay) || Describe(err).Code != "ERR_DURATION" {
+		t.Fatal("a malformed duration must keep its own error", err)
+	}
+}

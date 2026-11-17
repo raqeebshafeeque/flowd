@@ -43,6 +43,8 @@ flowd review                # totals, progress and every item by status
 ```
 
 - A duration is a budget, not a time slot. Write it as `30`, `30m`, `2h` or `1h30m`.
+- The durations planned on a day cannot add up to more than the time left in it. flowd tells you how
+  much is left when something does not fit.
 - Work is the time an item actually ran. Elapsed is the time since it first started, pauses
   included.
 - Starting an item pauses the one that was running.
