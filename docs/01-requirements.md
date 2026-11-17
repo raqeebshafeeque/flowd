@@ -10,6 +10,8 @@ with the same rules.
 - A block has a title, a planned start and a planned end.
 - You can add, edit and remove blocks. Removing a block hides it but keeps it in the file.
 - Two visible blocks on the same day can never overlap.
+- A block starts and ends on the same day. It cannot run past midnight into the next one.
+- You can plan today and future days. Past days are only for looking back.
 - `flowd` opens today and `flowd 2026-10-12` opens that date.
 
 ### F2. Track with one key
@@ -18,6 +20,7 @@ with the same rules.
 - The real start and end times are recorded for you.
 - Starting a block while another one runs pauses the running one.
 - Stretch moves a block's planned end 15 minutes later and checks for overlap again.
+- Only today's blocks can be started, paused, finished or skipped.
 
 ### F3. See now, next and overrun
 

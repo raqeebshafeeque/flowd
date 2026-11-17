@@ -15,6 +15,9 @@ What days and blocks are, and the rules they always follow.
 - A day has an id, a date like `2026-10-12` and the timezone it was created in.
 - There is only one day per date.
 - A day has no status of its own. Everything about it comes from its blocks.
+- A day keeps the timezone it was created in, even if you travel.
+- A day ends at midnight in its own timezone. Some days are 23 or 25 hours long because of daylight
+  saving time.
 
 ## Block
 
@@ -53,6 +56,9 @@ Stretch is not a status change. It moves the planned end 15 minutes later.
   `10:00 to 11:00` do not overlap. Hidden blocks are ignored.
 - One runner. Only one block can run at a time. Starting another one pauses it automatically.
 - Time. Times are stored in UTC and shown in local time.
+- One day. A planned block has to start and end inside its own day.
+- Today only. Status changes only happen on today's blocks. Planning is allowed for today and the
+  future. Past days cannot be changed.
 - Delete. Deleting only hides a block. Nothing is ever removed.
 - Copy. Done, skipped and hidden blocks cannot be copied. A copy that would overlap is refused.
 - Score. The done blocks divided by the visible blocks that were not skipped, as a rounded
