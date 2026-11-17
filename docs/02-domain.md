@@ -17,6 +17,9 @@ What days and items are, and the rules they always follow.
 - A day keeps its timezone even if you travel.
 - A day ends at midnight in its own timezone. Some days are 23 or 25 hours long because of daylight
   saving time.
+- Midnight itself belongs to the next day.
+- A few dates in a few timezones have no midnight at all, because the clocks jumped past it. Those
+  dates are refused rather than shifted.
 
 ## Item
 
@@ -66,7 +69,8 @@ What days and items are, and the rules they always follow.
   the order they were created. Pausing, finishing or editing never moves an item.
 - Time. Times are stored in UTC and shown in local time.
 - Whole seconds. Every time is recorded to the nearest second, so work and elapsed are always whole
-  seconds and read the same everywhere.
+  seconds and read the same everywhere. A time just before midnight is never rounded up into the
+  next day.
 - Broken history. If the events of an item do not add up, flowd reports an error instead of
   guessing a number.
 - Delete. Deleting only hides an item. Nothing is ever removed.

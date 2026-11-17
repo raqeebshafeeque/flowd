@@ -139,11 +139,14 @@ func (it Item) target(a Action) (Status, error) {
 	return refuse()
 }
 
-// Apply performs an action at the captured instant now. A refusal leaves the
-// item exactly as it was.
-func (it *Item) Apply(a Action, now time.Time) error {
+// Apply performs an action at the captured instant now. The item's day has
+// to be open at that instant. A refusal leaves the item exactly as it was.
+func (it *Item) Apply(a Action, now time.Time, day Day) error {
 	if it.Archived || it.Status == Incomplete {
 		return fmt.Errorf("%w: the item is closed", ErrIllegalTransition)
+	}
+	if err := day.RequireOpen(now); err != nil {
+		return err
 	}
 	to, err := it.target(a)
 	if err != nil {
@@ -179,6 +182,25 @@ func (it *Item) move(to Status, now time.Time) error {
 	it.Status = to
 	it.UpdatedAt = &stamp
 	return nil
+}
+
+// CloseDay makes an unfinished item incomplete once its day has ended. The
+// item closes at exactly midnight even when this runs later, at recorded. It
+// reports whether anything changed. No finish or start is ever invented.
+func (it *Item) CloseDay(day Day, recorded time.Time) (bool, error) {
+	_, cutoff, err := day.Bounds()
+	if err != nil {
+		return false, err
+	}
+	if recorded.Before(cutoff) || it.Archived || !it.Status.Unfinished() {
+		return false, nil
+	}
+	if err := it.checkClock(cutoff); err != nil {
+		return false, err
+	}
+	closed, noticed := cutoff.UTC(), recorded.UTC()
+	it.Status, it.ClosedAt, it.UpdatedAt = Incomplete, &closed, &noticed
+	return true, nil
 }
 
 // Edit changes the title and Duration. Editing never changes the status, the

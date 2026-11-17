@@ -18,13 +18,21 @@ type Metrics struct {
 }
 
 // Measure works out the metrics of item at the instant observed from its
-// events, which must be its complete history in order. Broken or reordered
-// history is refused, never quietly corrected.
-func Measure(item Item, events []Event, observed time.Time) (Metrics, error) {
+// events, which must be its complete history in order. Nothing counts past
+// the day's midnight, even if the day has not been closed yet. Broken or
+// reordered history is refused, never quietly corrected.
+func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, error) {
 	var result Metrics
+	_, cutoff, err := day.Bounds()
+	if err != nil {
+		return result, err
+	}
 	observed = Capture(observed)
 	if !ValidInstant(observed) || observed.Before(item.CreatedAt) {
 		return result, fmt.Errorf("%w: measured before the item existed", ErrInvalidEvidence)
+	}
+	if observed.After(cutoff) {
+		observed = cutoff
 	}
 	var previous *Item
 	var runningSince *time.Time
@@ -43,7 +51,7 @@ func Measure(item Item, events []Event, observed time.Time) (Metrics, error) {
 		return nil
 	}
 	for i, e := range events {
-		if err := e.Validate(); err != nil {
+		if err := e.ValidateFor(day); err != nil {
 			return result, err
 		}
 		if e.ItemID != item.ID || e.OccurredAt.After(observed) || e.OccurredAt.Before(lastOccurred) || e.RecordedAt.Before(lastRecorded) || (i > 0 && e.Seq <= lastSeq) {

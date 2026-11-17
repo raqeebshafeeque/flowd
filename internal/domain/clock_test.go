@@ -18,6 +18,17 @@ func TestCaptureRoundsToTheNearestSecondInUTC(t *testing.T) {
 			t.Errorf("Capture(%v) = %v, want %v", c.in, got, c.want)
 		}
 	}
+	// Rounding up onto a quarter hour could cross midnight, so it rounds down.
+	for _, quarter := range []time.Time{
+		time.Date(2026, 11, 17, 23, 59, 59, 600_000_000, time.UTC),
+		time.Date(2026, 11, 17, 18, 29, 59, 900_000_000, time.UTC), // midnight in India
+		time.Date(2026, 11, 17, 9, 44, 59, 500_000_000, time.UTC),
+	} {
+		got := Capture(quarter)
+		if got.Unix()%(15*60) == 0 || got.After(quarter) {
+			t.Errorf("Capture(%v) = %v rounded up onto a quarter hour", quarter, got)
+		}
+	}
 	if !Capture(time.Time{}).IsZero() {
 		t.Error("a zero time must stay zero")
 	}
