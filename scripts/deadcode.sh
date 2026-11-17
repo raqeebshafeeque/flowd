@@ -1,7 +1,7 @@
 #!/bin/sh
 # Fails when a function cannot be reached from the program or its tests.
 set -eu
-report=$(go run golang.org/x/tools/cmd/deadcode@v0.38.0 -test ./... 2>&1) || {
+report=$(go run golang.org/x/tools/cmd/deadcode@v0.52.0 -test ./... 2>&1) || {
     printf '%s\n' "$report" >&2
     exit 1
 }
