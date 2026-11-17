@@ -84,6 +84,9 @@ How the parts fit together.
 - The workspace reads the day through the planner once a second, so it never holds the database
   between keys and a change made from the command line shows up within a second.
 - If a read fails, the last good day stays on screen with the error under it.
+- Only one change is in flight at a time. While it saves, other changes are ignored.
+- If a change ends unconfirmed, the workspace asks the planner to reconcile it, again on every tick
+  until the history answers, and no other change can start until then.
 - Durations, work and statuses are written by the same planner functions in the workspace and the
   command line, so they always read the same.
 - Every row is drawn exactly as wide as the window, so resizing never leaves stray characters.

@@ -38,6 +38,9 @@ func (m *model) frame() []string {
 	} else {
 		content = m.list(inner, body)
 	}
+	if popup := m.noticeRows(inner); popup != nil {
+		content = append(content[:len(content)-len(popup)], popup...)
+	}
 	for _, row := range content {
 		rows = append(rows, m.side(row))
 	}
@@ -173,7 +176,18 @@ func (m *model) instant(t *time.Time) string {
 
 // footer lists the keys that do something right now.
 func (m *model) footer(width int) string {
+	switch {
+	case m.unresolved != nil:
+		return fit(" Checking whether the last change was saved…", width)
+	case m.pending:
+		return fit(" Saving…", width)
+	}
 	var hints []string
+	if i := m.index(); i >= 0 {
+		for _, op := range allowed(m.state.View.Items[i]) {
+			hints = append(hints, string(op)+" ["+actionKey(op)+"]")
+		}
+	}
 	if m.selected != "" {
 		if m.details {
 			hints = append(hints, "close [esc]")
@@ -210,4 +224,20 @@ func (m *model) suspended() []string {
 func wrap(text string, width int) []string {
 	wrapped := ansi.Wrap(text, width, "")
 	return strings.Split(wrapped, "\n")
+}
+
+// actionKey is the key shown for an action in the footer.
+func actionKey(op planner.Operation) string {
+	switch op {
+	case planner.Start, planner.Pause, planner.Resume:
+		return "space"
+	case planner.Reopen:
+		return "R"
+	}
+	for key, action := range trackKeys {
+		if action == op {
+			return key
+		}
+	}
+	return ""
 }

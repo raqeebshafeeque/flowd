@@ -47,7 +47,7 @@ func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w.now = w.now.Add(10 * time.Minute)
 	w.refresh()
 	text := plain(w)
-	for _, want := range []string{"flowd", "Tue 17 Nov 2026  09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "details [enter]", "quit [q]"} {
+	for _, want := range []string{"flowd", "Tue 17 Nov 2026  09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  skip [s]  details [enter]", "quit [q]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
