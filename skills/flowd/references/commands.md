@@ -8,7 +8,9 @@ Global options come before the command: `flowd --json --date 2026-11-18 list`.
 - `--json` prints JSON instead of text.
 
 ITEM is a row number from `list` or a full item ID such as `it_01JD...`. Prefer IDs.
-DURATION is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`.
+DURATION is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`. It cannot be longer than what is
+left of the day after the other unfinished items, otherwise flowd refuses with `ERR_DURATION_LIMIT`
+and says how much is left.
 
 ### list
 

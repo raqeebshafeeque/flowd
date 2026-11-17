@@ -177,3 +177,13 @@ func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
 		t.Fatalf("a clean database should not warn: %q", out)
 	}
 }
+
+func TestADurationLongerThanTheDayIsRefused(t *testing.T) {
+	s := newSession(t) // 09:00, fifteen hours left
+	_, errOut, code := s.run("add", "30h", "Too much")
+	if code != 2 || !strings.HasPrefix(errOut, "ERR_DURATION_LIMIT\nOnly 15h left on this day\n") {
+		t.Fatalf("exit %d: %q", code, errOut)
+	}
+	s.ok("add", "15h", "Exactly enough")
+	s.fails(2, "ERR_DURATION_LIMIT", "add", "1m", "One more")
+}
