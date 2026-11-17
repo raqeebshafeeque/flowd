@@ -43,7 +43,16 @@ with the same rules.
 - Progress as finished items out of all items, like `3 / 5 finished`.
 - Every item grouped by its status.
 
-### F6. Never lose a day
+### F6. Work with scripts and AI agents
+
+- Every command can print JSON with `--json`, so scripts and agents never have to parse text.
+- Errors have stable codes and exit codes. Bad input exits with 2 and a refused action exits with 1.
+- A refused or failed action never prints output that looks like success.
+- flowd ships with an Agent Skill that teaches an agent how to use these commands safely.
+- An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
+  instructions.
+
+### F7. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
 

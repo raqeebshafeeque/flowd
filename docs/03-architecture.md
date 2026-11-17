@@ -47,7 +47,15 @@ How the parts fit together.
   prints `OK` or the first problem it found.
 - `flowd doctor --repair` is the only command that restores the backup.
 
+## Agents
+
+- Agents use the same command line as people. There is no separate interface for them.
+- The JSON output is a contract. Its fields only change with a new schema version.
+- The Agent Skill lives in `skills/flowd/` and is installed together with the program, so its
+  instructions always match the installed version.
+
 ## Distribution
 
 - Each release has an archive per operating system and processor, with checksums.
-- An `install.sh` script downloads, checks and installs the program without needing Go.
+- An `install.sh` script downloads, checks and installs the program and the Agent Skill without
+  needing Go.

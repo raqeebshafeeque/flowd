@@ -14,6 +14,7 @@ the work with single keys and look back at the day in one glance.
 
 - A developer on macOS or Linux who spends the day in the terminal.
 - Someone who prefers the keyboard to the mouse.
+- Someone who also works with an AI coding agent and wants it to read and update the plan when asked.
 - It is not meant for teams, calendar sync, phones or reminders while the app is closed.
 
 ## Goals
