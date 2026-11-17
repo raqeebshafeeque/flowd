@@ -125,3 +125,27 @@ func (m *model) reconciled(msg reconcileMsg) tea.Cmd {
 	}
 	return m.read()
 }
+
+// askDelete asks before deleting the selected item. Deleting hides it from
+// the day and keeps its history.
+func (m *model) askDelete() {
+	if m.index() >= 0 && m.plannable() && !m.busy() {
+		m.deleting = m.selected
+	}
+}
+
+// deleteKey answers the question. Only y deletes.
+func (m *model) deleteKey(key string) tea.Cmd {
+	switch key {
+	case "y":
+		id := m.deleting
+		m.deleting = ""
+		if id != m.selected || m.index() < 0 {
+			return nil
+		}
+		return m.track(planner.Delete)
+	case "n", "esc":
+		m.deleting = ""
+	}
+	return nil
+}
