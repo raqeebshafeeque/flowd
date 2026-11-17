@@ -3,10 +3,6 @@
 ## 0.1.0 (2026-11-17)
 
 
-### ⚠ BREAKING CHANGES
-
-* plan daily effort instead of time slots
-
 ### Features
 
 * add the Agent Skill ([#8](https://github.com/raqeebshafeeque/flowd/issues/8)) ([e2a06c0](https://github.com/raqeebshafeeque/flowd/commit/e2a06c0e7b6944225c97c8050023976219423c2b))
