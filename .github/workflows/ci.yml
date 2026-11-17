@@ -1,0 +1,53 @@
+name: CI
+run-name: >-
+  ${{ github.event_name == 'pull_request' &&
+      format('CI for PR #{0}', github.event.pull_request.number) || 'CI for main' }}
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: ${{ matrix.check }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            check: Linux checks
+          - os: macos-latest
+            check: macOS checks
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Formatting
+        if: runner.os == 'Linux'
+        run: test -z "$(gofmt -l .)"
+      - name: Shell scripts
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/*.sh
+      - name: Vet and build
+        run: |
+          go vet ./...
+          go build ./...
+      - name: Tests
+        run: go test -race -count=1 ./...
+      - name: Known Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
