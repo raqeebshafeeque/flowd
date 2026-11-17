@@ -16,6 +16,8 @@ type session struct {
 	t   *testing.T
 	db  string
 	now time.Time
+	// answer, when set, is typed at a terminal for any question.
+	answer *string
 }
 
 func newSession(t *testing.T) *session {
@@ -25,6 +27,9 @@ func newSession(t *testing.T) *session {
 func (s *session) run(args ...string) (stdout, stderr string, code int) {
 	var out, errOut bytes.Buffer
 	env := Env{Version: "1.2.3", Now: func() time.Time { return s.now }, Zone: time.UTC}
+	if s.answer != nil {
+		env.In, env.Interactive = strings.NewReader(*s.answer), true
+	}
 	code = Run(context.Background(), append([]string{"--db", s.db}, args...), &out, &errOut, env)
 	return out.String(), errOut.String(), code
 }
@@ -124,7 +129,7 @@ func TestEditDeleteAndEveryAction(t *testing.T) {
 		s.now = s.now.Add(time.Minute)
 		s.ok(step, "1")
 	}
-	s.ok("delete", "1")
+	s.ok("delete", "--yes", "1")
 	if out := s.ok("list"); !contains(out, "Nothing planned") {
 		t.Fatalf("a deleted item is still listed: %q", out)
 	}
@@ -198,5 +203,46 @@ func TestLicensesArePrintedFromTheProgram(t *testing.T) {
 	}
 	if _, err := os.Stat(s.db); !os.IsNotExist(err) {
 		t.Fatal("--licenses must not touch the database")
+	}
+}
+
+func TestDeleteAsksAtATerminal(t *testing.T) {
+	cases := []struct {
+		answer  string
+		deleted bool
+	}{{"y\n", true}, {"yes\n", true}, {"Y\n", true}, {"n\n", false}, {"\n", false}, {"", false}, {"nope\n", false}}
+	for _, c := range cases {
+		s := newSession(t)
+		s.ok("add", "1h", "Study")
+		s.answer = &c.answer
+		out := s.ok("delete", "1")
+		if !contains(out, `Delete "Study"? This cannot be undone. [y/N]`) {
+			t.Fatalf("%q: no question in %q", c.answer, out)
+		}
+		s.answer = nil
+		left := !contains(s.ok("list"), "Nothing planned")
+		if left == c.deleted || contains(out, "Not deleted") == c.deleted {
+			t.Errorf("answer %q: deleted=%v, output %q", c.answer, !left, out)
+		}
+	}
+}
+
+func TestDeleteWithoutATerminalNeedsYes(t *testing.T) {
+	s := newSession(t)
+	s.ok("add", "1h", "Study")
+	_, errOut, code := s.run("delete", "1")
+	if code != 2 || !strings.HasPrefix(errOut, "ERR_USAGE\nDeleting needs confirmation\nAdd --yes") {
+		t.Fatalf("exit %d: %q", code, errOut)
+	}
+	answer := "y\n"
+	s.answer = &answer
+	s.fails(2, "ERR_USAGE", "--json", "delete", "1") // JSON means nobody is reading a question
+	s.answer = nil
+	if contains(s.ok("list"), "Nothing planned") {
+		t.Fatal("a refused delete removed the item")
+	}
+	var deleted map[string]any
+	if err := json.Unmarshal([]byte(s.ok("--json", "delete", "--yes", "1")), &deleted); err != nil || deleted["archived"] != true {
+		t.Fatalf("got %v, %v", deleted, err)
 	}
 }

@@ -6,6 +6,11 @@ Global options come before the command: `flowd --json --date 2026-11-18 list`.
 - `--date YYYY-MM-DD` picks a day other than today.
 - `--timezone ZONE` sets the timezone of a day that does not exist yet, like `Asia/Kolkata`.
 - `--json` prints JSON instead of text.
+- `--version`, `--help` and `--licenses` print the version, the help or the licenses of the code
+  flowd is built with. They touch no files.
+
+Always name a command. `flowd` with nothing after it opens the terminal workspace, which needs a
+person at a terminal, and fails with exit 2 when run by an agent.
 
 ITEM is a row number from `list` or a full item ID such as `it_01JD...`. Prefer IDs.
 DURATION is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`. It cannot be longer than what is
@@ -14,7 +19,7 @@ and says how much is left.
 
 ### list
 
-Shows the day. This is also what `flowd` does with no command.
+Shows the day.
 
 JSON:
 
@@ -39,7 +44,8 @@ item first starts.
 
 ### add
 
-`flowd add DURATION TITLE` plans a new item. JSON is the new ITEM.
+`flowd add DURATION TITLE` plans a new item. JSON is the new ITEM. Every command below that changes
+an item also prints the saved ITEM as JSON, so there is no need to read the day again after each one.
 
 ### edit
 
@@ -47,7 +53,10 @@ item first starts.
 
 ### delete
 
-`flowd delete ITEM` hides an item. Its history is kept.
+`flowd delete --yes ITEM` deletes an item. Deleted items are gone from every list and cannot be
+brought back. Without `--yes` flowd asks a person at a terminal, and refuses with `ERR_USAGE` and
+exit 2 everywhere else, including with `--json`. Only pass `--yes` when the user asked to delete
+that exact item.
 
 ### start
 
@@ -97,8 +106,9 @@ item grouped by status. JSON is the same as `list`.
 
 ### doctor
 
-`flowd doctor` checks the database and prints `OK` or the first problem. JSON is
-`{"status": "ok"}`. `flowd doctor --repair` replaces the database with its backup and moves the
+`flowd doctor` checks the database and prints `OK` or the first problem. It also warns about item
+titles that hold hidden characters, which are shown as placeholders like `<U+202E>`. JSON is
+`{"status": "ok", "unsafe_titles": [ID, ...]}`. `flowd doctor --repair` replaces the database with its backup and moves the
 current files into a recovery folder. Only run it when the user asks.
 
 ## Exit status

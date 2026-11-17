@@ -63,6 +63,9 @@ duration and save with Ctrl+S. `c` opens a calendar to look at or plan another d
 today, `r` shows the review, `d` deletes the selected item after asking, and `?` lists every key. The window needs to be at least 80
 by 24.
 
+`flowd delete 2` asks before deleting, because a deleted item cannot be brought back. Scripts and
+agents have to add `--yes`.
+
 Add `--json` to any command for output that scripts can read, and `--date 2026-11-20` to work on
 another day. `flowd --help` lists every command.
 

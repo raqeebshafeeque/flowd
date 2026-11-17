@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -25,6 +27,10 @@ type Env struct {
 	Version string
 	Now     func() time.Time // defaults to time.Now
 	Zone    *time.Location   // this computer's timezone
+	// In is where answers to questions come from, and Interactive says
+	// whether a person is at a terminal to answer them.
+	In          io.Reader
+	Interactive bool
 }
 
 // Run executes one command line and returns the exit status. It never exits
@@ -82,8 +88,15 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 	case "doctor":
 		return doctor(ctx, out, o, path)
 	}
+	if o.command == "delete" && !o.yes && (o.json || !env.Interactive) {
+		return planner.InputError(nil, "Deleting needs confirmation", "Add --yes to delete without being asked")
+	}
 	state, item, err := find(ctx, client, selection, o.args[0])
 	if err != nil {
+		return err
+	}
+	if o.command == "delete" && !o.yes && !confirm(out, env.In, item.Title) {
+		_, err := fmt.Fprintln(out, "Not deleted")
 		return err
 	}
 	intent := planner.Intent{Operation: planner.Operation(o.command), Selection: selection, ItemID: item.ID, Revision: state.Revisions[item.ID]}
@@ -185,4 +198,20 @@ func joinTitle(words []string) string {
 		title += " " + w
 	}
 	return title
+}
+
+// confirm asks whether to delete an item and reads one line. Only "y" or
+// "yes" deletes. Anything else, including an empty line or the end of
+// input, keeps the item.
+func confirm(out io.Writer, in io.Reader, title string) bool {
+	fmt.Fprintf(out, "Delete %q? This cannot be undone. [y/N] ", title)
+	if in == nil {
+		return false
+	}
+	answer, _ := bufio.NewReader(in).ReadString('\n')
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "y", "yes":
+		return true
+	}
+	return false
 }
