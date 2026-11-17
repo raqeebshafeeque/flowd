@@ -43,6 +43,10 @@ func (m *model) frame() []string {
 		rows, row, col := m.formRows(inner, panel)
 		content = append(content, rows...)
 		caretRow, caretCol = list+1+row, col
+	} else if m.calendar != nil {
+		panel := min(calendarHeight, body-3)
+		content = append(m.list(inner, body-panel-1), m.style.paint("border", strings.Repeat("─", inner)))
+		content = append(content, pad(m.calendarRows(inner), panel)...)
 	} else if m.details {
 		detailRows := detailsHeight(body)
 		content = append(m.list(inner, body-detailRows-1), m.style.paint("border", strings.Repeat("─", inner)))
@@ -90,8 +94,8 @@ func fit(row string, width int) string {
 func (m *model) header(width int) string {
 	now := m.now().In(m.zone)
 	left := " " + m.style.paint("brand", "flowd")
-	if m.loaded && m.state.Day.Date != now.Format("2006-01-02") {
-		left += "   Viewing " + m.state.Day.Date
+	if day := m.viewing(); day != now.Format("2006-01-02") {
+		left += "   Viewing " + day
 	}
 	right := now.Format("Mon 2 Jan 2006  15:04:05") + " "
 	return spread(left, right, width)
@@ -114,8 +118,10 @@ func (m *model) list(width, height int) []string {
 		rows = append(rows, " Loading…")
 	case !m.loaded:
 		rows = append(rows, m.errorRows()...)
+	case len(m.state.View.Items) == 0 && m.plannable():
+		rows = append(rows, "", " Nothing planned for this day.", m.style.paint("muted", " Press n to add an item."))
 	case len(m.state.View.Items) == 0:
-		rows = append(rows, "", " Nothing planned for this day.", m.style.paint("muted", ` Add an item with: flowd add 1h "Study"`))
+		rows = append(rows, "", " Nothing was planned for this day.")
 	default:
 		items := m.state.View.Items
 		first := max(0, m.index()-height+1)
@@ -198,6 +204,8 @@ func (m *model) footer(width int) string {
 		return fit(" Checking whether the last change was saved…", width)
 	case m.form != nil:
 		return fit(m.formFooter(), width)
+	case m.calendar != nil:
+		return fit(m.calendarFooter(), width)
 	case m.pending:
 		return fit(" Saving…", width)
 	}
@@ -207,16 +215,28 @@ func (m *model) footer(width int) string {
 	}
 	var hints []hint
 	if i := m.index(); i >= 0 {
-		for _, op := range allowed(m.state.View.Items[i]) {
-			hints = append(hints, hint{string(op) + " [" + actionKey(op) + "]", 5})
+		if m.trackable() {
+			for _, op := range allowed(m.state.View.Items[i]) {
+				hints = append(hints, hint{string(op) + " [" + actionKey(op) + "]", 5})
+			}
 		}
 		open := "details [enter]"
 		if m.details {
 			open = "close [esc]"
 		}
-		hints = append(hints, hint{"edit [e]", 3}, hint{open, 2}, hint{"move [j/k]", 1})
+		if m.plannable() {
+			hints = append(hints, hint{"edit [e]", 3})
+		}
+		hints = append(hints, hint{open, 2}, hint{"move [j/k]", 1})
 	}
-	hints = append(hints, hint{"new [n]", 4}, hint{"quit [q]", 9})
+	if m.plannable() {
+		hints = append(hints, hint{"new [n]", 4})
+	}
+	hints = append(hints, hint{"calendar [c]", 4})
+	if m.viewing() != m.today() {
+		hints = append(hints, hint{"today [t]", 6})
+	}
+	hints = append(hints, hint{"quit [q]", 9})
 	for keep := 0; ; keep++ {
 		var texts []string
 		for _, h := range hints {

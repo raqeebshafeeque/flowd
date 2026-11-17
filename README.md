@@ -44,7 +44,8 @@ Run `flowd` with no arguments for the terminal workspace. Move with `j` and `k`,
 of an item with `enter`, close them with `esc` and quit with `q`. Space starts, pauses or resumes
 the selected item, `f` finishes it, `s` skips it, `u` brings back a skipped item and `R` reopens a
 finished one. `n` adds an item and `e` edits the selected one: type the title, press Tab, type the
-duration and save with Ctrl+S. The window needs to be at least 80
+duration and save with Ctrl+S. `c` opens a calendar to look at or plan another day, and `t` comes
+back to today. The window needs to be at least 80
 by 24.
 
 Add `--json` to any command for output that scripts can read, and `--date 2026-11-20` to work on

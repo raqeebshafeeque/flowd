@@ -35,6 +35,8 @@ type model struct {
 	unresolved *planner.Result // a change whose outcome is not known yet
 	notice     *notice
 	form       *form
+	calendar   *calendar
+	date       string      // the date on screen, or "" for today
 	caret      *tea.Cursor // where the terminal cursor goes, if anywhere
 }
 
@@ -46,6 +48,7 @@ type (
 	stateMsg struct {
 		state planner.State
 		err   error
+		date  string // which date was asked for
 	}
 	tickMsg struct{}
 )
@@ -56,8 +59,9 @@ func (m *model) Init() tea.Cmd { return tea.Batch(m.read(), tick()) }
 // length of the read.
 func (m *model) read() tea.Cmd {
 	return func() tea.Msg {
-		state, err := m.client.Read(m.ctx, planner.Selection{})
-		return stateMsg{state, err}
+		date := m.date
+		state, err := m.client.Read(m.ctx, planner.Selection{Date: date})
+		return stateMsg{state, err, date}
 	}
 }
 
@@ -97,6 +101,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // receive takes a fresh read. A failed read keeps showing the last good day
 // along with the error.
 func (m *model) receive(msg stateMsg) {
+	if msg.date != m.date {
+		return // an answer for a date no longer on screen
+	}
 	m.err = msg.err
 	if msg.err != nil {
 		return
@@ -133,6 +140,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.form != nil {
 		return m.formKey(msg)
 	}
+	if m.calendar != nil {
+		return m.calendarKey(msg)
+	}
 	switch msg.String() {
 	case "q":
 		return tea.Quit
@@ -145,15 +155,25 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case "esc":
 		m.details = false
 	case "n":
-		m.openNew()
+		if m.plannable() {
+			m.openNew()
+		}
 	case "e":
-		m.openEdit()
+		if m.plannable() {
+			m.openEdit()
+		}
+	case "c":
+		m.openCalendar()
+	case "t":
+		if !m.busy() {
+			return m.show(m.today())
+		}
 	case "space":
-		if i := m.index(); i >= 0 {
+		if i := m.index(); i >= 0 && m.trackable() {
 			return m.track(spaceAction(m.state.View.Items[i].Status))
 		}
 	default:
-		if op, ok := trackKeys[msg.String()]; ok {
+		if op, ok := trackKeys[msg.String()]; ok && m.trackable() {
 			return m.track(op)
 		}
 	}
@@ -168,3 +188,11 @@ func (m *model) move(delta int) {
 	i := min(max(m.index()+delta, 0), len(items)-1)
 	m.selected = items[i].ID
 }
+
+// trackable says whether items on screen can be started, finished and so on:
+// only today's can.
+func (m *model) trackable() bool { return m.loaded && m.viewing() == m.today() }
+
+// plannable says whether items on screen can be added or edited: today's and
+// later days' can.
+func (m *model) plannable() bool { return m.loaded && m.viewing() >= m.today() }
