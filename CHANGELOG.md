@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/raqeebshafeeque/flowd/compare/v0.3.0...v0.4.0) (2026-11-17)
+
+
+### Features
+
+* **cli:** ask before deleting ([#25](https://github.com/raqeebshafeeque/flowd/issues/25)) ([e823797](https://github.com/raqeebshafeeque/flowd/commit/e82379793c11f5ad05e2c9a8478283e4bf775628))
+* **cli:** print third-party licenses with --licenses ([#23](https://github.com/raqeebshafeeque/flowd/issues/23)) ([c1119ed](https://github.com/raqeebshafeeque/flowd/commit/c1119ed5706d6ce94887fed0f5d9d2c1166c6c16))
+
 ## [0.3.0](https://github.com/raqeebshafeeque/flowd/compare/v0.2.0...v0.3.0) (2026-11-17)
 
 
