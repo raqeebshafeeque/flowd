@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -24,7 +25,14 @@ type Client struct {
 	// Zone is this computer's timezone. It decides what "today" is for
 	// planning, independently of any timezone a day was saved with.
 	Zone *time.Location
+	// CheckedOnce, when set, makes the first open through this client run the
+	// full integrity scan. The workspace uses it once per session.
+	CheckedOnce *atomic.Bool
 }
+
+// Signature is a cheap fingerprint of the database that changes whenever
+// anything is written to it. Taking it never opens the database.
+func (c Client) Signature() (store.Signature, error) { return store.StatSignature(c.Path) }
 
 // Selection picks a day. An empty Date means today in Zone. Timezone is only
 // used when the day does not exist yet.
@@ -107,7 +115,11 @@ type session struct {
 
 // open owns the database for one operation and closes due days first.
 func (c Client) open(ctx context.Context, selection Selection) (*session, error) {
-	db, err := store.Open(ctx, c.Path)
+	var options []store.OpenOption
+	if c.CheckedOnce != nil && c.CheckedOnce.CompareAndSwap(false, true) {
+		options = append(options, store.WithFullCheck())
+	}
+	db, err := store.Open(ctx, c.Path, options...)
 	if err != nil {
 		return nil, err
 	}

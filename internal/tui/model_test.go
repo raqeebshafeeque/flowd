@@ -214,3 +214,61 @@ func TestAFailedReadKeepsTheLastGoodDay(t *testing.T) {
 		t.Fatal("a good read must clear the error")
 	}
 }
+
+func TestIdleTicksDoNotReadAnUnchangedFile(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Study", "1h")
+	w.refresh()
+	for i := 0; i < 5; i++ {
+		w.now = w.now.Add(time.Second)
+		if w.m.readDue() {
+			t.Fatalf("tick %d wanted to read an unchanged file", i)
+		}
+	}
+	w.add("Added from the command line", "30m")
+	if !w.m.readDue() {
+		t.Fatal("a change from outside must be read on the next tick")
+	}
+}
+
+func TestTheWorkspaceStillReadsEveryThirtySeconds(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Study", "1h")
+	w.refresh()
+	w.now = w.now.Add(29 * time.Second)
+	if w.m.readDue() {
+		t.Fatal("too early")
+	}
+	w.now = w.now.Add(time.Second)
+	if !w.m.readDue() {
+		t.Fatal("the safety read did not come after thirty seconds")
+	}
+}
+
+func TestRunningWorkKeepsCountingWithoutReads(t *testing.T) {
+	w := newWorkspace(t)
+	id := w.add("Study", "1h")
+	w.act(planner.Start, id)
+	w.refresh()
+	w.now = w.now.Add(20 * time.Second)
+	if _, cmd := w.m.Update(tickMsg{}); cmd == nil {
+		t.Fatal("the tick must schedule the next one")
+	}
+	if got := w.m.state.View.Items[0].WorkNS; got != int64(20*time.Second) {
+		t.Fatalf("work is %v, want 20s without reading", time.Duration(got))
+	}
+}
+
+func TestMidnightMovesTheWorkspaceToTheNewDay(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Today", "1h")
+	w.refresh()
+	w.now = time.Date(2026, 11, 18, 0, 0, 5, 0, time.UTC)
+	if !w.m.readDue() {
+		t.Fatal("the day changed, so the workspace must read")
+	}
+	w.refresh()
+	if w.m.state.Day.Date != "2026-11-18" || len(w.m.state.View.Items) != 0 {
+		t.Fatalf("still showing %s", w.m.state.Day.Date)
+	}
+}

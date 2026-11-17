@@ -101,7 +101,8 @@ with the same rules.
 
 ## How well it does it
 
-- Speed. It opens in under 50 ms, a keypress shows up in under 16 ms, and a day with two years of
+- Speed. Timing tests in CI fail if opening two years of history or drawing a frame gets
+  structurally slower. It opens in under 50 ms, a keypress shows up in under 16 ms, and a day with two years of
   history behind it still opens instantly.
 - Offline. It never uses the network.
 - Reliability. Every action is saved to disk before the next one. A broken file fails with a clear
