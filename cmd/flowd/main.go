@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/raqeebshafeeque/flowd/internal/cli"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
@@ -26,7 +27,8 @@ func main() {
 func run(ctx context.Context) int {
 	zone := planner.SystemZone()
 	if len(os.Args) > 1 {
-		return cli.Run(ctx, os.Args[1:], os.Stdout, os.Stderr, cli.Env{Version: version, Zone: zone})
+		interactive := term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd())
+		return cli.Run(ctx, os.Args[1:], os.Stdout, os.Stderr, cli.Env{Version: version, Zone: zone, In: os.Stdin, Interactive: interactive})
 	}
 	path, err := store.DefaultPath()
 	if err == nil {

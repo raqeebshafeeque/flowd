@@ -23,6 +23,7 @@ type options struct {
 	version  bool
 	licenses bool
 	repair   bool
+	yes      bool
 	title    *string
 	duration *string
 }
@@ -44,7 +45,7 @@ var commands = map[string]command{
 		f.Func("title", "", func(v string) error { o.title = &v; return nil })
 		f.Func("duration", "", func(v string) error { o.duration = &v; return nil })
 	}},
-	"delete": {positional: "ITEM"},
+	"delete": {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
 	"start":  {positional: "ITEM"},
 	"pause":  {positional: "ITEM"},
 	"resume": {positional: "ITEM"},
@@ -164,7 +165,7 @@ Commands:
   list                       Show the day (the default)
   add DURATION TITLE         Plan an item, for example: add 1h30m "Study"
   edit [--title T] [--duration D] ITEM
-  delete ITEM                Hide an item. Its history is kept
+  delete [--yes] ITEM        Delete an item, after asking. --yes skips the question
   start ITEM | pause ITEM | resume ITEM | finish ITEM | skip ITEM
   unskip ITEM                Bring back a skipped item
   reopen ITEM                Keep working on a finished item

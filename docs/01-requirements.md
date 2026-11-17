@@ -16,7 +16,9 @@ with the same rules.
   renaming an item always works.
 - Titles are visible text. A title with a hidden or direction-changing character is refused, and the
   error names the character and its position.
-- You can add, edit and remove items. Removing an item hides it but keeps it in the file.
+- You can add, edit and remove items. Removing an item hides it but keeps it in the file. It cannot
+  be brought back, so `flowd delete` asks first at a terminal, and needs `--yes` in scripts and for
+  agents, which never get asked.
 - You can plan today and future days. Past days are only for looking back.
 - `flowd` opens today and `flowd 2026-10-12` opens that date. Commands that need an item take its
   row number from the list or its full ID. Row numbers follow the list order, so starting an item can
