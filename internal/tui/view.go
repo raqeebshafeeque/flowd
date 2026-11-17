@@ -36,7 +36,9 @@ func (m *model) frame() []string {
 	rows := []string{m.border("┌", "┐"), m.side(m.header(inner)), m.border("├", "┤")}
 	var content []string
 	caretRow, caretCol := -1, 0
-	if m.review && m.loaded {
+	if m.help {
+		content = m.helpBody(inner, body)
+	} else if m.review && m.loaded {
 		content = m.reviewBody(inner, body)
 	} else if m.form != nil {
 		panel := detailsHeight(body)
@@ -206,6 +208,10 @@ func (m *model) footer(width int) string {
 		return fit(" Checking whether the last change was saved…", width)
 	case m.form != nil:
 		return fit(m.formFooter(), width)
+	case m.deleting != "":
+		return m.deleteQuestion(width)
+	case m.help:
+		return fit(" scroll [j/k]  back [esc]", width)
 	case m.calendar != nil:
 		return fit(m.calendarFooter(), width)
 	case m.review:
@@ -229,7 +235,7 @@ func (m *model) footer(width int) string {
 			open = hint{"close [esc]", 7}
 		}
 		if m.plannable() {
-			hints = append(hints, hint{"edit [e]", 3})
+			hints = append(hints, hint{"edit [e]", 3}, hint{"delete [d]", 2})
 		}
 		hints = append(hints, open, hint{"move [j/k]", 1})
 	}
@@ -240,7 +246,7 @@ func (m *model) footer(width int) string {
 	if m.viewing() != m.today() {
 		hints = append(hints, hint{"today [t]", 6})
 	}
-	hints = append(hints, hint{"quit [q]", 9})
+	hints = append(hints, hint{"help [?]", 8}, hint{"quit [q]", 9})
 	for keep := 0; ; keep++ {
 		var texts []string
 		for _, h := range hints {
@@ -295,4 +301,16 @@ func actionKey(op planner.Operation) string {
 		}
 	}
 	return ""
+}
+
+// deleteQuestion asks about the item in one footer row. A long title is
+// shortened so the answers always fit.
+func (m *model) deleteQuestion(width int) string {
+	title := ""
+	if i := m.index(); i >= 0 {
+		title = m.state.View.Items[i].Title
+	}
+	answers := "  yes [y]  no [n]"
+	room := width - ansi.StringWidth(answers) - len(" Delete \"\"?")
+	return fit(" Delete \""+ansi.Truncate(title, max(1, room), "…")+"\"?"+answers, width)
 }

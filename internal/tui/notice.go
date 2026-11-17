@@ -18,7 +18,8 @@ type notice struct {
 
 // popup shows err for seven seconds. A new error replaces the old one.
 func (m *model) popup(err error) {
-	m.notice = &notice{feedback: planner.Describe(err), until: m.now().Add(noticeTime)}
+	f := planner.Describe(err)
+	m.notice, m.lastError = &notice{feedback: f, until: m.now().Add(noticeTime)}, &f
 }
 
 // visibleNotice returns the notice if it has not expired yet.

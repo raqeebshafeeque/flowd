@@ -85,6 +85,11 @@ with the same rules.
 - `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
   recorded work, progress as finished out of all items, and every item grouped under its status with
   a count. `j` and `k` scroll it and Esc goes back. Nothing can be changed from it.
+- `d` asks `Delete "Study"?  yes [y]  no [n]` in the footer. Only `y` deletes, `n` and Esc cancel,
+  and no other key answers. A long title is shortened so the answers always show. Past days cannot
+  be changed this way either.
+- `?` opens Help, listing every key. The full wording of the last error stays there after its
+  popup has gone, with its code. Inside a form, `?` is just text.
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 

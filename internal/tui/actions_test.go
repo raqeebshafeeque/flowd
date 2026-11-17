@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,5 +137,60 @@ func TestAnUnconfirmedChangeIsCheckedBeforeAnythingElse(t *testing.T) {
 	w.run(cmd)
 	if w.m.unresolved != nil || w.status(id) != domain.InProgress {
 		t.Fatalf("reconcile should prove the start happened: %v %s", w.m.unresolved, w.status(id))
+	}
+}
+
+func TestDeleteAsksFirstAndOnlyYesDeletes(t *testing.T) {
+	w := newWorkspace(t)
+	id := w.add("Study", "1h")
+	w.refresh()
+	w.press(key("d"))
+	if w.m.deleting != id || !strings.Contains(plain(w), `Delete "Study"?  yes [y]  no [n]`) {
+		t.Fatalf("d should ask in the footer:\n%s", plain(w))
+	}
+	for _, k := range []tea.KeyPressMsg{key("j"), space(), key("x")} {
+		if w.press(k) != nil || w.m.deleting != id {
+			t.Fatal("only y, n or esc may answer the question")
+		}
+	}
+	w.press(key("n"))
+	if w.m.deleting != "" || len(w.m.state.View.Items) != 1 {
+		t.Fatal("n should cancel")
+	}
+	w.press(key("d"), key("esc"))
+	if w.m.deleting != "" {
+		t.Fatal("esc should cancel")
+	}
+	w.press(key("d"))
+	w.run(w.press(key("y")))
+	if len(w.m.state.View.Items) != 0 {
+		t.Fatal("y should delete")
+	}
+	if events, err := w.client.Read(w.m.ctx, planner.Selection{}); err != nil || len(events.View.Items) != 0 {
+		t.Fatal("the item should be hidden from the day", err)
+	}
+}
+
+func TestPastItemsCannotBeDeleted(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Yesterday", "1h")
+	w.now = w.now.Add(24 * time.Hour)
+	w.refresh()
+	w.press(key("c"), key("h"))
+	w.run(w.press(key("enter")))
+	w.press(key("d"))
+	if w.m.deleting != "" {
+		t.Fatal("a past day's item must not be deletable")
+	}
+}
+
+func TestALongTitleStillLeavesRoomForTheAnswers(t *testing.T) {
+	w := newWorkspace(t)
+	w.add(strings.Repeat("Very long title ", 7), "1h")
+	w.refresh()
+	w.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	w.press(key("d"))
+	if text := plain(w); !strings.Contains(text, "…\"?  yes [y]  no [n]") {
+		t.Fatalf("the answers were cut off:\n%s", text)
 	}
 }

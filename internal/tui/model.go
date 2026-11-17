@@ -40,7 +40,11 @@ type model struct {
 
 	review       bool // the review report replaces the list
 	reviewOffset int
-	caret        *tea.Cursor // where the terminal cursor goes, if anywhere
+	help         bool // the help page replaces the list
+	helpOffset   int
+	lastError    *planner.Feedback // kept for help after its popup expires
+	deleting     domain.ID         // the item a delete question is about
+	caret        *tea.Cursor       // where the terminal cursor goes, if anywhere
 }
 
 func newModel(ctx context.Context, client planner.Client, zone *time.Location, now func() time.Time, noColor bool) *model {
@@ -143,6 +147,13 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.form != nil {
 		return m.formKey(msg)
 	}
+	if m.deleting != "" {
+		return m.deleteKey(msg.String())
+	}
+	if m.help {
+		m.helpKey(msg.String())
+		return nil
+	}
 	if m.calendar != nil {
 		return m.calendarKey(msg)
 	}
@@ -176,6 +187,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.openCalendar()
 	case "r":
 		m.openReview()
+	case "d":
+		m.askDelete()
+	case "?":
+		m.toggleHelp()
 	case "t":
 		if !m.busy() {
 			return m.show(m.today())
