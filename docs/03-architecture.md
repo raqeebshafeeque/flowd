@@ -88,6 +88,15 @@ How the parts fit together.
 
 ## Distribution
 
-- Each release has an archive per operating system and processor, with checksums.
+- Each release has an archive per operating system and processor, with checksums. The archive holds
+  the program, the Agent Skill, a VERSION file and the licenses.
 - An `install.sh` script downloads, checks and installs the program and the Agent Skill without
-  needing Go.
+  needing Go. It refuses an archive whose checksum or contents do not match, runs the new program
+  once in an empty private home to check its version, and only then puts the files in place.
+- If installing fails halfway, the previous version is put back. Two installers cannot run at once.
+- `install.sh --from DIR` installs from release files that are already downloaded.
+- Releases are cut by release-please from the commit history. Merging its release PR tags the
+  version. CI then builds the archives as a draft, installs that draft with the real installer and
+  only publishes it if that works.
+- CI builds a full release and installs it with the real installer on every pull request, on Linux
+  and macOS.

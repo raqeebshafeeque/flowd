@@ -37,12 +37,20 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - name: Formatting
+      - name: Pinned release tools
+        run: |
+          sh scripts/ci-tools.sh "$RUNNER_TEMP/tools"
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+      - name: Formatting, scripts, workflows and release config
         if: runner.os == 'Linux'
-        run: test -z "$(gofmt -l .)"
-      - name: Shell scripts
+        run: |
+          test -z "$(gofmt -l .)"
+          shellcheck install.sh scripts/*.sh
+          actionlint
+          goreleaser check
+      - name: Third-party notices are current
         if: runner.os == 'Linux'
-        run: shellcheck scripts/*.sh
+        run: go run ./scripts/notices | cmp - THIRD_PARTY_NOTICES
       - name: Vet and build
         run: |
           go vet ./...
@@ -52,5 +60,10 @@ jobs:
       - name: Dead code
         if: runner.os == 'Linux'
         run: sh scripts/deadcode.sh
+      - name: Build a release and install it with the real installer
+        run: |
+          goreleaser release --snapshot --clean
+          sh install.sh --from dist --version 0.0.0 --bin-dir "$RUNNER_TEMP/bin" --skills-dir "$RUNNER_TEMP/skills"
+          test "$("$RUNNER_TEMP/bin/flowd" --version)" = "flowd 0.0.0"
       - name: Known Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
