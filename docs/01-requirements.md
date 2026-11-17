@@ -5,40 +5,50 @@ with the same rules.
 
 ## What it does
 
-### F1. Plan a day in time blocks
+### F1. Plan the day as a list of efforts
 
-- A block has a title, a planned start and a planned end.
-- You can add, edit and remove blocks. Removing a block hides it but keeps it in the file.
-- Two visible blocks on the same day can never overlap.
-- A block starts and ends on the same day. It cannot run past midnight into the next one.
+- Each item has a title and a duration, which is how long you want to spend on it today.
+- A duration is a budget, not a time slot. There are no start or end times to plan.
+- Durations are whole minutes and can be written as `30`, `30m`, `2h` or `1h30m`.
+- You can add, edit and remove items. Removing an item hides it but keeps it in the file.
 - You can plan today and future days. Past days are only for looking back.
 - `flowd` opens today and `flowd 2026-10-12` opens that date.
 
 ### F2. Track with one key
 
-- Start, pause, resume, finish, skip and stretch are one action each.
-- The real start and end times are recorded for you.
-- Starting a block while another one runs pauses the running one.
-- Stretch moves a block's planned end 15 minutes later and checks for overlap again.
-- Only today's blocks can be started, paused, finished or skipped.
+- Start, pause, resume, finish and skip are one action each.
+- Any item can be started at any time, in any order.
+- Starting an item while another one runs pauses the running one.
+- Going past the duration is fine. Nothing stops and nothing nags you.
+- Finish means you are done with it for today, not that the problem is solved forever.
+- A skipped item can be brought back, and a finished one can be reopened, on the same day.
+- Only today's items can be started, paused, finished or skipped.
 
-### F3. See now, next and overrun
+### F3. Show what really happened
 
-- Now is the running block. If nothing runs, it is the block planned for the current time.
-- Next is the earliest block still to do after now.
-- A block that runs or sits paused past its planned end is flagged as an overrun.
+- Work is the time an item actually ran, adding up every running stretch.
+- Elapsed is the time from its first start until now or until it was closed, pauses included.
+- Ten minutes running, twenty paused and five more running is 15 minutes of work and 35 elapsed.
+- Items you started come first, in the order you first started them. Items not started yet follow.
 
-### F4. Carry work over by hand
+### F4. Close the day at midnight
 
-- Unfinished work only moves to tomorrow when you copy it there yourself.
-- The copy keeps the same clock times unless you give new ones. The original stays as it was.
+- At midnight anything still not done becomes incomplete, even if the app was closed.
+- Done and skipped items stay as they are.
+- Incomplete is final. Tomorrow starts empty until you plan it.
 
-### F5. Review the day
+### F5. Carry work over by hand
 
-- One screen shows the score, plus the blocks that were done, missed, skipped or overrun.
-- The score is the done blocks divided by the planned blocks that were not skipped, as a percentage.
+- Unfinished work only moves to another day when you copy it there yourself.
+- The original stays as it was.
 
-### F6. Never lose a day
+### F6. Review the day
+
+- The total duration you planned and the total work you recorded.
+- Progress as finished items out of all items, like `3 / 5 finished`.
+- Every item grouped by its status.
+
+### F7. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
 
@@ -60,3 +70,4 @@ with the same rules.
 - Importing calendars, phone apps or web apps.
 - Notifications while the app is closed.
 - Searching across days.
+- Recommendations about what to do next, recurring items or editing recorded times.

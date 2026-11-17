@@ -1,41 +1,42 @@
 # Domain
 
-What days and blocks are, and the rules they always follow.
+What days and items are, and the rules they always follow.
 
 ## Words we use
 
-- Block. One planned piece of time, like `09:00 to 10:00 Study`.
-- Planned time is the schedule. Actual time is what really happened.
-- Overrun is a flag, not a status. It means a block is still running or paused after its planned end.
-- Archived means hidden from the plan but still stored.
-- Carryover means copying a block to tomorrow on purpose.
+- Item. Something you want to put effort into today, like `Study` for one hour.
+- Duration. How long you want to spend on an item. It is a budget, not a deadline.
+- Work. The time an item actually ran.
+- Elapsed. The time from an item's first start until now or until it was closed.
+- Archived means hidden from the list but still stored.
+- Carryover means copying an item to another day on purpose.
 
 ## Day
 
 - A day has an id, a date like `2026-10-12` and the timezone it was created in.
 - There is only one day per date.
-- A day has no status of its own. Everything about it comes from its blocks.
-- A day keeps the timezone it was created in, even if you travel.
+- A day keeps its timezone even if you travel.
 - A day ends at midnight in its own timezone. Some days are 23 or 25 hours long because of daylight
   saving time.
 
-## Block
+## Item
 
 - An id, the day it belongs to and a title of 1 to 120 characters.
-- A planned start and a planned end, with the end after the start.
-- An actual start, set the first time it starts and never changed after that.
-- An actual end, set when it is finished and cleared if it is reopened.
-- A status, which is one of todo, in progress, paused, done or skipped.
-- Whether it is archived, which block it was copied from, and when it was created and updated.
+- A duration in whole minutes, always more than zero.
+- A status: todo, in progress, paused, done, skipped or incomplete.
+- When it was first started. This never changes once it is set.
+- When it was finished. This is cleared if it is reopened.
+- When it was closed, by finishing, skipping, archiving or the end of the day.
+- Whether it is archived, which item it was copied from, and when it was created and updated.
 
 ## Events
 
 - Every change adds one event in the same save as the change itself.
-- An event records the block, the old and new status, the time and the reason.
-- The reasons are user, auto pause, carryover, reopen and extend.
-- Events are never edited or deleted.
+- An event records the item, the old and new status, the time and the reason.
+- The reasons are user, auto pause, reopen, carryover and day end.
+- Events are never edited or deleted. Work and elapsed are always worked out from them.
 
-## What can happen to a block
+## What can happen to an item
 
 | From | Action | To |
 | --- | --- | --- |
@@ -43,33 +44,32 @@ What days and blocks are, and the rules they always follow.
 | in progress | pause | paused |
 | paused | resume | in progress |
 | in progress or paused | finish | done |
-| done | reopen, on the same day only | in progress |
 | todo, in progress or paused | skip | skipped |
-| any visible block | delete | archived, status unchanged |
-| todo, in progress or paused | copy | a new todo block tomorrow |
-
-Stretch is not a status change. It moves the planned end 15 minutes later.
+| skipped | unskip | todo if never started, otherwise paused |
+| done | reopen | in progress |
+| todo, in progress or paused | end of the day | incomplete |
+| any visible item | delete | archived, status unchanged |
+| todo, in progress or paused | copy | a new todo item on another day |
 
 ## Rules
 
-- Overlap. A planned block covers its start but not its end, so `09:00 to 10:00` and
-  `10:00 to 11:00` do not overlap. Hidden blocks are ignored.
-- One runner. Only one block can run at a time. Starting another one pauses it automatically.
-- Time. Times are stored in UTC and shown in local time.
-- One day. A planned block has to start and end inside its own day.
-- Today only. Status changes only happen on today's blocks. Planning is allowed for today and the
+- One runner. Only one item can run at a time. Starting another one pauses it automatically.
+- Today only. Status changes only happen on today's items. Planning is allowed for today and the
   future. Past days cannot be changed.
-- Delete. Deleting only hides a block. Nothing is ever removed.
-- Copy. Done, skipped and hidden blocks cannot be copied. A copy that would overlap is refused.
-- Score. The done blocks divided by the visible blocks that were not skipped, as a rounded
-  percentage. An empty day shows a dash instead of a score.
+- End of day. When a day ends, its unfinished items become incomplete at exactly midnight, even if
+  that is noticed later. This happens once, no matter how many times the day is opened.
+- Incomplete is final. It cannot be started, reopened or brought back.
+- First start. The first start time never changes, even after pauses, skips or reopening.
+- Order. Started items come first, ordered by their first start. Items not started yet follow, in
+  the order they were created. Pausing, finishing or editing never moves an item.
+- Time. Times are stored in UTC and shown in local time.
+- Delete. Deleting only hides an item. Nothing is ever removed.
 
 ## An example day
 
-1. The plan has `09:00 to 10:00 Study` and `10:00 to 11:00 Code`.
-2. Study starts at 09:02.
-3. At 10:15 it is still running, so it is flagged as an overrun.
-4. Code starts at 10:16 and Study pauses on its own.
-5. Code is finished at 10:50.
-6. Study is skipped at 11:00.
-7. The review shows one block done and one skipped, so the score is 100%.
+1. The plan has `Study` for 1 hour and `Code` for 2 hours.
+2. Study starts at 09:00.
+3. Code starts at 09:40, so Study pauses on its own with 40 minutes of work.
+4. Code is finished at 11:10 with 1 hour 30 minutes of work.
+5. Study resumes at 11:15 and is finished at 11:30.
+6. Study ends with 55 minutes of work and 2 hours 30 minutes elapsed. Both items are done.

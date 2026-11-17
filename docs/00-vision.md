@@ -1,13 +1,13 @@
 # Vision
 
-flowd helps a developer stay in flow. You plan your day quickly, track it with single keys and look
-back at it in one glance.
+flowd helps a developer stay in flow. You decide how much effort each thing deserves today, track
+the work with single keys and look back at the day in one glance.
 
 ## The problem
 
 - Your day lives in your head and in scattered notes.
 - Opening a notes app or a browser tab just to plan something small breaks your focus.
-- By noon the plan is out of date and you rebuild it from memory.
+- Real days do not follow a schedule. Plans built from clock times are out of date by mid morning.
 - At the end of the day you dig through notes to remember what really happened.
 
 ## Who it is for
@@ -18,15 +18,16 @@ back at it in one glance.
 
 ## Goals
 
-- G1. One look tells you what is running now and what comes next.
-- G2. Every action takes one key: start, pause, finish, skip and stretch.
-- G3. The evening review fits on one screen, with a score and the blocks you missed or overran.
+- G1. Planning is a list of things and how long you want to spend on each, not a timetable.
+- G2. Every action takes one key: start, pause, finish and skip.
+- G3. The evening review fits on one screen and shows what got done and how much time went in.
 - G4. Everything stays on your machine, works offline and opens instantly.
 
 ## What success looks like
 
 - You use it every day for 30 days, for work and study, and never go back to random notes.
 - Planning takes a couple of minutes, tracking takes a keypress and review takes a few seconds.
+- The numbers it shows are always true to what you actually did.
 - You never lose a day, even if the app crashes or gets killed.
 
 ## Constraints

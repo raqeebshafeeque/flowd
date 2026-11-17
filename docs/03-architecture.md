@@ -14,7 +14,7 @@ How the parts fit together.
 | Package | Job |
 | --- | --- |
 | `cmd/flowd` | Starts the program |
-| `internal/domain` | Blocks, status changes and rules, with no file or network access |
+| `internal/domain` | Items, status changes, time and rules, with no file or network access |
 | `internal/store` | SQLite tables, transactions and backups |
 | `internal/planner` | The operations every frontend shares |
 | `internal/cli` | Commands and their output |
@@ -26,14 +26,17 @@ How the parts fit together.
 
 ## Saving
 
-- A change to a block and its event are written in the same transaction.
+- A change to an item and its event are written in the same transaction.
+- Work and elapsed are never stored. They are worked out from the events when they are needed.
+- Closing a day at midnight happens the next time the file is opened, so it works even if flowd
+  was not running. Every operation does this first.
 - Times are stored as UTC text in RFC 3339 format.
 - Only one process writes at a time. A second one gets a clear message that the file is busy.
 
 ## Errors
 
-- An error is a short code plus a plain sentence, printed to stderr. Examples are `ERR_OVERLAP`,
-  `ERR_CORRUPT`, `ERR_LOCKED` and `ERR_DISK_FULL`.
+- An error is a short code plus a plain sentence, printed to stderr. Examples are
+  `ERR_ILLEGAL_TRANSITION`, `ERR_CORRUPT`, `ERR_LOCKED` and `ERR_DISK_FULL`.
 - The store hands errors back with their cause and never prints anything itself.
 - A damaged or unknown file is refused and left alone, never replaced.
 
