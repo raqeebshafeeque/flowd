@@ -53,10 +53,16 @@ How the parts fit together.
 
 ## Doctor and backup
 
-- `flowd backup` writes a consistent copy next to the database, ending in `.bak`.
-- `flowd doctor` checks the file, its permissions, its schema version and its integrity, then
-  prints `OK` or the first problem it found.
-- `flowd doctor --repair` is the only command that restores the backup.
+- `flowd backup` writes a consistent copy next to the database, ending in `.bak`. It includes
+  changes that SQLite has not yet moved out of its WAL file. The old backup is only replaced once the
+  new one is complete and on disk.
+- `flowd doctor` checks the file, its permissions, its schema version and its integrity, and
+  whether another flowd is using it. It prints `OK` or the first problem it found and changes nothing.
+- `flowd doctor --repair` is the only command that restores the backup. It checks the backup first.
+  The current files are never deleted. They move into a private recovery folder next to the
+  database, so changes made after the backup can still be recovered by hand.
+- Repair writes its plan to a `.repair` file before moving anything. If it is interrupted, flowd
+  refuses to open the database until `flowd doctor --repair` is run again to finish the job.
 
 ## Agents
 

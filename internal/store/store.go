@@ -68,6 +68,9 @@ func Open(ctx context.Context, path string) (_ *Store, err error) {
 			err = errors.Join(err, lock.Close())
 		}
 	}()
+	if _, err := os.Stat(absolute + repairSuffix); err == nil {
+		return nil, fmt.Errorf("open %q: %w", absolute, ErrIncompleteRepair)
+	}
 	if err := inspectExisting(ctx, absolute); err != nil {
 		return nil, fmt.Errorf("open %q: %w", absolute, err)
 	}
