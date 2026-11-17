@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/raqeebshafeeque/flowd/compare/v0.2.0...v0.3.0) (2026-11-17)
+
+
+### Features
+
+* limit Duration to the time left in the day ([#22](https://github.com/raqeebshafeeque/flowd/issues/22)) ([436c535](https://github.com/raqeebshafeeque/flowd/commit/436c535bc0cd0442d3953b28a4d888b8c62aaff6))
+
+
+### Bug Fixes
+
+* **security:** refuse hidden characters in titles ([#18](https://github.com/raqeebshafeeque/flowd/issues/18)) ([d10e91f](https://github.com/raqeebshafeeque/flowd/commit/d10e91fbb6b29648699af085214d9fb79567f017))
+
+
+### Performance Improvements
+
+* check integrity only when due and refresh the TUI on change ([#21](https://github.com/raqeebshafeeque/flowd/issues/21)) ([5c64008](https://github.com/raqeebshafeeque/flowd/commit/5c64008488371811ee106e3d9a5aae1acb9702ca))
+
 ## [0.2.0](https://github.com/raqeebshafeeque/flowd/compare/v0.1.0...v0.2.0) (2026-11-17)
 
 
