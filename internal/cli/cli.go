@@ -120,7 +120,7 @@ func finish(out io.Writer, o options, r planner.Result, err error) error {
 }
 
 func backup(ctx context.Context, out io.Writer, o options, path string) error {
-	s, err := store.Open(ctx, path)
+	s, err := store.Open(ctx, path, store.WithFullCheck())
 	if err != nil {
 		return err
 	}

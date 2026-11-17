@@ -3,6 +3,8 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -40,6 +42,36 @@ func NewDay(date, timezone string, now time.Time) (Day, error) {
 // next one, in UTC. Both are midnight in the day's own timezone, so a day can
 // be 23 or 25 hours long around daylight saving changes.
 func (d Day) Bounds() (start, end time.Time, err error) {
+	key := [2]string{d.Date, d.Timezone}
+	if known, ok := bounds.Load(key); ok {
+		b := known.(dayBounds)
+		return b.start, b.end, b.err
+	}
+	start, end, err = d.findBounds()
+	if boundsCount.Add(1) > maxBounds {
+		// Browsing years of dates must not grow memory without limit.
+		bounds.Clear()
+		boundsCount.Store(1)
+	}
+	bounds.Store(key, dayBounds{start, end, err})
+	return start, end, err
+}
+
+// Bounds only depends on the date and the zone name, and measuring a day
+// asks for it once per event, so the answer (a refusal too) is remembered.
+type dayBounds struct {
+	start, end time.Time
+	err        error
+}
+
+const maxBounds = 4096
+
+var (
+	bounds      sync.Map
+	boundsCount atomic.Int64
+)
+
+func (d Day) findBounds() (start, end time.Time, err error) {
 	date, err := time.Parse("2006-01-02", d.Date)
 	if err != nil || date.Format("2006-01-02") != d.Date {
 		return time.Time{}, time.Time{}, fmt.Errorf("%w: %q", ErrInvalidDate, d.Date)

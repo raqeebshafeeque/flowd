@@ -71,3 +71,24 @@ func TestRequireOpen(t *testing.T) {
 		}
 	}
 }
+
+func TestBoundsAreRememberedWithoutChangingTheAnswer(t *testing.T) {
+	for _, day := range []Day{{Date: "2026-11-17", Timezone: "UTC"}, {Date: "2026-03-08", Timezone: "America/New_York"}, {Date: "2026-02-30", Timezone: "UTC"}, {Date: "2026-11-17", Timezone: "Mars/Olympus"}} {
+		wantStart, wantEnd, wantErr := day.findBounds()
+		for i := 0; i < 3; i++ {
+			start, end, err := day.Bounds()
+			if !start.Equal(wantStart) || !end.Equal(wantEnd) || (err == nil) != (wantErr == nil) {
+				t.Fatalf("%+v: remembered bounds differ", day)
+			}
+		}
+	}
+}
+
+func BenchmarkBounds(b *testing.B) {
+	day := Day{Date: "2026-11-17", Timezone: "America/New_York"}
+	for i := 0; i < b.N; i++ {
+		if _, _, err := day.Bounds(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

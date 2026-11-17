@@ -111,3 +111,24 @@ func TestColorFollowsNoColor(t *testing.T) {
 		t.Fatal("the brand should be teal in color mode")
 	}
 }
+
+// A frame takes well under a millisecond. The budget is far above that, so
+// it only fails if drawing starts doing something expensive, like reading.
+func TestDrawingAFrameIsFast(t *testing.T) {
+	if testing.Short() {
+		t.Skip("timing budgets only run without -short")
+	}
+	w := newWorkspace(t)
+	for i := 0; i < 30; i++ {
+		w.add("Item", "30m")
+	}
+	w.refresh()
+	start := time.Now()
+	for i := 0; i < 100; i++ {
+		w.m.recount()
+		w.m.View()
+	}
+	if per := time.Since(start) / 100; per > 20*time.Millisecond {
+		t.Errorf("a frame took %v, budget 20ms", per)
+	}
+}

@@ -39,9 +39,15 @@ How the parts fit together.
   busy. The lock lives in a separate `.lock` file next to the database, which is never deleted.
 - The database is created private to you, and its folder too. A file that others can read is
   refused.
-- When flowd opens a file that already exists, it first checks it read only: SQLite looks for
-  damage and flowd checks the schema version and tables. An empty, damaged or foreign file is
+- When flowd opens a file that already exists, it first checks it read only. The schema version and
+  tables are checked every time. SQLite's full scan for damage reads the whole file, so it runs only
+  when it can tell something: when the file changed since flowd last closed it cleanly, when the last
+  passed scan is more than a day old, when a crash left a journal behind, at the start of a workspace
+  session, and always for `flowd backup` and `flowd doctor`. An empty, damaged or foreign file is
   refused and left exactly as it was.
+- After each clean close flowd writes a private `flowd.sqlite.check` file with the database's size,
+  modification time and SQLite change counter. Anything wrong with that file only causes a scan,
+  never a skip. On two years of daily use, this makes opening take a few milliseconds.
 - Hard links and special files are refused. A symbolic link to a real database is followed.
 
 ## Shared operations
@@ -91,8 +97,12 @@ How the parts fit together.
 
 ## Terminal workspace
 
-- The workspace reads the day through the planner once a second, so it never holds the database
-  between keys and a change made from the command line shows up within a second.
+- The workspace never holds the database between keys. Every second it compares a fingerprint of
+  the database file, taken with stat alone, with the one from its last read. It reads again only when
+  that changed, after its own change, when the day on screen moved on at midnight, and at least
+  every thirty seconds. In between it measures the running work again from what it already has, so
+  the counters keep moving without touching the file. A change made from the command line shows up
+  within a second or two.
 - If a read fails, the last good day stays on screen with the error under it.
 - The workspace remembers which date is on screen, or simply "today" so it moves on by itself at
   midnight. A read that comes back for a date no longer on screen is ignored.

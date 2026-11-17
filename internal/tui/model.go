@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
+	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
 // Minimum size of a usable workspace.
@@ -45,6 +46,10 @@ type model struct {
 	lastError    *planner.Feedback // kept for help after its popup expires
 	deleting     domain.ID         // the item a delete question is about
 	caret        *tea.Cursor       // where the terminal cursor goes, if anywhere
+
+	signature store.Signature // the file when the day on screen was read
+	signed    bool
+	lastRead  time.Time
 }
 
 func newModel(ctx context.Context, client planner.Client, zone *time.Location, now func() time.Time, noColor bool) *model {
@@ -53,9 +58,11 @@ func newModel(ctx context.Context, client planner.Client, zone *time.Location, n
 
 type (
 	stateMsg struct {
-		state planner.State
-		err   error
-		date  string // which date was asked for
+		state     planner.State
+		err       error
+		date      string          // which date was asked for
+		signature store.Signature // the file as it was just after the read
+		signed    bool
 	}
 	tickMsg struct{}
 )
@@ -68,7 +75,11 @@ func (m *model) read() tea.Cmd {
 	return func() tea.Msg {
 		date := m.date
 		state, err := m.client.Read(m.ctx, planner.Selection{Date: date})
-		return stateMsg{state, err, date}
+		// The signature is taken after the read, because closing the database
+		// folds SQLite's WAL into the file and changes it. A write by someone
+		// else in the moment between is caught by the thirty second read.
+		signature, sigErr := m.client.Signature()
+		return stateMsg{state, err, date, signature, sigErr == nil}
 	}
 }
 
@@ -86,7 +97,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stateMsg:
 		m.receive(msg)
 	case tickMsg:
-		cmds := []tea.Cmd{m.read(), tick()}
+		cmds := []tea.Cmd{tick()}
+		if m.readDue() {
+			cmds = append(cmds, m.read())
+		} else {
+			m.recount()
+		}
 		if m.unresolved != nil {
 			cmds = append(cmds, m.reconcile())
 		}
@@ -117,6 +133,7 @@ func (m *model) receive(msg stateMsg) {
 	}
 	previous := m.index()
 	m.state, m.loaded = msg.state, true
+	m.signature, m.signed, m.lastRead = msg.signature, msg.signed, m.now()
 	items := m.state.View.Items
 	switch {
 	case len(items) == 0:
@@ -223,3 +240,33 @@ func (m *model) trackable() bool { return m.loaded && m.viewing() == m.today() }
 // plannable says whether items on screen can be added or edited: today's and
 // later days' can.
 func (m *model) plannable() bool { return m.loaded && m.viewing() >= m.today() }
+
+// refreshInterval is the longest the workspace goes without reading, even
+// when the file looks unchanged, in case a clock or filesystem hides a change.
+const refreshInterval = 30 * time.Second
+
+// readDue says whether the next tick must read storage. Reading is only
+// needed when the file may have changed, when the day on screen moved on at
+// midnight, or after the refresh interval.
+func (m *model) readDue() bool {
+	if !m.loaded || !m.signed || m.err != nil || m.state.Day.Date != m.viewing() || m.now().Sub(m.lastRead) >= refreshInterval {
+		return true
+	}
+	current, err := m.client.Signature()
+	return err != nil || current != m.signature
+}
+
+// recount measures the day on screen again at the current time, from what is
+// already in memory, so running work keeps counting without a read.
+func (m *model) recount() {
+	if !m.loaded {
+		return
+	}
+	items := make([]domain.Item, 0, len(m.state.View.Items))
+	for _, item := range m.state.View.Items {
+		items = append(items, item.Item)
+	}
+	if view, err := planner.NewView(m.state.Day, items, m.state.History, m.now()); err == nil {
+		m.state.View = view
+	}
+}

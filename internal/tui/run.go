@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -20,6 +21,7 @@ func Run(ctx context.Context, client planner.Client, in, out *os.File) error {
 	if !term.IsTerminal(in.Fd()) || !term.IsTerminal(out.Fd()) || os.Getenv("TERM") == "" || os.Getenv("TERM") == "dumb" {
 		return planner.Refusal(errors.Join(planner.ErrInput, ErrNoTerminal), "The workspace needs a terminal", "Use flowd list in scripts and pipes")
 	}
+	client.CheckedOnce = new(atomic.Bool) // the first read of a session runs the full integrity scan
 	m := newModel(ctx, client, client.Zone, time.Now, os.Getenv("NO_COLOR") != "")
 	_, err := tea.NewProgram(m, tea.WithInput(in), tea.WithOutput(out), tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
