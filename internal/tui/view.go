@@ -15,6 +15,7 @@ import (
 // resize never leaves stray characters behind.
 func (m *model) View() tea.View {
 	var rows []string
+	m.caret = nil
 	if m.usable() {
 		rows = m.frame()
 	} else {
@@ -22,6 +23,9 @@ func (m *model) View() tea.View {
 	}
 	v := tea.NewView(strings.Join(rows, "\n"))
 	v.AltScreen = true
+	if m.usable() {
+		v.Cursor = m.caret
+	}
 	return v
 }
 
@@ -31,7 +35,15 @@ func (m *model) frame() []string {
 	body := m.height - 6
 	rows := []string{m.border("┌", "┐"), m.side(m.header(inner)), m.border("├", "┤")}
 	var content []string
-	if m.details {
+	caretRow, caretCol := -1, 0
+	if m.form != nil {
+		panel := detailsHeight(body)
+		list := body - panel - 1
+		content = append(m.list(inner, list), m.style.paint("border", strings.Repeat("─", inner)))
+		rows, row, col := m.formRows(inner, panel)
+		content = append(content, rows...)
+		caretRow, caretCol = list+1+row, col
+	} else if m.details {
 		detailRows := detailsHeight(body)
 		content = append(m.list(inner, body-detailRows-1), m.style.paint("border", strings.Repeat("─", inner)))
 		content = append(content, m.detailRows(inner, detailRows)...)
@@ -43,6 +55,11 @@ func (m *model) frame() []string {
 	}
 	for _, row := range content {
 		rows = append(rows, m.side(row))
+	}
+	m.caret = nil
+	if caretRow >= 0 && !m.form.discard && caretRow < len(content) {
+		m.caret = tea.NewCursor(1+caretCol, 3+caretRow)
+		m.caret.Shape = tea.CursorBar
 	}
 	return append(rows, m.border("├", "┤"), m.side(m.footer(inner)), m.border("└", "┘"))
 }
@@ -179,25 +196,39 @@ func (m *model) footer(width int) string {
 	switch {
 	case m.unresolved != nil:
 		return fit(" Checking whether the last change was saved…", width)
+	case m.form != nil:
+		return fit(m.formFooter(), width)
 	case m.pending:
 		return fit(" Saving…", width)
 	}
-	var hints []string
+	type hint struct {
+		text string
+		keep int // higher is dropped later when the row is too narrow
+	}
+	var hints []hint
 	if i := m.index(); i >= 0 {
 		for _, op := range allowed(m.state.View.Items[i]) {
-			hints = append(hints, string(op)+" ["+actionKey(op)+"]")
+			hints = append(hints, hint{string(op) + " [" + actionKey(op) + "]", 5})
 		}
-	}
-	if m.selected != "" {
+		open := "details [enter]"
 		if m.details {
-			hints = append(hints, "close [esc]")
-		} else {
-			hints = append(hints, "details [enter]")
+			open = "close [esc]"
 		}
-		hints = append(hints, "move [j/k]")
+		hints = append(hints, hint{"edit [e]", 3}, hint{open, 2}, hint{"move [j/k]", 1})
 	}
-	hints = append(hints, "quit [q]")
-	return fit(" "+strings.Join(hints, "  "), width)
+	hints = append(hints, hint{"new [n]", 4}, hint{"quit [q]", 9})
+	for keep := 0; ; keep++ {
+		var texts []string
+		for _, h := range hints {
+			if h.keep >= keep {
+				texts = append(texts, h.text)
+			}
+		}
+		row := " " + strings.Join(texts, "  ")
+		if ansi.StringWidth(row) <= width || keep > 9 {
+			return fit(row, width)
+		}
+	}
 }
 
 // suspended is all that shows in a window smaller than 80 by 24.

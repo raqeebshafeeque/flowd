@@ -71,6 +71,11 @@ with the same rules.
 - Started without a terminal, it refuses and suggests `flowd list`.
 - Space starts, pauses or resumes the selected item. `f` finishes, `s` skips, `u` unskips and `R`
   reopens. The footer only offers what the selected item can do.
+- `n` adds an item and `e` edits the selected one, in a form at the bottom with a Title and a
+  Duration field. While the form is open every letter is text, never an action. Tab and Enter move
+  between the fields, Enter never saves, Ctrl+S saves, and Esc asks before throwing away changes.
+- An empty Duration shows the example `e.g. 30m, 1h, 1h30m`. A bad title or Duration is explained
+  under its field and what was typed stays. Saving an edit that changed nothing just closes it.
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 
