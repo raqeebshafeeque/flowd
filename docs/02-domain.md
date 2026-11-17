@@ -9,7 +9,6 @@ What days and items are, and the rules they always follow.
 - Work. The time an item actually ran.
 - Elapsed. The time from an item's first start until now or until it was closed.
 - Archived means hidden from the list but still stored.
-- Carryover means copying an item to another day on purpose.
 
 ## Day
 
@@ -27,13 +26,13 @@ What days and items are, and the rules they always follow.
 - When it was first started. This never changes once it is set.
 - When it was finished. This is cleared if it is reopened.
 - When it was closed, by finishing, skipping, archiving or the end of the day.
-- Whether it is archived, which item it was copied from, and when it was created and updated.
+- Whether it is archived, and when it was created and updated.
 
 ## Events
 
 - Every change adds one event in the same save as the change itself.
 - An event records the item, the old and new status, the time and the reason.
-- The reasons are user, auto pause, reopen, carryover and day end.
+- The reasons are user, auto pause, reopen and day end.
 - Events are never edited or deleted. Work and elapsed are always worked out from them.
 
 ## What can happen to an item
@@ -49,7 +48,6 @@ What days and items are, and the rules they always follow.
 | done | reopen | in progress |
 | todo, in progress or paused | end of the day | incomplete |
 | any visible item | delete | archived, status unchanged |
-| todo, in progress or paused | copy | a new todo item on another day |
 
 ## Rules
 
@@ -59,6 +57,8 @@ What days and items are, and the rules they always follow.
 - End of day. When a day ends, its unfinished items become incomplete at exactly midnight, even if
   that is noticed later. This happens once, no matter how many times the day is opened.
 - Incomplete is final. It cannot be started, reopened or brought back.
+- Every day stands alone. Nothing is copied, repeated or moved to another day. If you want to keep
+  working on something tomorrow, you plan it again tomorrow.
 - First start. The first start time never changes, even after pauses, skips or reopening.
 - Order. Started items come first, ordered by their first start. Items not started yet follow, in
   the order they were created. Pausing, finishing or editing never moves an item.

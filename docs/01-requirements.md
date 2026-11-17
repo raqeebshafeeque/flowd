@@ -37,18 +37,13 @@ with the same rules.
 - Done and skipped items stay as they are.
 - Incomplete is final. Tomorrow starts empty until you plan it.
 
-### F5. Carry work over by hand
-
-- Unfinished work only moves to another day when you copy it there yourself.
-- The original stays as it was.
-
-### F6. Review the day
+### F5. Review the day
 
 - The total duration you planned and the total work you recorded.
 - Progress as finished items out of all items, like `3 / 5 finished`.
 - Every item grouped by its status.
 
-### F7. Never lose a day
+### F6. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
 
@@ -70,4 +65,5 @@ with the same rules.
 - Importing calendars, phone apps or web apps.
 - Notifications while the app is closed.
 - Searching across days.
-- Recommendations about what to do next, recurring items or editing recorded times.
+- Recommendations about what to do next, recurring items, copying items between days or editing
+  recorded times.
