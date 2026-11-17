@@ -44,6 +44,21 @@ How the parts fit together.
   refused and left exactly as it was.
 - Hard links and special files are refused. A symbolic link to a real database is followed.
 
+## Shared operations
+
+- Every operation opens the file, reads the clock once, closes any day whose midnight has passed,
+  does its work and closes the file again. Nothing holds the database while a person is thinking.
+- What counts as today comes from this computer's timezone. Choosing another timezone for a day
+  cannot reopen a day that has already passed here.
+- A change names the revision of the item it was based on, a fingerprint of the item and its whole
+  history. If the item has changed since, the change is refused.
+- Starting, resuming or reopening an item pauses the running one in the same save, at the same
+  instant.
+- Every change ends in one of three outcomes. Refused means nothing was saved. Confirmed means it is
+  on disk. Unconfirmed means the save failed in a way that leaves it unknown whether it landed.
+- An unconfirmed change is never retried blindly. flowd looks for it in the saved history first and
+  only then says whether it happened. A day closing at midnight afterwards does not hide that it did.
+
 ## Errors
 
 - An error is a short code plus a plain sentence, printed to stderr. Examples are
