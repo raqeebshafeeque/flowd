@@ -36,7 +36,9 @@ func (m *model) frame() []string {
 	rows := []string{m.border("┌", "┐"), m.side(m.header(inner)), m.border("├", "┤")}
 	var content []string
 	caretRow, caretCol := -1, 0
-	if m.form != nil {
+	if m.review && m.loaded {
+		content = m.reviewBody(inner, body)
+	} else if m.form != nil {
 		panel := detailsHeight(body)
 		list := body - panel - 1
 		content = append(m.list(inner, list), m.style.paint("border", strings.Repeat("─", inner)))
@@ -206,6 +208,8 @@ func (m *model) footer(width int) string {
 		return fit(m.formFooter(), width)
 	case m.calendar != nil:
 		return fit(m.calendarFooter(), width)
+	case m.review:
+		return fit(" scroll [j/k]  back [esc]  quit [q]", width)
 	case m.pending:
 		return fit(" Saving…", width)
 	}
@@ -220,19 +224,19 @@ func (m *model) footer(width int) string {
 				hints = append(hints, hint{string(op) + " [" + actionKey(op) + "]", 5})
 			}
 		}
-		open := "details [enter]"
+		open := hint{"details [enter]", 2}
 		if m.details {
-			open = "close [esc]"
+			open = hint{"close [esc]", 7}
 		}
 		if m.plannable() {
 			hints = append(hints, hint{"edit [e]", 3})
 		}
-		hints = append(hints, hint{open, 2}, hint{"move [j/k]", 1})
+		hints = append(hints, open, hint{"move [j/k]", 1})
 	}
 	if m.plannable() {
 		hints = append(hints, hint{"new [n]", 4})
 	}
-	hints = append(hints, hint{"calendar [c]", 4})
+	hints = append(hints, hint{"review [r]", 3}, hint{"calendar [c]", 3})
 	if m.viewing() != m.today() {
 		hints = append(hints, hint{"today [t]", 6})
 	}
