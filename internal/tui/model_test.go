@@ -109,8 +109,8 @@ func TestSelectionFollowsTheItemWhenTheOrderChanges(t *testing.T) {
 	w := newWorkspace(t)
 	a, b := w.add("A", "1h"), w.add("B", "1h")
 	w.refresh()
-	w.press(key("j")) // select B
-	w.act(planner.Start, b)     // B moves to the top
+	w.press(key("j"))       // select B
+	w.act(planner.Start, b) // B moves to the top
 	w.refresh()
 	if w.m.selected != b || w.m.index() != 0 {
 		t.Fatalf("selection lost B: %v at %d", w.m.selected, w.m.index())
