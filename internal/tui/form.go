@@ -167,9 +167,9 @@ func (m *model) save() tea.Cmd {
 		return nil
 	}
 	title, duration := f.fields[0].value(), f.fields[1].value()
-	intent := planner.Intent{Operation: planner.Add, Title: &title, Duration: &duration}
+	intent := planner.Intent{Operation: planner.Add, Selection: planner.Selection{Date: m.date}, Title: &title, Duration: &duration}
 	if f.edit {
-		intent = planner.Intent{Operation: planner.Edit, ItemID: f.itemID, Revision: f.revision}
+		intent = planner.Intent{Operation: planner.Edit, Selection: planner.Selection{Date: m.date}, ItemID: f.itemID, Revision: f.revision}
 		if title != f.original[0] {
 			intent.Title = &title
 		}

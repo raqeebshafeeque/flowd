@@ -84,6 +84,8 @@ How the parts fit together.
 - The workspace reads the day through the planner once a second, so it never holds the database
   between keys and a change made from the command line shows up within a second.
 - If a read fails, the last good day stays on screen with the error under it.
+- The workspace remembers which date is on screen, or simply "today" so it moves on by itself at
+  midnight. A read that comes back for a date no longer on screen is ignored.
 - Only one change is in flight at a time. While it saves, other changes are ignored.
 - If a change ends unconfirmed, the workspace asks the planner to reconcile it, again on every tick
   until the history answers, and no other change can start until then.

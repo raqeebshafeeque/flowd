@@ -71,7 +71,7 @@ func (m *model) track(op planner.Operation) tea.Cmd {
 		return nil
 	}
 	item := m.state.View.Items[i]
-	intent := planner.Intent{Operation: op, ItemID: item.ID, Revision: m.state.Revisions[item.ID]}
+	intent := planner.Intent{Operation: op, Selection: planner.Selection{Date: m.date}, ItemID: item.ID, Revision: m.state.Revisions[item.ID]}
 	m.pending = true
 	return func() tea.Msg {
 		r, err := m.client.Do(m.ctx, intent)

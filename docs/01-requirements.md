@@ -76,6 +76,12 @@ with the same rules.
   between the fields, Enter never saves, Ctrl+S saves, and Esc asks before throwing away changes.
 - An empty Duration shows the example `e.g. 30m, 1h, 1h30m`. A bad title or Duration is explained
   under its field and what was typed stays. Saving an edit that changed nothing just closes it.
+- `c` opens a month calendar at the bottom. `h` and `l` move a day, `j` and `k` a week, `<` and `>`
+  a month, `t` goes to today and Enter shows the chosen day. The cursor date is in brackets, like
+  `[17]`. Looking at a day never creates it.
+- When another day is on screen the header says `Viewing 2026-11-18` and `t` comes back to today.
+  The footer only offers what that day allows: tracking today, planning today and later, and only
+  looking on past days.
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 
