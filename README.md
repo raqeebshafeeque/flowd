@@ -41,7 +41,9 @@ flowd review                # totals, progress and every item by status
 - Only today can be tracked. Today and later days can be planned. Past days are for looking back.
 
 Run `flowd` with no arguments for the terminal workspace. Move with `j` and `k`, open the details
-of an item with `enter`, close them with `esc` and quit with `q`. The window needs to be at least 80
+of an item with `enter`, close them with `esc` and quit with `q`. Space starts, pauses or resumes
+the selected item, `f` finishes it, `s` skips it, `u` brings back a skipped item and `R` reopens a
+finished one. The window needs to be at least 80
 by 24.
 
 Add `--json` to any command for output that scripts can read, and `--date 2026-11-20` to work on

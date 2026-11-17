@@ -69,6 +69,10 @@ with the same rules.
   the window larger, and every key except Ctrl+C does nothing, so nothing happens that cannot be
   seen.
 - Started without a terminal, it refuses and suggests `flowd list`.
+- Space starts, pauses or resumes the selected item. `f` finishes, `s` skips, `u` unskips and `R`
+  reopens. The footer only offers what the selected item can do.
+- Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
+  above the footer for seven seconds.
 
 ### F8. Never lose a day
 

@@ -30,6 +30,10 @@ type model struct {
 	err      error
 	selected domain.ID
 	details  bool
+
+	pending    bool            // a change is being saved
+	unresolved *planner.Result // a change whose outcome is not known yet
+	notice     *notice
 }
 
 func newModel(ctx context.Context, client planner.Client, zone *time.Location, now func() time.Time, noColor bool) *model {
@@ -69,7 +73,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stateMsg:
 		m.receive(msg)
 	case tickMsg:
-		return m, tea.Batch(m.read(), tick())
+		cmds := []tea.Cmd{m.read(), tick()}
+		if m.unresolved != nil {
+			cmds = append(cmds, m.reconcile())
+		}
+		return m, tea.Batch(cmds...)
+	case actionMsg:
+		return m, m.finished(msg)
+	case reconcileMsg:
+		return m, m.reconciled(msg)
 	case tea.KeyPressMsg:
 		return m, m.key(msg)
 	}
@@ -123,6 +135,14 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = m.selected != "" && !m.details
 	case "esc":
 		m.details = false
+	case "space":
+		if i := m.index(); i >= 0 {
+			return m.track(spaceAction(m.state.View.Items[i].Status))
+		}
+	default:
+		if op, ok := trackKeys[msg.String()]; ok {
+			return m.track(op)
+		}
 	}
 	return nil
 }
