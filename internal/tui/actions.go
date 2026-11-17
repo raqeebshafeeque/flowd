@@ -84,7 +84,13 @@ func (m *model) track(op planner.Operation) tea.Cmd {
 // else can change.
 func (m *model) finished(msg actionMsg) tea.Cmd {
 	m.pending = false
+	formError := false
+	if m.form != nil && m.form.saving {
+		m.formFinished(msg)
+		formError = m.form != nil && m.form.errors != [2]string{}
+	}
 	switch {
+	case formError:
 	case msg.result.Outcome == planner.Unconfirmed:
 		r := msg.result
 		m.unresolved = &r
@@ -114,5 +120,8 @@ func (m *model) reconciled(msg reconcileMsg) tea.Cmd {
 		return nil
 	}
 	m.unresolved = nil
+	if m.form != nil && msg.result.Outcome == planner.Confirmed {
+		m.selected, m.form = msg.result.Item.ID, nil
+	}
 	return m.read()
 }

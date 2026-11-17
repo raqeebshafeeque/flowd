@@ -70,6 +70,14 @@ func key(text string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyEscape}
 	case "down":
 		return tea.KeyPressMsg{Code: tea.KeyDown}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
+	case "home":
+		return tea.KeyPressMsg{Code: tea.KeyHome}
+	case "delete":
+		return tea.KeyPressMsg{Code: tea.KeyDelete}
+	case "backspace":
+		return tea.KeyPressMsg{Code: tea.KeyBackspace}
 	case "ctrl+c":
 		return tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 	}

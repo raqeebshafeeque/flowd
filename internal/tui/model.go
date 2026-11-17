@@ -34,6 +34,8 @@ type model struct {
 	pending    bool            // a change is being saved
 	unresolved *planner.Result // a change whose outcome is not known yet
 	notice     *notice
+	form       *form
+	caret      *tea.Cursor // where the terminal cursor goes, if anywhere
 }
 
 func newModel(ctx context.Context, client planner.Client, zone *time.Location, now func() time.Time, noColor bool) *model {
@@ -84,6 +86,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.reconciled(msg)
 	case tea.KeyPressMsg:
 		return m, m.key(msg)
+	case tea.PasteMsg:
+		if m.usable() {
+			m.paste(msg.Content)
+		}
 	}
 	return m, nil
 }
@@ -124,6 +130,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if !m.usable() {
 		return nil // nothing happens that cannot be seen
 	}
+	if m.form != nil {
+		return m.formKey(msg)
+	}
 	switch msg.String() {
 	case "q":
 		return tea.Quit
@@ -135,6 +144,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = m.selected != "" && !m.details
 	case "esc":
 		m.details = false
+	case "n":
+		m.openNew()
+	case "e":
+		m.openEdit()
 	case "space":
 		if i := m.index(); i >= 0 {
 			return m.track(spaceAction(m.state.View.Items[i].Status))
