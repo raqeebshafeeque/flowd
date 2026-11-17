@@ -60,7 +60,7 @@ func printDay(out io.Writer, o options, v planner.View) error {
 func printReview(out io.Writer, v planner.View) error {
 	done, total := v.Finished()
 	fmt.Fprintln(out, "Summary")
-	fmt.Fprintf(out, "  Total duration   %s\n", totalDuration(v))
+	fmt.Fprintf(out, "  Total duration   %s\n", planner.TotalDuration(v))
 	fmt.Fprintf(out, "  Recorded work    %s\n\n", planner.Span(v.WorkNS))
 	fmt.Fprintln(out, "Progress")
 	fmt.Fprintf(out, "  %d / %d finished\n\n", done, total)
@@ -117,18 +117,6 @@ func printEvents(out io.Writer, o options, events []domain.Event) error {
 		fmt.Fprintf(table, "%d\t%s\t%s\t%s\n", e.Seq, e.OccurredAt.UTC().Format("2006-01-02 15:04:05"), change, e.Reason)
 	}
 	return table.Flush()
-}
-
-func totalDuration(v planner.View) string {
-	minutes := v.DurationMinutes
-	if minutes.Sign() == 0 {
-		return "0m"
-	}
-	if minutes.IsInt64() {
-		text, _ := domain.FormatDuration(minutes.Int64())
-		return text
-	}
-	return minutes.String() + "m"
 }
 
 // heading turns 2026-11-17 into "Tue 17 Nov 2026".

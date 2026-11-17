@@ -34,3 +34,18 @@ func TestLabels(t *testing.T) {
 		t.Fatal("unexpected labels")
 	}
 }
+
+func TestTotalDuration(t *testing.T) {
+	v := View{Summary: domain.NewSummary()}
+	if TotalDuration(v) != "0m" {
+		t.Fatal("an empty day totals 0m")
+	}
+	v.DurationMinutes.SetInt64(150)
+	if TotalDuration(v) != "2h30m" {
+		t.Fatalf("got %s", TotalDuration(v))
+	}
+	v.DurationMinutes.Lsh(v.DurationMinutes, 64)
+	if got := TotalDuration(v); got != v.DurationMinutes.String()+"m" {
+		t.Fatalf("a huge total should be written in minutes, got %s", got)
+	}
+}

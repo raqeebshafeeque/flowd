@@ -82,6 +82,9 @@ with the same rules.
 - When another day is on screen the header says `Viewing 2026-11-18` and `t` comes back to today.
   The footer only offers what that day allows: tracking today, planning today and later, and only
   looking on past days.
+- `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
+  recorded work, progress as finished out of all items, and every item grouped under its status with
+  a count. `j` and `k` scroll it and Esc goes back. Nothing can be changed from it.
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 

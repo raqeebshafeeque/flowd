@@ -38,7 +38,7 @@ func (m *model) openCalendar() {
 	if err != nil {
 		return
 	}
-	m.calendar, m.details = &calendar{cursor: start}, false
+	m.calendar, m.details, m.review = &calendar{cursor: start}, false, false
 }
 
 // calendarKey handles keys while the calendar is open.

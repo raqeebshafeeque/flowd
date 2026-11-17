@@ -36,8 +36,11 @@ type model struct {
 	notice     *notice
 	form       *form
 	calendar   *calendar
-	date       string      // the date on screen, or "" for today
-	caret      *tea.Cursor // where the terminal cursor goes, if anywhere
+	date       string // the date on screen, or "" for today
+
+	review       bool // the review report replaces the list
+	reviewOffset int
+	caret        *tea.Cursor // where the terminal cursor goes, if anywhere
 }
 
 func newModel(ctx context.Context, client planner.Client, zone *time.Location, now func() time.Time, noColor bool) *model {
@@ -143,6 +146,13 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.calendar != nil {
 		return m.calendarKey(msg)
 	}
+	if m.review {
+		if msg.String() == "q" {
+			return tea.Quit
+		}
+		m.reviewKey(msg.String())
+		return nil
+	}
 	switch msg.String() {
 	case "q":
 		return tea.Quit
@@ -164,6 +174,8 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		}
 	case "c":
 		m.openCalendar()
+	case "r":
+		m.openReview()
 	case "t":
 		if !m.busy() {
 			return m.show(m.today())
