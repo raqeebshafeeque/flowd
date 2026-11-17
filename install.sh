@@ -7,6 +7,8 @@ repository=https://github.com/raqeebshafeeque/flowd
 version=
 force=false
 from=
+require_attestation=false
+attestation_note=
 bin_dir=
 skills_dir=
 stage=
@@ -63,7 +65,7 @@ show_success() {
     else
         printf '\n  Installed flowd %s!\n' "$version"
     fi
-    printf '\n  Binary  %s\n  Skill   %s\n\n' "$binary_target" "$skill_target"
+    printf '\n  Binary  %s\n  Skill   %s\n  Proof   %s\n\n' "$binary_target" "$skill_target" "$attestation_note"
     case :${PATH:-}: in
         *:"$bin_dir":*) printf '  PATH    Already on PATH: %s\n' "$bin_dir" ;;
         *) printf "  PATH    Add %s to your shell's PATH.\n" "$bin_dir" ;;
@@ -74,11 +76,13 @@ show_success() {
 fail() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 1; }
 usage_error() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 2; }
 help() {
-    printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--from DIR] [--bin-dir DIR] [--skills-dir DIR] [--force]' \
+    printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--from DIR] [--bin-dir DIR] [--skills-dir DIR] [--force] [--require-attestation]' \
         'Downloads a public release and installs it to ~/.local/bin and ~/.agents/skills.' \
         '--from DIR installs from release files already downloaded into DIR instead.' \
         'Needs curl, tar, gzip, standard shell tools and sha256sum or shasum.' \
-        'Checks the release checksum before installing anything.' \
+        'Checks the release checksum before installing anything, and the signed build provenance' \
+        'too when the GitHub CLI (gh) is installed and signed in. --require-attestation refuses to' \
+        'install without that proof.' \
         'Never builds source, uses sudo, edits shell startup files or touches your planner data.'
 }
 
@@ -88,6 +92,7 @@ parse_args() {
         case "$1" in
             --help|-h) help; exit 0 ;;
             --force) [ "$force" = false ] || usage_error '--force supplied twice'; force=true; shift ;;
+            --require-attestation) [ "$require_attestation" = false ] || usage_error '--require-attestation supplied twice'; require_attestation=true; shift ;;
             --version|--bin-dir|--skills-dir|--from)
                 [ "$#" -ge 2 ] && [ -n "$2" ] || usage_error "$1 needs a value"
                 case "$1" in
@@ -183,6 +188,26 @@ verify_checksum() {
     [ "$actual" = "$expected" ] || fail 'release checksum mismatch; no files installed'
 }
 
+# The checksum only proves the archive matches a file from the same place.
+# Provenance proves it was built by this repository's release workflow. It is
+# checked before anything downloaded runs. gh is optional unless
+# --require-attestation is given.
+verify_attestation() {
+    attestation_repository=${repository#https://github.com/}
+    if command -v gh >/dev/null 2>&1 && gh attestation verify --help >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+        if gh attestation verify "$stage/archive.tar.gz" --repo "$attestation_repository" \
+            --signer-workflow "$attestation_repository/.github/workflows/release.yml" >"$stage/attestation.log" 2>&1; then
+            attestation_note='Verified (signed build provenance)'
+            return 0
+        fi
+        fail 'build provenance verification failed; no files installed'
+    fi
+    if [ "$require_attestation" = true ]; then
+        fail 'build provenance verification is required but needs the GitHub CLI (gh), installed and signed in; no files installed'
+    fi
+    attestation_note='Checksum verified. Install and sign in to the GitHub CLI (gh) to also verify provenance'
+}
+
 # Environment isolation avoids incidental planner access and credential inheritance.
 # It is not an OS sandbox for a malicious publisher's executable.
 run_staged() (
@@ -271,6 +296,7 @@ prepare_install() {
     progress_done 'Downloaded release'
     progress_start 3 'Verifying checksum and package'
     verify_checksum
+    verify_attestation
     validate_payload
     progress_done 'Verified checksum and package'
 }

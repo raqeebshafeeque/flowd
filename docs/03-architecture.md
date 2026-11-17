@@ -119,6 +119,17 @@ How the parts fit together.
   once in an empty private home to check its version, and only then puts the files in place.
 - If installing fails halfway, the previous version is put back. Two installers cannot run at once.
 - `install.sh --from DIR` installs from release files that are already downloaded.
+- Every release signs build provenance for its archives, checksums and installer, proving they were
+  built by this repository's release workflow. The checksum alone only proves a file matches another
+  file from the same place.
+- When the GitHub CLI is installed and signed in, `install.sh` verifies that provenance before it
+  runs anything it downloaded and refuses on a mismatch. Without it, the installer says so and relies
+  on the checksum. `--require-attestation` refuses to install without the proof.
+- The release workflow only gets permission to sign in the job that publishes, and it installs each
+  draft with `--require-attestation` before publishing it.
+- The programs are fully static, with no system libraries, so they run on any Linux, including
+  minimal ones like Alpine. Building them as position independent would make them depend on the
+  system's loader, so that is not done.
 - Releases are cut by release-please from the commit history. Merging its release PR tags the
   version. CI then builds the archives as a draft, installs that draft with the real installer and
   only publishes it if that works.

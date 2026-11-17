@@ -46,6 +46,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      id-token: write # signs the provenance, only in this job
+      attestations: write # stores the provenance, only in this job
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,14 +73,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goreleaser release --clean
-      - name: Install the draft with the real installer
+      - name: Download the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag_name }}
         run: |
           mkdir "$RUNNER_TEMP/assets"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/assets"
-          sh install.sh --from "$RUNNER_TEMP/assets" --version "$TAG" --bin-dir "$RUNNER_TEMP/bin" --skills-dir "$RUNNER_TEMP/skills"
+      - name: Sign build provenance for the archives, checksums and installer
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/assets/*
+      - name: Install the draft with the real installer, requiring provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag_name }}
+        run: |
+          sh install.sh --from "$RUNNER_TEMP/assets" --version "$TAG" --require-attestation --bin-dir "$RUNNER_TEMP/bin" --skills-dir "$RUNNER_TEMP/skills"
           test "$("$RUNNER_TEMP/bin/flowd" --version)" = "flowd ${TAG#v}"
       - name: Publish
         env:
