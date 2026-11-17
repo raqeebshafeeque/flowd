@@ -7,6 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
+
+	"github.com/raqeebshafeeque/flowd/internal/domain"
 )
 
 // Backup writes a consistent copy of the database next to it as
@@ -147,4 +150,36 @@ func syncDir(path string) error {
 		return err
 	}
 	return errors.Join(dir.Sync(), dir.Close())
+}
+
+// UnsafeTitles lists the items whose saved title, now or in their history,
+// holds hidden or direction-changing characters. Such titles are shown with
+// placeholders, so this is a warning, not damage. Nothing is changed.
+func UnsafeTitles(ctx context.Context, path string) (ids []domain.ID, err error) {
+	db, err := connect(ctx, path, true)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, db.Close()) }()
+	rows, err := db.QueryContext(ctx, `SELECT id, title FROM items
+ UNION SELECT item_id, json_extract(after_json, '$.title') FROM item_events
+ UNION SELECT item_id, json_extract(before_json, '$.title') FROM item_events WHERE before_json IS NOT NULL`)
+	if err != nil {
+		return nil, classify(err)
+	}
+	defer rows.Close()
+	seen := map[domain.ID]bool{}
+	for rows.Next() {
+		var id domain.ID
+		var title string
+		if err := rows.Scan(&id, &title); err != nil {
+			return nil, classify(err)
+		}
+		if domain.CheckText(title) != nil && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	slices.Sort(ids)
+	return ids, classify(rows.Err())
 }

@@ -35,6 +35,8 @@ flowd review                # totals, progress and every item by status
 - Work is the time an item actually ran. Elapsed is the time since it first started, pauses
   included.
 - Starting an item pauses the one that was running.
+- Titles are visible text. Hidden or direction-changing characters are refused, so a title always
+  reads the way it is stored, for you and for an AI agent.
 - Items you started are listed first, in the order you started them. Commands take an item's row
   number or its ID.
 - At midnight anything unfinished becomes incomplete. Tomorrow starts empty.

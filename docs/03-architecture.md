@@ -59,6 +59,14 @@ How the parts fit together.
 - An unconfirmed change is never retried blindly. flowd looks for it in the saved history first and
   only then says whether it happened. A day closing at midnight afterwards does not hide that it did.
 
+## Text safety
+
+- One policy in the domain decides which characters a title may hold. Titles are checked against it
+  when they are added or edited, and any older title is cleaned with it when it is read, so every
+  output shows the same visible text, JSON included.
+- A repository test fails if a hidden character appears in the source or the docs. Tests that need
+  one write it as an escape such as `\u202e`.
+
 ## Errors
 
 - An error is a short code plus a plain sentence, printed to stderr. Examples are
@@ -73,6 +81,8 @@ How the parts fit together.
   new one is complete and on disk.
 - `flowd doctor` checks the file, its permissions, its schema version and its integrity, and
   whether another flowd is using it. It prints `OK` or the first problem it found and changes nothing.
+  It also warns about titles that hold hidden characters, listing the items, without treating that
+  as damage.
 - `flowd doctor --repair` is the only command that restores the backup. It checks the backup first.
   The current files are never deleted. They move into a private recovery folder next to the
   database, so changes made after the backup can still be recovered by hand.

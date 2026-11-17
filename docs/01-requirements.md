@@ -10,6 +10,8 @@ with the same rules.
 - Each item has a title and a duration, which is how long you want to spend on it today.
 - A duration is a budget, not a time slot. There are no start or end times to plan.
 - Durations are whole minutes and can be written as `30`, `30m`, `2h` or `1h30m`.
+- Titles are visible text. A title with a hidden or direction-changing character is refused, and the
+  error names the character and its position.
 - You can add, edit and remove items. Removing an item hides it but keeps it in the file.
 - You can plan today and future days. Past days are only for looking back.
 - `flowd` opens today and `flowd 2026-10-12` opens that date. Commands that need an item take its

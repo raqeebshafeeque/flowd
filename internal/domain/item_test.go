@@ -48,7 +48,7 @@ func TestNewItem(t *testing.T) {
 }
 
 func TestValidateTitle(t *testing.T) {
-	for _, good := range []string{"Study", "Fix the login bug", strings.Repeat("a", 120), "界界 é 👩‍💻", "  padded  "} {
+	for _, good := range []string{"Study", "Fix the login bug", strings.Repeat("a", 120), "界界 é 👩\u200d💻", "  padded  "} {
 		if err := ValidateTitle(good); err != nil {
 			t.Errorf("%q refused: %v", good, err)
 		}

@@ -59,6 +59,7 @@ var kinds = []struct {
 	{store.ErrPermissions, "ERR_PERMISSION", 1, "The database is not private to you", "Make it readable only by you with chmod 600"},
 	{store.ErrInvalidPath, "ERR_PATH", 2, "The database path is not a plain file", "Point --db at a regular file"},
 	{ErrPastDay, "ERR_PAST_DAY", 2, "Past days can only be looked at", "Plan new work for today or a later date"},
+	{domain.ErrUnsafeText, "ERR_TITLE", 2, "Titles cannot hold hidden or direction-changing characters", ""},
 	{domain.ErrInvalidTitle, "ERR_TITLE", 2, "Titles are one line of 1 to 120 characters", ""},
 	{domain.ErrInvalidDuration, "ERR_DURATION", 2, "Durations are whole minutes, like 30m, 2h or 1h30m", ""},
 	{ErrInput, "ERR_USAGE", 2, "That command is not valid", "See flowd --help"},
@@ -82,6 +83,10 @@ func Describe(err error) Feedback {
 			if f.Hint == "" {
 				f.Hint = detail(err, k.cause)
 			}
+			var problem *domain.TextProblem
+			if errors.As(err, &problem) {
+				f.Hint = capitalize(problem.Error())
+			}
 			break
 		}
 	}
@@ -102,8 +107,15 @@ func quote(text string) string { return strconv.Quote(text) }
 func detail(err, cause error) string {
 	text := err.Error()
 	_, rest, found := strings.Cut(text, cause.Error()+": ")
-	if !found || rest == "" {
+	if !found {
 		return ""
 	}
-	return strings.ToUpper(rest[:1]) + rest[1:]
+	return capitalize(rest)
+}
+
+func capitalize(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

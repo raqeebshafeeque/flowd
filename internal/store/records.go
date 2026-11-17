@@ -225,6 +225,9 @@ func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 		}
 		return domain.Item{}, err
 	}
+	// A title saved by an older version may hold hidden characters. It is
+	// shown with visible <U+XXXX> placeholders, never as it was.
+	it.Title = domain.SanitizeText(it.Title)
 	var err error
 	if it.CreatedAt, err = parseInstant(created); err != nil {
 		return domain.Item{}, err
@@ -323,6 +326,7 @@ func decode(text string, into *domain.Item) error {
 	if err := decoder.Decode(into); err != nil {
 		return fmt.Errorf("%w: stored item copy: %w", ErrCorrupt, err)
 	}
+	into.Title = domain.SanitizeText(into.Title)
 	for _, t := range []*time.Time{&into.CreatedAt, into.StartedAt, into.FinishedAt, into.ClosedAt, into.UpdatedAt} {
 		if t != nil && !t.Equal(t.Truncate(time.Second)) {
 			return fmt.Errorf("%w: stored item copy has a fractional time", ErrCorrupt)

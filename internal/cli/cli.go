@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
@@ -149,11 +150,22 @@ func doctor(ctx context.Context, out io.Writer, o options, path string) error {
 	if err := store.Inspect(ctx, path); err != nil {
 		return err
 	}
-	if o.json {
-		return writeJSON(out, map[string]string{"status": "ok"})
+	unsafe, err := store.UnsafeTitles(ctx, path)
+	if err != nil {
+		return err
 	}
-	_, err := fmt.Fprintln(out, "OK")
-	return err
+	if o.json {
+		return writeJSON(out, map[string]any{"status": "ok", "unsafe_titles": append([]domain.ID{}, unsafe...)})
+	}
+	fmt.Fprintln(out, "OK")
+	if len(unsafe) > 0 {
+		fmt.Fprintf(out, "Warning: %d item titles contain hidden or direction-changing characters.\n", len(unsafe))
+		fmt.Fprintln(out, "They are shown with placeholders like <U+202E>. Edit the titles to remove them:")
+		for _, id := range unsafe {
+			fmt.Fprintln(out, "  "+string(id))
+		}
+	}
+	return nil
 }
 
 // joinTitle lets a title be typed without quotes: add 1h Learn Go.

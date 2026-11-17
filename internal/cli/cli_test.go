@@ -164,3 +164,16 @@ func TestHelpAndVersionTouchNoFiles(t *testing.T) {
 		t.Fatal("help or version created the database")
 	}
 }
+
+func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
+	s := newSession(t)
+	_, errOut, code := s.run("add", "1h", "Pay invoice\u202e fdp.exe")
+	if code != 2 || !strings.HasPrefix(errOut, "ERR_TITLE\n") || !contains(errOut, "Titles cannot hold hidden or direction-changing characters") || !contains(errOut, "Remove the invisible or direction-changing character U+202E at position 12") {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	s.ok("add", "1h", "Ship it 👩\u200d💻 ✔︎")
+	s.fails(2, "ERR_TITLE", "edit", "--title", "zero\u200bwidth", "1")
+	if out := s.ok("doctor"); out != "OK\n" {
+		t.Fatalf("a clean database should not warn: %q", out)
+	}
+}
