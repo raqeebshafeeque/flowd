@@ -18,7 +18,7 @@ How the parts fit together.
 | `internal/store` | SQLite tables, transactions and backups |
 | `internal/planner` | The operations every frontend shares |
 | `internal/cli` | Commands and their output |
-| `internal/tui` | The terminal UI, added later |
+| `internal/tui` | The terminal workspace |
 
 - Packages only depend on the ones below them. The frontends use the planner, the planner uses the
   store, and the store uses the domain.
@@ -78,6 +78,15 @@ How the parts fit together.
   database, so changes made after the backup can still be recovered by hand.
 - Repair writes its plan to a `.repair` file before moving anything. If it is interrupted, flowd
   refuses to open the database until `flowd doctor --repair` is run again to finish the job.
+
+## Terminal workspace
+
+- The workspace reads the day through the planner once a second, so it never holds the database
+  between keys and a change made from the command line shows up within a second.
+- If a read fails, the last good day stays on screen with the error under it.
+- Durations, work and statuses are written by the same planner functions in the workspace and the
+  command line, so they always read the same.
+- Every row is drawn exactly as wide as the window, so resizing never leaves stray characters.
 
 ## Agents
 

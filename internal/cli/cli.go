@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
@@ -28,7 +27,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer, env Env) int
 		err = run(ctx, o, out, env)
 	}
 	if err != nil {
-		return report(errOut, err)
+		return Report(errOut, err)
 	}
 	return 0
 }
@@ -164,14 +163,4 @@ func joinTitle(words []string) string {
 		title += " " + w
 	}
 	return title
-}
-
-// statusLabel is how statuses read in plain text.
-func statusLabel(s domain.Status) string {
-	switch s {
-	case domain.InProgress:
-		return "IN PROGRESS"
-	default:
-		return toUpper(string(s))
-	}
 }

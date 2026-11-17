@@ -1,0 +1,42 @@
+package tui
+
+import "github.com/raqeebshafeeque/flowd/internal/domain"
+
+// style turns a role into terminal colors. With NO_COLOR every role is
+// plain text, and the meaning is always carried by words and markers too.
+type style struct{ noColor bool }
+
+const reset = "\x1b[m"
+
+var roles = map[string]string{
+	"brand":    "\x1b[36m", // teal
+	"heading":  "\x1b[36m",
+	"muted":    "\x1b[2m",
+	"selected": "\x1b[1m",
+	"error":    "\x1b[31m",
+	"border":   "\x1b[2m",
+}
+
+var statusColors = map[domain.Status]string{
+	domain.Todo:       "",
+	domain.InProgress: "\x1b[32m",
+	domain.Paused:     "\x1b[33m",
+	domain.Done:       "\x1b[34m",
+	domain.Skipped:    "\x1b[2m",
+	domain.Incomplete: "\x1b[2;31m",
+}
+
+func (s style) paint(role, text string) string {
+	return s.wrap(roles[role], text)
+}
+
+func (s style) status(status domain.Status, text string) string {
+	return s.wrap(statusColors[status], text)
+}
+
+func (s style) wrap(code, text string) string {
+	if s.noColor || code == "" || text == "" {
+		return text
+	}
+	return code + text + reset
+}

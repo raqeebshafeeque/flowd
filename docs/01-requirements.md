@@ -57,7 +57,20 @@ with the same rules.
 - An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
   instructions.
 
-### F7. Never lose a day
+### F7. A terminal workspace
+
+- `flowd` with no arguments opens a keyboard-only workspace showing today. Any argument runs the
+  command line instead, so scripts and pipes never get the workspace.
+- It lists the day the same way the command line does and keeps the selected item selected while
+  the list refreshes, even when the item moves.
+- Details show the full title, status, Duration, Work, Elapsed, Started At and Finished At in a
+  panel at the bottom that takes about a quarter of the screen.
+- The workspace needs at least 80 by 24 cells. In a smaller window it shows only a request to make
+  the window larger, and every key except Ctrl+C does nothing, so nothing happens that cannot be
+  seen.
+- Started without a terminal, it refuses and suggests `flowd list`.
+
+### F8. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
 
