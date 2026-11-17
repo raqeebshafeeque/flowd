@@ -13,11 +13,20 @@ func ValidInstant(t time.Time) bool {
 
 // Capture turns a clock reading into the instant flowd records: UTC, rounded
 // to the nearest whole second.
+//
+// It never rounds up onto a quarter hour. Every midnight in every timezone
+// falls on a quarter hour, so rounding 23:59:59.6 up to 00:00:00 would move
+// an action into the next day. Those readings round down instead.
 func Capture(t time.Time) time.Time {
 	if t.IsZero() {
 		return t
 	}
-	return t.UTC().Round(time.Second)
+	t = t.UTC()
+	whole := t.Round(time.Second)
+	if whole.After(t) && whole.Unix()%(15*60) == 0 {
+		return whole.Add(-time.Second)
+	}
+	return whole
 }
 
 // Span returns the exact time from start to end in nanoseconds. Unlike

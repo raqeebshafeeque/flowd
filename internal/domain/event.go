@@ -83,6 +83,31 @@ func (e Event) Validate() error {
 	return nil
 }
 
+// ValidateFor checks the event against its day as well: status changes
+// happen while the day is open, a day end happens exactly at midnight, and no
+// edit happens after the day closed.
+func (e Event) ValidateFor(day Day) error {
+	if err := e.Validate(); err != nil {
+		return err
+	}
+	if e.After.DayID != day.ID {
+		return fmt.Errorf("%w: event for %s belongs to another day", ErrInvalidEvidence, e.ItemID)
+	}
+	_, cutoff, err := day.Bounds()
+	if err != nil {
+		return err
+	}
+	switch {
+	case e.Reason == ReasonDayEnd && !e.OccurredAt.Equal(cutoff):
+		return fmt.Errorf("%w: day end for %s is not at midnight", ErrInvalidEvidence, e.ItemID)
+	case e.Reason != ReasonDayEnd && e.FromStatus != e.ToStatus:
+		return day.RequireOpen(e.OccurredAt)
+	case e.Reason != ReasonDayEnd && !e.OccurredAt.Before(cutoff):
+		return fmt.Errorf("%w: event for %s happened after the day closed", ErrDayClosed, e.ItemID)
+	}
+	return nil
+}
+
 // replay applies the change the event describes to its before state.
 func (e Event) replay() (Item, error) {
 	b := *e.Before

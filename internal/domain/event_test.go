@@ -15,7 +15,7 @@ func history(t *testing.T, steps ...any) (Item, []Event) {
 	for i := 0; i < len(steps); i += 2 {
 		action, clock := steps[i].(Action), at(steps[i+1].(string))
 		before := it.Clone()
-		if err := it.Apply(action, clock); err != nil {
+		if err := it.Apply(action, clock, testDay); err != nil {
 			t.Fatalf("%s at %s: %v", action, steps[i+1], err)
 		}
 		reason := ReasonUser
@@ -41,14 +41,14 @@ func TestRecordedEventsValidate(t *testing.T) {
 
 func TestEditArchiveAndAutoPauseEventsValidate(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	before := it.Clone()
 	_ = it.Edit("Deep study", 90, at("09:05:00"))
 	if err := Record(&before, it, at("09:05:00"), at("09:05:00"), ReasonUser).Validate(); err != nil {
 		t.Fatal("edit:", err)
 	}
 	before = it.Clone()
-	_ = it.Apply(Pause, at("09:06:00"))
+	_ = it.Apply(Pause, at("09:06:00"), testDay)
 	if err := Record(&before, it, at("09:06:00"), at("09:06:00"), ReasonAutoPause).Validate(); err != nil {
 		t.Fatal("auto pause:", err)
 	}
@@ -61,7 +61,7 @@ func TestEditArchiveAndAutoPauseEventsValidate(t *testing.T) {
 
 func TestDayEndEventValidates(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	before := it.Clone()
 	cutoff, noticed := at("23:59:59").Add(time.Second), at("23:59:59").Add(2*time.Hour)
 	it.Status, it.ClosedAt, it.UpdatedAt = Incomplete, &cutoff, &noticed
@@ -70,9 +70,34 @@ func TestDayEndEventValidates(t *testing.T) {
 	}
 }
 
+func TestEventsAreCheckedAgainstTheirDay(t *testing.T) {
+	_, events := history(t, Start, "09:00:00")
+	if err := events[1].ValidateFor(testDay); err != nil {
+		t.Fatal(err)
+	}
+	other := Day{ID: "dy_other", Date: "2026-11-17", Timezone: "UTC"}
+	if err := events[1].ValidateFor(other); !errors.Is(err, ErrInvalidEvidence) {
+		t.Fatal("an event from another day must be refused", err)
+	}
+	yesterday := Day{ID: "dy_test", Date: "2026-11-16", Timezone: "UTC"}
+	if err := events[1].ValidateFor(yesterday); !errors.Is(err, ErrDayClosed) {
+		t.Fatal("a start after the day closed must be refused", err)
+	}
+	it := newTestItem(t, "Study")
+	_ = it.Apply(Start, at("09:00:00"), testDay)
+	before := it.Clone()
+	early := at("23:00:00")
+	_, _ = it.CloseDay(testDay, at("23:59:59").Add(time.Second))
+	moved := Record(&before, it, early, at("23:59:59").Add(time.Second), ReasonDayEnd)
+	moved.After.ClosedAt = &early
+	if err := moved.ValidateFor(testDay); !errors.Is(err, ErrInvalidEvidence) {
+		t.Fatal("a day end before midnight must be refused", err)
+	}
+}
+
 func TestForgedEventsAreRefused(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	started := it.Clone()
 	later := at("09:30:00")
 
@@ -80,13 +105,13 @@ func TestForgedEventsAreRefused(t *testing.T) {
 	jumped := fresh.Clone()
 	jumped.Status, jumped.StartedAt, jumped.FinishedAt, jumped.ClosedAt, jumped.UpdatedAt = Done, &later, &later, &later, &later
 	movedStart := started.Clone()
-	_ = movedStart.Apply(Pause, later)
+	_ = movedStart.Apply(Pause, later, testDay)
 	moved := later.Add(-time.Hour)
 	movedStart.StartedAt = &moved
 	todoAgain := started.Clone()
 	todoAgain.Status, todoAgain.StartedAt, todoAgain.UpdatedAt = Todo, nil, &later
 	paused := started.Clone()
-	_ = paused.Apply(Pause, later)
+	_ = paused.Apply(Pause, later, testDay)
 
 	cases := map[string]Event{
 		"finishing without starting": Record(&fresh, jumped, later, later, ReasonUser),
@@ -110,7 +135,7 @@ func TestForgedEventsAreRefused(t *testing.T) {
 
 func TestRecordDetachesTheItems(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	e := Record(nil, it, at("09:00:00"), at("09:00:00"), ReasonUser)
 	*it.StartedAt = at("12:00:00")
 	if !e.After.StartedAt.Equal(at("09:00:00")) {

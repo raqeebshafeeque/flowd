@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// testDay is 2026-11-17 in UTC, the day every test item belongs to.
+var testDay = Day{ID: "dy_test", Date: "2026-11-17", Timezone: "UTC"}
+
 // at returns 2026-11-17 at the given clock time in UTC.
 func at(clock string) time.Time {
 	t, err := time.Parse("2006-01-02 15:04:05", "2026-11-17 "+clock)
@@ -79,7 +82,7 @@ func TestEveryAllowedAction(t *testing.T) {
 			now := at("09:00:00")
 			for _, s := range c.steps {
 				now = now.Add(time.Minute)
-				if err := it.Apply(s.action, now); err != nil {
+				if err := it.Apply(s.action, now, testDay); err != nil {
 					t.Fatalf("%s: %v", s.action, err)
 				}
 				if it.Status != s.want {
@@ -106,12 +109,12 @@ func TestRefusedActionsChangeNothing(t *testing.T) {
 		for _, a := range actions {
 			it := newTestItem(t, "Study")
 			for i, step := range reach[status] {
-				if err := it.Apply(step, at("09:00:00").Add(time.Duration(i)*time.Minute)); err != nil {
+				if err := it.Apply(step, at("09:00:00").Add(time.Duration(i)*time.Minute), testDay); err != nil {
 					t.Fatal(err)
 				}
 			}
 			before := it.Clone()
-			if err := it.Apply(a, at("10:00:00")); !errors.Is(err, ErrIllegalTransition) {
+			if err := it.Apply(a, at("10:00:00"), testDay); !errors.Is(err, ErrIllegalTransition) {
 				t.Errorf("%s on %s: got %v", a, status, err)
 			}
 			if !Same(before, it) {
@@ -125,7 +128,7 @@ func TestFirstStartNeverChanges(t *testing.T) {
 	it := newTestItem(t, "Study")
 	steps := []Action{Start, Pause, Resume, Finish, Reopen, Skip, Unskip, Resume}
 	for i, a := range steps {
-		if err := it.Apply(a, at("09:00:00").Add(time.Duration(i)*time.Minute)); err != nil {
+		if err := it.Apply(a, at("09:00:00").Add(time.Duration(i)*time.Minute), testDay); err != nil {
 			t.Fatalf("%s: %v", a, err)
 		}
 		if !it.StartedAt.Equal(at("09:00:00")) {
@@ -136,9 +139,9 @@ func TestFirstStartNeverChanges(t *testing.T) {
 
 func TestReopenClearsTheFinish(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
-	_ = it.Apply(Finish, at("09:30:00"))
-	if err := it.Apply(Reopen, at("10:00:00")); err != nil {
+	_ = it.Apply(Start, at("09:00:00"), testDay)
+	_ = it.Apply(Finish, at("09:30:00"), testDay)
+	if err := it.Apply(Reopen, at("10:00:00"), testDay); err != nil {
 		t.Fatal(err)
 	}
 	if it.FinishedAt != nil || it.ClosedAt != nil {
@@ -157,17 +160,57 @@ func TestClosedItemsRefuseEveryAction(t *testing.T) {
 	for _, it := range []Item{archived, incomplete} {
 		for _, a := range []Action{Start, Skip, Unskip, Reopen} {
 			copy := it.Clone()
-			if err := copy.Apply(a, at("10:00:00")); !errors.Is(err, ErrIllegalTransition) {
+			if err := copy.Apply(a, at("10:00:00"), testDay); !errors.Is(err, ErrIllegalTransition) {
 				t.Errorf("%s on a closed item: %v", a, err)
 			}
 		}
 	}
 }
 
+func TestActionsNeedAnOpenDay(t *testing.T) {
+	it := newTestItem(t, "Study")
+	tomorrow := at("23:59:59").Add(time.Second)
+	if err := it.Apply(Start, tomorrow, testDay); !errors.Is(err, ErrDayClosed) {
+		t.Fatal("starting at midnight must be refused", err)
+	}
+	future := Day{ID: "dy_test", Date: "2026-11-18", Timezone: "UTC"}
+	if err := it.Apply(Start, at("09:00:00"), future); !errors.Is(err, ErrDayClosed) {
+		t.Fatal("starting before the day opens must be refused", err)
+	}
+	if it.Status != Todo {
+		t.Fatal("a refused start changed the item")
+	}
+}
+
+func TestCloseDayMakesUnfinishedItemsIncomplete(t *testing.T) {
+	cutoff, noticed := at("23:59:59").Add(time.Second), at("23:59:59").Add(3*time.Hour)
+	open := map[string][]Action{"todo": nil, "running": {Start}, "paused": {Start, Pause}}
+	for name, steps := range open {
+		it := newTestItem(t, "Study")
+		for i, a := range steps {
+			_ = it.Apply(a, at("09:00:00").Add(time.Duration(i)*time.Minute), testDay)
+		}
+		changed, err := it.CloseDay(testDay, noticed)
+		if err != nil || !changed || it.Status != Incomplete || !it.ClosedAt.Equal(cutoff) || !it.UpdatedAt.Equal(noticed) || it.FinishedAt != nil {
+			t.Errorf("%s: changed=%v err=%v item=%+v", name, changed, err, it)
+		}
+	}
+	done := newTestItem(t, "Study")
+	_ = done.Apply(Start, at("09:00:00"), testDay)
+	_ = done.Apply(Finish, at("09:30:00"), testDay)
+	if changed, _ := done.CloseDay(testDay, noticed); changed || done.Status != Done {
+		t.Error("a done item must stay done")
+	}
+	early := newTestItem(t, "Study")
+	if changed, _ := early.CloseDay(testDay, at("23:00:00")); changed {
+		t.Error("an open day must not close")
+	}
+}
+
 func TestBackwardsClockIsRefused(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
-	if err := it.Apply(Pause, at("08:59:59")); !errors.Is(err, ErrInvalidEvidence) {
+	_ = it.Apply(Start, at("09:00:00"), testDay)
+	if err := it.Apply(Pause, at("08:59:59"), testDay); !errors.Is(err, ErrInvalidEvidence) {
 		t.Fatal("a pause before the start must be refused", err)
 	}
 	if it.Status != InProgress {
@@ -177,7 +220,7 @@ func TestBackwardsClockIsRefused(t *testing.T) {
 
 func TestEditKeepsStatusTimesAndOrder(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	before := it.Clone()
 	if err := it.Edit("Deep study", 120, at("09:10:00")); err != nil {
 		t.Fatal(err)
@@ -195,7 +238,7 @@ func TestEditKeepsStatusTimesAndOrder(t *testing.T) {
 
 func TestArchiveStopsARunningItem(t *testing.T) {
 	it := newTestItem(t, "Study")
-	_ = it.Apply(Start, at("09:00:00"))
+	_ = it.Apply(Start, at("09:00:00"), testDay)
 	if err := it.Archive(at("09:30:00")); err != nil {
 		t.Fatal(err)
 	}
@@ -231,12 +274,12 @@ func TestCheckFindsInconsistentItems(t *testing.T) {
 
 func TestOnlyOneItemRunsPerDay(t *testing.T) {
 	a, b := newTestItem(t, "A"), newTestItem(t, "B")
-	_ = a.Apply(Start, at("09:00:00"))
-	_ = b.Apply(Start, at("09:01:00"))
+	_ = a.Apply(Start, at("09:00:00"), testDay)
+	_ = b.Apply(Start, at("09:01:00"), testDay)
 	if err := CheckDay([]Item{a, b}); !errors.Is(err, ErrAlreadyRunning) {
 		t.Fatal("two running items must be refused", err)
 	}
-	_ = a.Apply(Pause, at("09:01:00"))
+	_ = a.Apply(Pause, at("09:01:00"), testDay)
 	if err := CheckDay([]Item{a, b}); err != nil {
 		t.Fatal(err)
 	}
@@ -244,10 +287,10 @@ func TestOnlyOneItemRunsPerDay(t *testing.T) {
 
 func TestStartingOrderWins(t *testing.T) {
 	a, b, c := newTestItem(t, "A"), newTestItem(t, "B"), newTestItem(t, "C")
-	_ = c.Apply(Start, at("09:00:00"))
-	_ = c.Apply(Pause, at("09:05:00"))
-	_ = b.Apply(Start, at("09:05:00"))
-	_ = c.Apply(Finish, at("09:20:00"))
+	_ = c.Apply(Start, at("09:00:00"), testDay)
+	_ = c.Apply(Pause, at("09:05:00"), testDay)
+	_ = b.Apply(Start, at("09:05:00"), testDay)
+	_ = c.Apply(Finish, at("09:20:00"), testDay)
 	items := []Item{a, b, c}
 	Sort(items)
 	if got := items[0].Title + items[1].Title + items[2].Title; got != "CBA" {
