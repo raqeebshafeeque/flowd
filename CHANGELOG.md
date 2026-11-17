@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/raqeebshafeeque/flowd/compare/v0.1.0...v0.2.0) (2026-11-17)
+
+
+### Features
+
+* **tui:** add and edit items ([#14](https://github.com/raqeebshafeeque/flowd/issues/14)) ([ad22b23](https://github.com/raqeebshafeeque/flowd/commit/ad22b23f379a005454cf25022c557ee0e2a3ced4))
+* **tui:** browse dates with a calendar ([#15](https://github.com/raqeebshafeeque/flowd/issues/15)) ([551adbb](https://github.com/raqeebshafeeque/flowd/commit/551adbbb67c6e8b0047bbe9225b4b55896570b5a))
+* **tui:** confirm deletion and add Help ([#17](https://github.com/raqeebshafeeque/flowd/issues/17)) ([61f9a66](https://github.com/raqeebshafeeque/flowd/commit/61f9a66f0e018f28ada3a4c58c5f37b243933f49))
+* **tui:** review the day ([#16](https://github.com/raqeebshafeeque/flowd/issues/16)) ([15add4e](https://github.com/raqeebshafeeque/flowd/commit/15add4e0e537126b33829e000831598861daa313))
+* **tui:** show the day and its details ([#11](https://github.com/raqeebshafeeque/flowd/issues/11)) ([d48b38b](https://github.com/raqeebshafeeque/flowd/commit/d48b38b85f8710d0adb747609683558836bec3ae))
+* **tui:** track work with single keys ([#13](https://github.com/raqeebshafeeque/flowd/issues/13)) ([2752779](https://github.com/raqeebshafeeque/flowd/commit/27527793770cae78a2711119fb3538fdbd9eea68))
+
 ## 0.1.0 (2026-11-17)
 
 
