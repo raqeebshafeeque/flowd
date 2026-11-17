@@ -2,6 +2,8 @@ package cli
 
 import (
 	"errors"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/raqeebshafeeque/flowd/internal/planner"
@@ -63,5 +65,33 @@ func TestHelpMentionsEveryCommand(t *testing.T) {
 		if !contains(help, name) {
 			t.Errorf("help does not mention %s", name)
 		}
+	}
+}
+
+// The Agent Skill's command reference must document exactly the commands
+// flowd has, so agents never guess.
+func TestSkillReferenceMatchesTheCommands(t *testing.T) {
+	raw, err := os.ReadFile("../../skills/flowd/references/commands.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	documented := map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if name, ok := strings.CutPrefix(line, "### "); ok {
+			documented[name] = true
+		}
+	}
+	for _, name := range commandNames() {
+		if !documented[name] {
+			t.Errorf("the skill does not document %s", name)
+		}
+		delete(documented, name)
+	}
+	for name := range documented {
+		t.Errorf("the skill documents %s, which flowd does not have", name)
+	}
+	skill, err := os.ReadFile("../../skills/flowd/SKILL.md")
+	if err != nil || !strings.HasPrefix(string(skill), "---\nname: flowd\ndescription: ") || !strings.Contains(string(skill), "(references/commands.md)") {
+		t.Fatal("the skill needs its front matter and a link to the reference", err)
 	}
 }
