@@ -19,6 +19,17 @@ The installer puts `flowd` in `~/.local/bin` and the Agent Skill in `~/.agents/s
 checks the download against the release checksums before installing anything, and it tells you if
 `~/.local/bin` is not on your PATH yet. Run the same command again to update.
 
+Every release is signed with build provenance that proves it was built by this repository. If the
+[GitHub CLI](https://cli.github.com) is installed and signed in, the installer checks that proof too.
+To refuse installing without it, download the installer, check it, and run it with
+`--require-attestation`:
+
+```sh
+curl -fsSLO https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh
+gh attestation verify install.sh --repo raqeebshafeeque/flowd
+sh install.sh --require-attestation
+```
+
 ## Use it
 
 ```sh
