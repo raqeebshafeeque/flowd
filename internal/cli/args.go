@@ -21,6 +21,7 @@ type options struct {
 	json     bool
 	help     bool
 	version  bool
+	licenses bool
 	repair   bool
 	title    *string
 	duration *string
@@ -84,10 +85,11 @@ func parse(args []string) (options, error) {
 	global.BoolVar(&o.help, "help", false, "")
 	global.BoolVar(&o.help, "h", false, "")
 	global.BoolVar(&o.version, "version", false, "")
+	global.BoolVar(&o.licenses, "licenses", false, "")
 	if err := global.Parse(args); err != nil {
 		return o, usage(sentence(err))
 	}
-	if o.help || o.version {
+	if o.help || o.version || o.licenses {
 		return o, nil
 	}
 	rest := global.Args()
@@ -181,6 +183,7 @@ Options:
   --timezone ZONE            Timezone for a new day, like Asia/Kolkata
   --json                     Print JSON for scripts and agents
   --version                  Print the version
+  --licenses                 Print the licenses of the code flowd is built with
   --help                     Print this help
 `
 

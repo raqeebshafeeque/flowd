@@ -53,11 +53,9 @@ func run() error {
 		}
 	}
 	var result bytes.Buffer
-	fmt.Fprintln(&result, "Third-party notices for flowd")
-	fmt.Fprintln(&result, "\nThird-party components retain their own licenses, not flowd's MIT license.")
-	fmt.Fprintln(&result, "The upstream texts below are preserved verbatim. Upstream notice bundles can")
-	fmt.Fprintln(&result, "also describe optional components. Regenerate after changing Go or dependencies:")
-	fmt.Fprintln(&result, "\n    go run ./scripts/notices > THIRD_PARTY_NOTICES")
+	fmt.Fprintln(&result, "flowd is built with code from the projects below. Each keeps its own")
+	fmt.Fprintln(&result, "license, separate from flowd's MIT license, and the license texts are")
+	fmt.Fprintln(&result, "reproduced here word for word.")
 	if err := appendLicenses(&result, "Go standard library and runtime", runtime.GOROOT()); err != nil {
 		return err
 	}

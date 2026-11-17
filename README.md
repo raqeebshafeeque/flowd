@@ -100,5 +100,5 @@ go test ./...
 - [Domain](docs/02-domain.md)
 - [Architecture](docs/03-architecture.md)
 
-flowd is [MIT licensed](LICENSE). The licenses of the libraries it uses are in
-[THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
+flowd is [MIT licensed](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
+built with.

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,12 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
+
+// licenses holds the license texts of every third-party module built into
+// flowd, made by scripts/notices.
+//
+//go:embed licenses.txt
+var licenses string
 
 // Env is what the command line takes from its surroundings.
 type Env struct {
@@ -39,6 +46,9 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		return printHelp(out)
 	case o.version:
 		_, err := fmt.Fprintln(out, "flowd", env.Version)
+		return err
+	case o.licenses:
+		_, err := fmt.Fprint(out, licenses)
 		return err
 	}
 	path := o.db

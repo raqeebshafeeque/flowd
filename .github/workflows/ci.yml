@@ -48,9 +48,9 @@ jobs:
           shellcheck install.sh scripts/*.sh
           actionlint
           goreleaser check
-      - name: Third-party notices are current
+      - name: Built-in licenses are current
         if: runner.os == 'Linux'
-        run: go run ./scripts/notices | cmp - THIRD_PARTY_NOTICES
+        run: go run ./scripts/notices | cmp - internal/cli/licenses.txt
       - name: Vet and build
         run: |
           go vet ./...
