@@ -25,6 +25,9 @@ func (m *model) View() tea.View {
 	v.AltScreen = true
 	if m.usable() {
 		v.Cursor = m.caret
+		if caret := m.calendarCaret(); caret != nil {
+			v.Cursor = caret
+		}
 	}
 	return v
 }
@@ -155,7 +158,10 @@ func (m *model) itemRow(item planner.ItemView, width int) string {
 		marker = m.style.paint("selected", "> ")
 		title = m.style.paint("selected", title)
 	}
-	right := planner.Effort(item) + "  " + m.style.status(item.Status, fmt.Sprintf("%-11s", planner.Label(item.Status))) + " "
+	// Work and status sit at the right edge, the status in a fixed width
+	// column so every row's timing ends in the same place.
+	label := planner.Label(item.Status)
+	right := planner.Effort(item) + "  " + strings.Repeat(" ", max(0, 11-len(label))) + m.style.status(item.Status, label) + " "
 	room := width - ansi.StringWidth(right) - ansi.StringWidth(marker) - 1
 	return spread(" "+marker+ansi.Truncate(title, room, "…"), right, width)
 }
@@ -169,8 +175,12 @@ func (m *model) detailRows(width, height int) []string {
 		return pad(rows, height)
 	}
 	item := m.state.View.Items[i]
-	for _, line := range wrap(item.Title, width-2) {
-		rows = append(rows, " "+line)
+	for j, line := range wrap(item.Title, width-15) {
+		label := ""
+		if j == 0 {
+			label = "Title"
+		}
+		rows = append(rows, fmt.Sprintf(" %-12s %s", label, line))
 	}
 	duration, _ := domain.FormatDuration(item.DurationMinutes)
 	fields := [][2]string{

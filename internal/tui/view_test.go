@@ -65,7 +65,7 @@ func TestDetailsShowEveryMeasurement(t *testing.T) {
 	w.refresh()
 	w.press(key("enter"))
 	text := plain(w)
-	for _, want := range []string{"Details", "Study the scheduler", "Duration     1h30m", "Work         5m6s", "Elapsed      5m6s", "Started At   17 Nov 2026 09:00:00", "Finished At  -", "close [esc]"} {
+	for _, want := range []string{"Details", "Title        Study the scheduler", "Duration     1h30m", "Work         5m6s", "Elapsed      5m6s", "Started At   17 Nov 2026 09:00:00", "Finished At  -", "close [esc]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
@@ -130,5 +130,23 @@ func TestDrawingAFrameIsFast(t *testing.T) {
 	}
 	if per := time.Since(start) / 100; per > 20*time.Millisecond {
 		t.Errorf("a frame took %v, budget 20ms", per)
+	}
+}
+
+func TestTimingAndStatusSitAtTheRightEdge(t *testing.T) {
+	w := newWorkspace(t)
+	a := w.add("Study", "1h")
+	w.add("Code", "30m")
+	w.act(planner.Start, a)
+	w.refresh()
+	for _, row := range screen(w)[3:5] {
+		plainRow := ansi.Strip(row)
+		if !strings.HasSuffix(plainRow, "IN PROGRESS │") && !strings.HasSuffix(plainRow, "       TODO │") {
+			t.Errorf("the status is not at the right edge: %q", plainRow)
+		}
+	}
+	w.m.style.noColor = false
+	if !strings.Contains(w.m.View().Content, "\x1b[36m> ") {
+		t.Error("the selected item should be teal")
 	}
 }

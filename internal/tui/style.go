@@ -12,7 +12,7 @@ var roles = map[string]string{
 	"brand":    "\x1b[36m", // teal
 	"heading":  "\x1b[36m",
 	"muted":    "\x1b[2m",
-	"selected": "\x1b[1m",
+	"selected": "\x1b[36m", // teal, like the brand: whatever is active
 	"error":    "\x1b[31m",
 	"border":   "\x1b[2m",
 }
