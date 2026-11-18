@@ -246,3 +246,13 @@ func TestDeleteWithoutATerminalNeedsYes(t *testing.T) {
 		t.Fatalf("got %v, %v", deleted, err)
 	}
 }
+
+func TestDoctorAcceptsARelativeDatabasePath(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	s := &session{t: t, db: "plan.sqlite", now: time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC)}
+	s.ok("add", "1h", "Study")
+	if out := s.ok("doctor"); out != "OK\n" {
+		t.Fatalf("got %q", out)
+	}
+}

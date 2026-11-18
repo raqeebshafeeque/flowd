@@ -156,7 +156,11 @@ func syncDir(path string) error {
 // holds hidden or direction-changing characters. Such titles are shown with
 // placeholders, so this is a warning, not damage. Nothing is changed.
 func UnsafeTitles(ctx context.Context, path string) (ids []domain.ID, err error) {
-	db, err := connect(ctx, path, true)
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	db, err := connect(ctx, absolute, true)
 	if err != nil {
 		return nil, err
 	}

@@ -56,10 +56,10 @@ sh install.sh --require-attestation
 ```sh
 flowd add 1h "Study"        # plan an item with a duration
 flowd add 2h "Code review"
-flowd start 1               # start working on it
-flowd                       # see the day
-flowd pause 1
-flowd finish 2
+flowd start 1               # start working on Study
+flowd list                  # see the day
+flowd start 2               # switch to Code review, which pauses Study
+flowd finish 2              # done with Code review for today
 flowd review                # totals, progress and every item by status
 ```
 
@@ -98,8 +98,8 @@ titles as plain data. Reload your agent after installing to pick it up.
 
 ## Your data
 
-The database is `$XDG_DATA_HOME/flowd/flowd.sqlite`, or `~/.local/share/flowd/flowd.sqlite` if that
-variable is not set. Use `--db PATH` to pick another file.
+The database is `$XDG_DATA_HOME/flowd/flowd.sqlite`, or `~/.local/share/flowd/flowd.sqlite` when
+`XDG_DATA_HOME` is not set to an absolute path. Use `--db PATH` to pick another file.
 
 ```sh
 flowd backup              # write flowd.sqlite.bak next to the database
@@ -111,6 +111,8 @@ Repair checks the backup first and never deletes your current files. It moves th
 recovery folder next to the database.
 
 ## Build from source
+
+You need Go 1.27.4 or newer.
 
 ```sh
 go build -o flowd ./cmd/flowd
@@ -124,5 +126,5 @@ go test ./...
 - [Domain](docs/02-domain.md)
 - [Architecture](docs/03-architecture.md)
 
-flowd is [MIT licensed](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
+flowd is licensed under the [Apache License 2.0](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
 built with.

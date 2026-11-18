@@ -6,8 +6,7 @@ How the parts fit together.
 
 - One Go program for macOS and Linux. There is no server and no network.
 - One SQLite file. Every action is a single transaction that is written to disk before it returns.
-- The command line version comes first. The terminal UI comes later and uses exactly the same
-  operations.
+- The command line and the terminal workspace use exactly the same operations.
 
 ## Packages
 
@@ -19,10 +18,14 @@ How the parts fit together.
 | `internal/planner` | The operations every frontend shares |
 | `internal/cli` | Commands and their output |
 | `internal/tui` | The terminal workspace |
+| `scripts/notices` | Writes the license texts that `flowd --licenses` prints |
+| `scripts/repocheck` | Tests that keep the repository's own rules: one `doc.go` per package, one test file per source file, and no hidden characters. Never part of the program |
 
 - Packages only depend on the ones below them. The frontends use the planner, the planner uses the
   store, and the store uses the domain.
-- All rules live in the domain, so the command line and the terminal UI can never disagree.
+- The rules about items live in the domain. The rules about when something may change, like which
+  days can be planned and how much of a day is left, live in the planner. Both frontends go through
+  the planner, so the command line and the workspace can never disagree.
 
 ## Saving
 
