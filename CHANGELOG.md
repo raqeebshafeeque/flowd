@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/raqeebshafeeque/flowd/compare/v0.4.2...v0.5.0) (2026-11-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** pick items only by their full ID ([#34](https://github.com/raqeebshafeeque/flowd/issues/34))
+
+### Features
+
+* **cli:** pick items only by their full ID ([#34](https://github.com/raqeebshafeeque/flowd/issues/34)) ([8ac5c85](https://github.com/raqeebshafeeque/flowd/commit/8ac5c8514ee8cb753ed3fafb32d4bbddd2540e36))
+
 ## [0.4.2](https://github.com/raqeebshafeeque/flowd/compare/v0.4.1...v0.4.2) (2026-11-18)
 
 
