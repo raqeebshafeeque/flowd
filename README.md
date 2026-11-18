@@ -1,10 +1,27 @@
 # flowd
 
-A daily planner for people who live in the terminal. Write down what you want to put effort into
-today, record the work as you do it, and see at the end of the day what really happened.
+**Plan it. Lock in. Stay in flow.**
 
-flowd keeps everything in one SQLite file on your computer. It works offline, has no account and
-sends nothing anywhere.
+Most planners ask you to promise *when* you will do things, and by mid morning
+the day has already broken the plan. flowd asks something easier: how much of
+yourself do you want to give each thing today? An hour for study, thirty minutes
+for that bug, two hours for the feature. Then start anything, in any order, and
+let flowd keep count.
+
+- **One thing at a time.** One key starts, pauses or finishes. Starting something
+  else pauses what was running, so your attention stays on the work.
+- **No nagging.** No alarms, no timers going off, no guilt when you run over.
+- **Honest numbers.** You see the time you really spent, not the time you hoped
+  to. The evening review tells you how the day actually went.
+- **Every day starts fresh.** At midnight unfinished work stays in today's record,
+  and tomorrow begins empty. Nothing carries over unless you decide it should.
+- **Lives in your terminal.** Planning takes a couple of minutes and never pulls
+  you out of the work you are in.
+- **Yours alone.** One file on your computer. Offline, no account, nothing is
+  ever sent anywhere.
+
+It works just as well with an AI agent: ask it to plan or log your day, and it
+uses flowd for you, safely.
 
 ## Install
 
