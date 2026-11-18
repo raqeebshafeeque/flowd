@@ -1,7 +1,7 @@
 ---
 name: flowd
 description: Plan, track and review the user's day with the local flowd planner when they ask to add, start, finish or check their work.
-license: MIT
+license: Apache-2.0
 compatibility: Needs the flowd command installed and an agent that can run shell commands.
 ---
 
