@@ -120,5 +120,5 @@ go test ./...
 - [Domain](docs/02-domain.md)
 - [Architecture](docs/03-architecture.md)
 
-flowd is [MIT licensed](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
+flowd is licensed under the [Apache License 2.0](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
 built with.

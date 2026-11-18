@@ -1,5 +1,5 @@
 flowd is built with code from the projects below. Each keeps its own
-license, separate from flowd's MIT license, and the license texts are
+license, separate from flowd's Apache 2.0 license, and the license texts are
 reproduced here word for word.
 
 ======================================================================
