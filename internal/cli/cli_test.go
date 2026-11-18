@@ -53,19 +53,38 @@ func (s *session) fails(code int, errCode string, args ...string) {
 
 func contains(text, part string) bool { return strings.Contains(text, part) }
 
+// id returns the full ID of the item with this title, read as JSON the way
+// a script would. Extra arguments such as --date pick the day.
+func (s *session) id(title string, args ...string) string {
+	s.t.Helper()
+	var day struct {
+		Items []struct{ ID, Title string } `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(s.ok(append(append([]string{"--json"}, args...), "list")...)), &day); err != nil {
+		s.t.Fatal(err)
+	}
+	for _, item := range day.Items {
+		if item.Title == title {
+			return item.ID
+		}
+	}
+	s.t.Fatalf("no item %q", title)
+	return ""
+}
+
 func TestADayFromStartToReview(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
 	s.ok("add", "30m", "Code", "review")
-	if out := s.ok("start", "1"); !contains(out, "Started Study") {
+	if out := s.ok("start", s.id("Study")); !contains(out, "Started Study") {
 		t.Fatalf("got %q", out)
 	}
 	s.now = s.now.Add(40 * time.Minute)
-	if out := s.ok("start", "2"); !contains(out, "Started Code review") || !contains(out, "Paused Study") {
+	if out := s.ok("start", s.id("Code review")); !contains(out, "Started Code review") || !contains(out, "Paused Study") {
 		t.Fatalf("got %q", out)
 	}
 	s.now = s.now.Add(20 * time.Minute)
-	s.ok("finish", "2")
+	s.ok("finish", s.id("Code review"))
 	list := s.ok("list")
 	for _, want := range []string{"Tue 17 Nov 2026 · UTC", "PAUSED", "40m / 1h", "Study", "DONE", "20m / 30m"} {
 		if !contains(list, want) {
@@ -101,7 +120,7 @@ func TestJSONOutput(t *testing.T) {
 		t.Fatalf("unexpected day: %v", day)
 	}
 	var events []map[string]any
-	if err := json.Unmarshal([]byte(s.ok("--json", "events", "1")), &events); err != nil || len(events) != 2 {
+	if err := json.Unmarshal([]byte(s.ok("--json", "events", s.id("Study"))), &events); err != nil || len(events) != 2 {
 		t.Fatalf("events: %v %v", events, err)
 	}
 }
@@ -112,24 +131,24 @@ func TestErrorsHaveCodesAndExitStatuses(t *testing.T) {
 	s.fails(2, "ERR_DURATION", "add", "1.5h", "Study")
 	s.fails(1, "ERR_NOT_FOUND", "start", "1")
 	s.ok("add", "1h", "Study")
-	s.fails(1, "ERR_ILLEGAL_TRANSITION", "pause", "1")
+	s.fails(1, "ERR_ILLEGAL_TRANSITION", "pause", s.id("Study"))
 	s.fails(2, "ERR_PAST_DAY", "--date", "2026-11-16", "add", "1h", "Late")
 	s.ok("--date", "2026-11-18", "add", "1h", "Tomorrow")
-	s.fails(1, "ERR_DAY_CLOSED", "--date", "2026-11-18", "start", "1")
+	s.fails(1, "ERR_DAY_CLOSED", "--date", "2026-11-18", "start", s.id("Tomorrow", "--date", "2026-11-18"))
 	s.fails(2, "ERR_USAGE", "--json", "add", "1h")
 }
 
 func TestEditDeleteAndEveryAction(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
-	if out := s.ok("edit", "--title", "Deep study", "--duration", "2h", "1"); !contains(out, "Updated Deep study (TODO, 2h)") {
+	if out := s.ok("edit", "--title", "Deep study", "--duration", "2h", s.id("Study")); !contains(out, "Updated Deep study (TODO, 2h)") {
 		t.Fatalf("got %q", out)
 	}
 	for _, step := range []string{"start", "pause", "resume", "finish", "reopen", "skip", "unskip"} {
 		s.now = s.now.Add(time.Minute)
-		s.ok(step, "1")
+		s.ok(step, s.id("Deep study"))
 	}
-	s.ok("delete", "--yes", "1")
+	s.ok("delete", "--yes", s.id("Deep study"))
 	if out := s.ok("list"); !contains(out, "Nothing planned") {
 		t.Fatalf("a deleted item is still listed: %q", out)
 	}
@@ -177,7 +196,7 @@ func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	s.ok("add", "1h", "Ship it 👩\u200d💻 ✔︎")
-	s.fails(2, "ERR_TITLE", "edit", "--title", "zero\u200bwidth", "1")
+	s.fails(2, "ERR_TITLE", "edit", "--title", "zero\u200bwidth", s.id("Ship it 👩\u200d💻 ✔\ufe0e"))
 	if out := s.ok("doctor"); out != "OK\n" {
 		t.Fatalf("a clean database should not warn: %q", out)
 	}
@@ -215,7 +234,7 @@ func TestDeleteAsksAtATerminal(t *testing.T) {
 		s := newSession(t)
 		s.ok("add", "1h", "Study")
 		s.answer = &c.answer
-		out := s.ok("delete", "1")
+		out := s.ok("delete", s.id("Study"))
 		if !contains(out, `Delete "Study"? This cannot be undone. [y/N]`) {
 			t.Fatalf("%q: no question in %q", c.answer, out)
 		}
@@ -230,19 +249,19 @@ func TestDeleteAsksAtATerminal(t *testing.T) {
 func TestDeleteWithoutATerminalNeedsYes(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
-	_, errOut, code := s.run("delete", "1")
+	_, errOut, code := s.run("delete", s.id("Study"))
 	if code != 2 || !strings.HasPrefix(errOut, "ERR_USAGE\nDeleting needs confirmation\nAdd --yes") {
 		t.Fatalf("exit %d: %q", code, errOut)
 	}
 	answer := "y\n"
 	s.answer = &answer
-	s.fails(2, "ERR_USAGE", "--json", "delete", "1") // JSON means nobody is reading a question
+	s.fails(2, "ERR_USAGE", "--json", "delete", s.id("Study")) // JSON means nobody is reading a question
 	s.answer = nil
 	if contains(s.ok("list"), "Nothing planned") {
 		t.Fatal("a refused delete removed the item")
 	}
 	var deleted map[string]any
-	if err := json.Unmarshal([]byte(s.ok("--json", "delete", "--yes", "1")), &deleted); err != nil || deleted["archived"] != true {
+	if err := json.Unmarshal([]byte(s.ok("--json", "delete", "--yes", s.id("Study"))), &deleted); err != nil || deleted["archived"] != true {
 		t.Fatalf("got %v, %v", deleted, err)
 	}
 }
@@ -254,5 +273,25 @@ func TestDoctorAcceptsARelativeDatabasePath(t *testing.T) {
 	s.ok("add", "1h", "Study")
 	if out := s.ok("doctor"); out != "OK\n" {
 		t.Fatalf("got %q", out)
+	}
+}
+
+// Positions are never accepted, only full IDs, so a row number can never
+// act on an item that moved.
+func TestItemsArePickedOnlyByTheirFullID(t *testing.T) {
+	s := newSession(t)
+	s.ok("add", "1h", "Study")
+	id := s.id("Study")
+	s.fails(1, "ERR_NOT_FOUND", "start", "1")
+	s.fails(1, "ERR_NOT_FOUND", "start", id[:len(id)-1])
+	s.fails(1, "ERR_NOT_FOUND", "start", id[3:])
+	if out := s.ok("start", id); !contains(out, "Started Study") || !contains(out, id) {
+		t.Fatalf("got %q", out)
+	}
+	if list := s.ok("list"); contains(list, "#") || !contains(list, id) {
+		t.Fatalf("the list should show IDs and no row numbers:\n%s", list)
+	}
+	if out := s.ok("add", "30m", "Code"); !contains(out, "it_") {
+		t.Fatalf("a change should print the item's ID: %q", out)
 	}
 }

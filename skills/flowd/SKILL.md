@@ -20,8 +20,8 @@ See the [command reference](references/commands.md) for every command and its JS
 1. Check that `flowd --version` works. If it does not, tell the user flowd is not installed and stop.
 2. Read the day with `flowd --json list`. Put global options such as `--date` and `--db` before the
    command.
-3. Work out what the user means from that fresh JSON. Use full item IDs, not row numbers, because
-   row numbers move when items start.
+3. Work out what the user means from that fresh JSON. Commands only accept full item IDs, taken
+   from that JSON.
 4. Ask instead of guessing when a title matches more than one item, a Duration is missing, or a
    date is unclear. Use the current clock for words like today or tomorrow.
 

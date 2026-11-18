@@ -12,7 +12,8 @@ Global options come before the command: `flowd --json --date 2026-11-18 list`.
 Always name a command. `flowd` with nothing after it opens the terminal workspace, which needs a
 person at a terminal, and fails with exit 2 when run by an agent.
 
-ITEM is a row number from `list` or a full item ID such as `it_01JD...`. Prefer IDs.
+ITEM is the full ID of an item, such as `it_01JD8K6Z2KAS98N1W1N1PMM62G`, from the JSON of `list`
+or of any change. Nothing shorter and no position in the list is accepted.
 DURATION is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`. It cannot be longer than what is
 left of the day after the other unfinished items, otherwise flowd refuses with `ERR_DURATION_LIMIT`
 and says how much is left.

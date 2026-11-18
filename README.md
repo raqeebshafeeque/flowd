@@ -54,12 +54,11 @@ sh install.sh --require-attestation
 ## Use it
 
 ```sh
-flowd add 1h "Study"        # plan an item with a duration
+flowd add 1h "Study"        # plan an item, which prints its ID
 flowd add 2h "Code review"
-flowd start 1               # start working on Study
-flowd list                  # see the day
-flowd start 2               # switch to Code review, which pauses Study
-flowd finish 2              # done with Code review for today
+flowd list                  # see the day, with every item's ID
+flowd start ID              # start an item, using its ID from the list
+flowd finish ID             # done with it for today
 flowd review                # totals, progress and every item by status
 ```
 
@@ -71,8 +70,9 @@ flowd review                # totals, progress and every item by status
 - Starting an item pauses the one that was running.
 - Titles are visible text. Hidden or direction-changing characters are refused, so a title always
   reads the way it is stored, for you and for an AI agent.
-- Items you started are listed first, in the order you started them. Commands take an item's row
-  number or its ID.
+- Items you started are listed first, in the order you started them.
+- Commands take an item's full ID, which `flowd list` shows and every change prints. A position in
+  the list is never used, because the order changes when items start.
 - At midnight anything unfinished becomes incomplete. Tomorrow starts empty.
 - Only today can be tracked. Today and later days can be planned. Past days are for looking back.
 
@@ -84,7 +84,7 @@ duration and save with Ctrl+S. `c` opens a calendar to look at or plan another d
 today, `r` shows the review, `d` deletes the selected item after asking, and `?` lists every key. The window needs to be at least 80
 by 24.
 
-`flowd delete 2` asks before deleting, because a deleted item cannot be brought back. Scripts and
+`flowd delete ID` asks before deleting, because a deleted item cannot be brought back. Scripts and
 agents have to add `--yes`.
 
 Add `--json` to any command for output that scripts can read, and `--date 2026-11-20` to work on

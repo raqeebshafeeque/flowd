@@ -133,7 +133,7 @@ func parse(args []string) (options, error) {
 		}
 	case "ITEM":
 		if len(o.args) != 1 {
-			return o, usage(o.command + " needs one ITEM, a row number or an item ID")
+			return o, usage(o.command + " needs the ID of one item")
 		}
 	case "DURATION TITLE":
 		if len(o.args) < 2 {
@@ -175,7 +175,7 @@ Commands:
   backup                     Write a backup next to the database
   doctor [--repair]          Check the database, or restore the backup
 
-ITEM is a row number from list, or a full item ID.
+ITEM is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G.
 DURATION is whole minutes or hours: 30, 30m, 2h or 1h30m.
 
 Options:

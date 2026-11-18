@@ -19,9 +19,10 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   be brought back, so `flowd delete` asks first at a terminal, and needs `--yes` in scripts and for
   agents, which never get asked.
 - You can plan today and future days. Past days are only for looking back.
-- `flowd` opens today and `flowd 2026-10-12` opens that date. Commands that need an item take its
-  row number from the list or its full ID. Row numbers follow the list order, so starting an item can
-  move it up.
+- `flowd` opens today and `flowd 2026-10-12` shows that date. Commands that need an item take its
+  full ID, which `flowd list` shows and every change prints. A position in the list is never
+  accepted, because the order changes when items start, and a command must never act on an item
+  that moved.
 
 ### F2. Track with one key
 

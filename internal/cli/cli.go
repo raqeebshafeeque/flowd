@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 	"time"
 
@@ -107,24 +106,20 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 	return finish(out, o, r, err)
 }
 
-// find picks an item by its row number in the shared order, or by its ID.
-func find(ctx context.Context, client planner.Client, selection planner.Selection, ref string) (planner.State, planner.ItemView, error) {
+// find picks an item by its full ID. Positions in the list are never used,
+// because they move when items start, and acting on the wrong item would be
+// worse than typing the ID.
+func find(ctx context.Context, client planner.Client, selection planner.Selection, id string) (planner.State, planner.ItemView, error) {
 	state, err := client.Read(ctx, selection)
 	if err != nil {
 		return state, planner.ItemView{}, err
 	}
-	if n, err := strconv.Atoi(ref); err == nil {
-		if n >= 1 && n <= len(state.View.Items) {
-			return state, state.View.Items[n-1], nil
-		}
-	} else {
-		for _, item := range state.View.Items {
-			if string(item.ID) == ref {
-				return state, item, nil
-			}
+	for _, item := range state.View.Items {
+		if string(item.ID) == id {
+			return state, item, nil
 		}
 	}
-	return state, planner.ItemView{}, planner.Refusal(store.ErrNotFound, "No item "+ref+" on "+state.View.Date, "Use a row number or ID from flowd list")
+	return state, planner.ItemView{}, planner.Refusal(store.ErrNotFound, "No item "+id+" on "+state.View.Date, "Use the full ID shown by flowd list")
 }
 
 // finish prints the result of a change. A confirmed change that could not be
