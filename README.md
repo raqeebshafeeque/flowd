@@ -1,6 +1,10 @@
-# flowd
+<p align="center">
+  <img src="docs/assets/flowd-icon.png" alt="flowd" width="128">
+</p>
 
-**Plan it. Lock in. Stay in flow.**
+<h1 align="center">flowd</h1>
+
+<p align="center"><strong>Plan it. Lock in. Stay in flow.</strong></p>
 
 Most planners ask you to promise *when* you will do things, and by mid morning
 the day has already broken the plan. flowd asks something easier: how much of
