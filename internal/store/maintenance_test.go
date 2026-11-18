@@ -136,3 +136,21 @@ func TestCleanDatabasesHaveNoUnsafeTitles(t *testing.T) {
 		t.Fatalf("got %v, %v", ids, err)
 	}
 }
+
+// doctor is often given a path relative to the current folder.
+func TestDoctorChecksWorkWithARelativePath(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(ctx, filepath.Join(dir, "plan.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	createTestItem(t, s)
+	s.Close()
+	t.Chdir(dir)
+	if err := Inspect(ctx, "plan.sqlite"); err != nil {
+		t.Fatal("inspect:", err)
+	}
+	if ids, err := UnsafeTitles(ctx, "plan.sqlite"); err != nil || len(ids) != 0 {
+		t.Fatalf("unsafe titles: %v, %v", ids, err)
+	}
+}

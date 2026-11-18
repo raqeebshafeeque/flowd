@@ -54,7 +54,7 @@ func run() error {
 	}
 	var result bytes.Buffer
 	fmt.Fprintln(&result, "flowd is built with code from the projects below. Each keeps its own")
-	fmt.Fprintln(&result, "license, separate from flowd's MIT license, and the license texts are")
+	fmt.Fprintln(&result, "license, separate from flowd's Apache 2.0 license, and the license texts are")
 	fmt.Fprintln(&result, "reproduced here word for word.")
 	if err := appendLicenses(&result, "Go standard library and runtime", runtime.GOROOT()); err != nil {
 		return err

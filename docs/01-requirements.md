@@ -1,7 +1,6 @@
 # Requirements
 
-What flowd needs to do. The command line version comes first and the terminal UI follows later
-with the same rules.
+What flowd needs to do. The command line and the terminal workspace follow the same rules.
 
 ## What it does
 
@@ -110,16 +109,17 @@ with the same rules.
 
 ## How well it does it
 
-- Speed. Timing tests in CI fail if opening two years of history or drawing a frame gets
-  structurally slower. It opens in under 50 ms, a keypress shows up in under 16 ms, and a day with two years of
-  history behind it still opens instantly.
+- Speed. The aim is that flowd opens in under 50 ms and a keypress shows up in under 16 ms, even
+  with two years of history. Timing tests in CI fail if opening a large history or drawing a frame
+  gets structurally slower. `flowd list` takes about 10 ms today.
 - Offline. It never uses the network.
 - Reliability. Every action is saved to disk before the next one. A broken file fails with a clear
   error and is never replaced.
-- Size. It uses less than 30 MB of memory and ships as one file under 15 MB.
+- Size. It uses less than 30 MB of memory and ships as one file under 15 MB. Today a command uses
+  about 11 MB of memory and a release download is about 3 MB.
 - Support. `flowd doctor` checks the data file and `flowd doctor --repair` restores the backup.
 - Data. The file lives at `$XDG_DATA_HOME/flowd/flowd.sqlite`, or `~/.local/share/flowd/flowd.sqlite`
-  when that variable is not set.
+  when `XDG_DATA_HOME` is not set to an absolute path.
 
 ## Not in scope
 
