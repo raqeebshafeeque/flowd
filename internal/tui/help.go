@@ -64,7 +64,11 @@ func (m *model) helpKey(key string) {
 // helpRows draws the whole page, before scrolling.
 func (m *model) helpRows(width int) []string {
 	var rows []string
+	// One empty row above the first section and two between sections.
 	section := func(title string) {
+		if len(rows) > 0 {
+			rows = append(rows, "")
+		}
 		rows = append(rows, "", " "+m.style.paint("heading", title), " "+m.style.paint("border", strings.Repeat("─", width-2)))
 	}
 	if m.lastError != nil {
