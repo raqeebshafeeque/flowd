@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/raqeebshafeeque/flowd/compare/v0.4.0...v0.4.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **tui:** leave a row between the title and duration fields ([#28](https://github.com/raqeebshafeeque/flowd/issues/28)) ([0389375](https://github.com/raqeebshafeeque/flowd/commit/038937510c593d4ebf71504d6cb37cd01301211b))
+* **tui:** polish the list, details and calendar ([#26](https://github.com/raqeebshafeeque/flowd/issues/26)) ([8a7c559](https://github.com/raqeebshafeeque/flowd/commit/8a7c559070be16f0efdd27b9f1c61d8e14694112))
+
 ## [0.4.0](https://github.com/raqeebshafeeque/flowd/compare/v0.3.0...v0.4.0) (2026-11-17)
 
 
