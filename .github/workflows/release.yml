@@ -69,10 +69,20 @@ jobs:
         run: |
           sh scripts/ci-tools.sh "$RUNNER_TEMP/tools"
           echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+      - name: Wait until GitHub lists the release draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag_name }}
+        run: sh scripts/check-release-draft.sh wait "$TAG"
       - name: Build the draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goreleaser release --clean
+      - name: Check the build went to that one draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag_name }}
+        run: sh scripts/check-release-draft.sh built "$TAG"
       - name: Download the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
