@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/raqeebshafeeque/flowd/compare/v0.4.1...v0.4.2) (2026-11-18)
+
+
+### Bug Fixes
+
+* accept a relative path in doctor and correct the docs ([#32](https://github.com/raqeebshafeeque/flowd/issues/32)) ([c3f2d8e](https://github.com/raqeebshafeeque/flowd/commit/c3f2d8ef2429aaa6f645e6d6267bb355f4814698))
+
 ## [0.4.1](https://github.com/raqeebshafeeque/flowd/compare/v0.4.0...v0.4.1) (2026-11-18)
 
 
