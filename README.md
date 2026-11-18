@@ -1,6 +1,6 @@
 # flowd
 
-**Plan it. Lock in. Be in flow state.**
+**Plan it. Lock in. Stay in flow.**
 
 Most planners ask you to promise *when* you will do things, and by mid morning
 the day has already broken the plan. flowd asks something easier: how much of
