@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
@@ -186,5 +187,18 @@ func TestTheHeaderIsSplitIntoJoinedCells(t *testing.T) {
 	rows := strings.Split(plain(w), "\n")
 	if !strings.HasPrefix(rows[1], "│ flowd │ Viewing: 2026-11-18 ") {
 		t.Fatalf("another day should be named in the middle: %q", rows[1])
+	}
+}
+
+func TestStatusColors(t *testing.T) {
+	s := style{}
+	cases := map[domain.Status]string{domain.InProgress: "\x1b[34m", domain.Done: "\x1b[32m", domain.Paused: "\x1b[33m"}
+	for status, color := range cases {
+		if got := s.status(status, "x"); got != color+"x"+reset {
+			t.Errorf("%s is %q, want %q", status, got, color+"x"+reset)
+		}
+	}
+	if (style{noColor: true}).status(domain.Done, "DONE") != "DONE" {
+		t.Error("NO_COLOR must stay plain")
 	}
 }
