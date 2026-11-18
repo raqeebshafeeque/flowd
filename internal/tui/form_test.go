@@ -219,3 +219,32 @@ func TestTooLongADurationIsExplainedAtTheField(t *testing.T) {
 		t.Fatal("the typed value must stay and nothing may be saved")
 	}
 }
+
+func TestOneEmptyRowSeparatesTheFields(t *testing.T) {
+	w := newWorkspace(t)
+	w.refresh()
+	w.press(key("n"))
+	for _, withError := range []bool{false, true} {
+		if withError {
+			w.m.form.errors[0] = "Check title"
+		}
+		rows, _, _ := w.m.formRows(78, 12)
+		var title, duration int
+		for i, row := range rows {
+			text := ansi.Strip(row)
+			if strings.HasPrefix(text, " Title") {
+				title = i
+			}
+			if strings.HasPrefix(text, " Duration") {
+				duration = i
+			}
+		}
+		gap := 1
+		if withError {
+			gap = 2 // the error line sits right under the title
+		}
+		if duration-title != gap+1 || strings.TrimSpace(rows[duration-1]) != "" {
+			t.Fatalf("error=%v: title at %d, duration at %d", withError, title, duration)
+		}
+	}
+}
