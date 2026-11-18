@@ -219,6 +219,9 @@ func (m *model) formRows(width, height int) ([]string, int, int) {
 	inputWidth := width - labelWidth - 2
 	caretRow, caretCol := 0, 0
 	for i, name := range []string{"Title", "Duration"} {
+		if i > 0 {
+			rows = append(rows, "") // a little room between the fields
+		}
 		text, col := f.fields[i].window(inputWidth)
 		if i == 1 && text == "" && f.focus != 1 {
 			text = m.style.paint("muted", "e.g. 30m, 1h, 1h30m")
