@@ -103,8 +103,8 @@ sh install.sh --require-attestation
 flowd add 1h "Study"        # plan an item, which prints its ID
 flowd add 2h "Code review"
 flowd list                  # see the day, with every item's ID
-flowd start ID              # start an item by its ID
-flowd finish ID             # done with it for today
+flowd start <ID>            # start an item by its ID
+flowd finish <ID>           # done with it for today
 flowd review                # how the day really went
 ```
 
