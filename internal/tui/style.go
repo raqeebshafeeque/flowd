@@ -12,16 +12,16 @@ var roles = map[string]string{
 	"brand":    "\x1b[36m", // teal
 	"heading":  "\x1b[36m",
 	"muted":    "\x1b[2m",
-	"selected": "\x1b[1m",
+	"selected": "\x1b[36m", // teal, like the brand: whatever is active
 	"error":    "\x1b[31m",
 	"border":   "\x1b[2m",
 }
 
 var statusColors = map[domain.Status]string{
 	domain.Todo:       "",
-	domain.InProgress: "\x1b[32m",
-	domain.Paused:     "\x1b[33m",
-	domain.Done:       "\x1b[34m",
+	domain.InProgress: "\x1b[34m", // blue: being worked on
+	domain.Paused:     "\x1b[33m", // yellow: waiting
+	domain.Done:       "\x1b[32m", // green: finished
 	domain.Skipped:    "\x1b[2m",
 	domain.Incomplete: "\x1b[2;31m",
 }

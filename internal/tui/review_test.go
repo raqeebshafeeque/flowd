@@ -89,3 +89,31 @@ func TestAnEmptyDayReviewsAsZero(t *testing.T) {
 		t.Fatalf("got:\n%s", text)
 	}
 }
+
+func TestSectionsAreSeparatedByTwoEmptyRows(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Study", "1h")
+	w.refresh()
+	for _, page := range []string{"r", "?"} {
+		w.m.review, w.m.help = false, false
+		w.press(key(page))
+		rows := w.m.reviewRows(78)
+		if page == "?" {
+			rows = w.m.helpRows(78)
+		}
+		var headings []int
+		for i := range rows {
+			if i+1 < len(rows) && strings.Contains(ansi.Strip(rows[i+1]), "────") {
+				headings = append(headings, i)
+			}
+		}
+		if len(headings) < 3 || headings[0] != 1 || strings.TrimSpace(rows[0]) != "" {
+			t.Fatalf("%s: the first section should follow one empty row: %v", page, headings)
+		}
+		for _, h := range headings[1:] {
+			if strings.TrimSpace(rows[h-1]) != "" || strings.TrimSpace(rows[h-2]) != "" || strings.TrimSpace(ansi.Strip(rows[h-3])) == "" {
+				t.Fatalf("%s: section at row %d does not have exactly two empty rows above it", page, h)
+			}
+		}
+	}
+}

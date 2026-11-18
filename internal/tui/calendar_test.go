@@ -23,8 +23,7 @@ func TestTheCalendarMovesItsCursor(t *testing.T) {
 	}{
 		{key("l"), "2026-11-18"}, {key("h"), "2026-11-17"},
 		{key("j"), "2026-11-24"}, {key("k"), "2026-11-17"},
-		{key(">"), "2026-12-17"}, {key("<"), "2026-11-17"},
-		{key("<"), "2026-10-17"}, {key("t"), "2026-11-17"},
+		{key("l"), "2026-11-18"}, {key("t"), "2026-11-17"},
 	}
 	for _, s := range steps {
 		w.press(s.key)
@@ -34,29 +33,102 @@ func TestTheCalendarMovesItsCursor(t *testing.T) {
 	}
 }
 
-func TestMonthsKeepTheDayWhereTheyCan(t *testing.T) {
-	jan31 := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
-	if got := addMonths(jan31, 1).Format("2006-01-02"); got != "2027-02-28" {
-		t.Fatalf("got %s", got)
-	}
-	if got := addMonths(jan31, -2).Format("2006-01-02"); got != "2026-11-30" {
-		t.Fatalf("got %s", got)
-	}
-}
-
 func TestTheCalendarDrawsTheMonthWithTheCursorBracketed(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
 	w.press(key("c"))
 	text := plain(w)
-	for _, want := range []string{"Calendar", "November 2026", "Mo  Tu  We  Th  Fr  Sa  Su", "[17]", "Selected Tue 17 Nov 2026 (today)", "show [enter]"} {
+	for _, want := range []string{"Calendar", "November 2026", "Mo  Tu  We  Th  Fr  Sa  Su", "[17]", "show [enter]", "month [m]", "year [y]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
 	}
-	// November 2026 starts on a Sunday, so the first week has only the 1st.
-	if !strings.Contains(text, "                           1 ") {
-		t.Errorf("the 1st is not under Sunday:\n%s", text)
+	if strings.Contains(text, "Selected") {
+		t.Error("the brackets show the selected date, no extra line is needed")
+	}
+	lines := strings.Split(text, "\n")
+	at := func(part string) (int, int) {
+		for i, line := range lines {
+			if j := strings.Index(line, part); j >= 0 {
+				return i, ansi.StringWidth(line[:j])
+			}
+		}
+		t.Fatalf("%q not found", part)
+		return 0, 0
+	}
+	headingRow, headingCol := at("Calendar")
+	monthRow, monthCol := at("November 2026")
+	weekRow, weekCol := at("Mo  Tu")
+	if monthCol != headingCol || weekCol != headingCol {
+		t.Errorf("month at %d and weekdays at %d should line up with the heading at %d", monthCol, weekCol, headingCol)
+	}
+	if monthRow != headingRow+2 || weekRow != monthRow+2 || strings.TrimSpace(strings.Trim(lines[monthRow+1], "│")) != "" {
+		t.Error("there should be one empty row between the month and the weekdays")
+	}
+	// November 2026 starts on a Sunday, so the 1st sits under "Su".
+	_, sunday := at("Su")
+	first := lines[weekRow+1]
+	if col := ansi.StringWidth(strings.TrimRight(strings.Trim(first, "│"), " ")); col != sunday+1 {
+		t.Errorf("the 1st ends at column %d, not under Sunday (%d)", col, sunday+1)
+	}
+	w.m.style.noColor = false
+	if !strings.Contains(w.m.View().Content, "\x1b[36m[17]") {
+		t.Error("the cursor date should be teal")
+	}
+}
+
+func TestMonthAndYearCanBeTyped(t *testing.T) {
+	w := newWorkspace(t)
+	w.refresh()
+	w.press(key("c"))
+	// Move to 31 January first, so the jump has to keep the day valid.
+	w.m.calendar.cursor = time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
+	w.press(key("m"))
+	if w.m.calendar.input == nil || w.m.calendar.input.value() != "1" || !strings.Contains(plain(w), "Month (1-12): 1") {
+		t.Fatalf("m should open the month input with the current month:\n%s", plain(w))
+	}
+	if v := w.m.View(); v.Cursor == nil || v.Cursor.Y != w.m.height-2 || !strings.Contains(strings.Split(plain(w), "\n")[v.Cursor.Y], "Month (1-12)") {
+		t.Fatal("the caret should be in the footer")
+	}
+	w.press(key("backspace"))
+	w.typeText("2")
+	w.press(key("enter"))
+	if got := w.m.calendar.cursor.Format("2006-01-02"); got != "2027-02-28" {
+		t.Fatalf("got %s, want the last day of February", got)
+	}
+	w.press(key("y"))
+	w.press(key("backspace"), key("backspace"), key("backspace"), key("backspace"))
+	w.typeText("2028")
+	w.press(key("enter"))
+	if got := w.m.calendar.cursor.Format("2006-01-02"); got != "2028-02-28" {
+		t.Fatalf("got %s", got)
+	}
+}
+
+func TestATypedMonthOrYearOutOfRangeChangesNothing(t *testing.T) {
+	w := newWorkspace(t)
+	w.refresh()
+	w.press(key("c"))
+	before := w.m.calendar.cursor
+	w.press(key("m"), key("backspace"), key("backspace"))
+	w.typeText("13")
+	w.press(key("enter"))
+	if w.m.calendar.input == nil || w.m.calendar.cursor != before || !strings.Contains(plain(w), "Enter a month from 1 to 12") {
+		t.Fatal("13 must stay in the input with an explanation")
+	}
+	w.press(key("esc"))
+	if w.m.calendar == nil || w.m.calendar.input != nil || w.m.calendar.cursor != before {
+		t.Fatal("esc should close the input and keep the calendar where it was")
+	}
+	w.press(key("y"))
+	w.typeText("x")
+	w.press(key("enter"))
+	if !strings.Contains(plain(w), "Enter a year from 1 to 9999") {
+		t.Fatal("a non-number year must be explained")
+	}
+	w.press(key("esc"), key("j"))
+	if w.m.calendar.cursor == before {
+		t.Fatal("after the input closes, keys move the calendar again")
 	}
 }
 
@@ -69,7 +141,7 @@ func TestChoosingADayShowsItWithoutCreatingIt(t *testing.T) {
 	if w.m.calendar != nil || w.m.date != "2026-11-18" || len(w.m.state.View.Items) != 0 {
 		t.Fatalf("not showing an empty 18 November: %q %d", w.m.date, len(w.m.state.View.Items))
 	}
-	if text := plain(w); !strings.Contains(text, "Viewing 2026-11-18") || !strings.Contains(text, "today [t]") {
+	if text := plain(w); !strings.Contains(text, "Viewing: 2026-11-18") || !strings.Contains(text, "today [t]") {
 		t.Fatalf("the header should say which day is shown:\n%s", text)
 	}
 	if state, _ := w.client.Read(w.m.ctx, planner.Selection{Date: "2026-11-18"}); state.Day.ID != "" {
@@ -141,7 +213,7 @@ func TestTheCalendarFitsTheSmallestWindow(t *testing.T) {
 	w.refresh()
 	w.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	w.press(key("c"))
-	if text := plain(w); !strings.Contains(text, "Selected") {
+	if text := plain(w); !strings.Contains(text, " 30") {
 		t.Fatalf("the calendar is cut off at 80x24:\n%s", text)
 	}
 	for i, row := range screen(w) {

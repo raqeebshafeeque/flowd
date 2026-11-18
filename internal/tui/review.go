@@ -35,10 +35,12 @@ func (m *model) reviewKey(key string) {
 // reviewRows draws the whole report, before scrolling.
 func (m *model) reviewRows(width int) []string {
 	v := m.state.View
+	// One empty row above the first section and two between sections, so
+	// each section reads as its own block.
 	section := func(title string) []string {
-		return []string{"", " " + m.style.paint("heading", title), " " + m.style.paint("border", strings.Repeat("─", width-2))}
+		return []string{"", "", " " + m.style.paint("heading", title), " " + m.style.paint("border", strings.Repeat("─", width-2))}
 	}
-	rows := section("Summary")
+	rows := section("Summary")[1:]
 	rows = append(rows,
 		" Total duration   "+planner.TotalDuration(v),
 		" Recorded work    "+planner.Span(v.WorkNS))

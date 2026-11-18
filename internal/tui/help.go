@@ -38,7 +38,8 @@ var helpSections = []struct {
 	{"In the calendar", [][2]string{
 		{"h / l", "Previous or next day"},
 		{"j / k", "Next or previous week"},
-		{"< / >", "Previous or next month"},
+		{"m", "Type a month number, 1 to 12"},
+		{"y", "Type a year"},
 		{"t", "Today"},
 		{"enter", "Show the chosen day"},
 	}},
@@ -62,7 +63,11 @@ func (m *model) helpKey(key string) {
 // helpRows draws the whole page, before scrolling.
 func (m *model) helpRows(width int) []string {
 	var rows []string
+	// One empty row above the first section and two between sections.
 	section := func(title string) {
+		if len(rows) > 0 {
+			rows = append(rows, "")
+		}
 		rows = append(rows, "", " "+m.style.paint("heading", title), " "+m.style.paint("border", strings.Repeat("─", width-2)))
 	}
 	if m.lastError != nil {
