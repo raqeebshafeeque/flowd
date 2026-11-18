@@ -23,8 +23,7 @@ func TestTheCalendarMovesItsCursor(t *testing.T) {
 	}{
 		{key("l"), "2026-11-18"}, {key("h"), "2026-11-17"},
 		{key("j"), "2026-11-24"}, {key("k"), "2026-11-17"},
-		{key(">"), "2026-12-17"}, {key("<"), "2026-11-17"},
-		{key("<"), "2026-10-17"}, {key("t"), "2026-11-17"},
+		{key("l"), "2026-11-18"}, {key("t"), "2026-11-17"},
 	}
 	for _, s := range steps {
 		w.press(s.key)
@@ -34,22 +33,12 @@ func TestTheCalendarMovesItsCursor(t *testing.T) {
 	}
 }
 
-func TestMonthsKeepTheDayWhereTheyCan(t *testing.T) {
-	jan31 := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC)
-	if got := addMonths(jan31, 1).Format("2006-01-02"); got != "2027-02-28" {
-		t.Fatalf("got %s", got)
-	}
-	if got := addMonths(jan31, -2).Format("2006-01-02"); got != "2026-11-30" {
-		t.Fatalf("got %s", got)
-	}
-}
-
 func TestTheCalendarDrawsTheMonthWithTheCursorBracketed(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
 	w.press(key("c"))
 	text := plain(w)
-	for _, want := range []string{"Calendar", "November 2026", "Mo  Tu  We  Th  Fr  Sa  Su", "[17]", "show [enter]", "month [</> m]", "year [y]"} {
+	for _, want := range []string{"Calendar", "November 2026", "Mo  Tu  We  Th  Fr  Sa  Su", "[17]", "show [enter]", "month [m]", "year [y]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}

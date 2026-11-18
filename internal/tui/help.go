@@ -38,7 +38,6 @@ var helpSections = []struct {
 	{"In the calendar", [][2]string{
 		{"h / l", "Previous or next day"},
 		{"j / k", "Next or previous week"},
-		{"< / >", "Previous or next month"},
 		{"m", "Type a month number, 1 to 12"},
 		{"y", "Type a year"},
 		{"t", "Today"},

@@ -64,10 +64,6 @@ func (m *model) calendarKey(msg tea.KeyPressMsg) tea.Cmd {
 		c.cursor = c.cursor.AddDate(0, 0, -7)
 	case "j", "down":
 		c.cursor = c.cursor.AddDate(0, 0, 7)
-	case "<":
-		c.cursor = addMonths(c.cursor, -1)
-	case ">":
-		c.cursor = addMonths(c.cursor, 1)
 	case "m":
 		f := newField(strconv.Itoa(int(c.cursor.Month())))
 		c.input, c.prompt = &f, "month"
@@ -118,14 +114,6 @@ func (c *calendar) inputKey(msg tea.KeyPressMsg) {
 	}
 }
 
-// addMonths moves by whole months, keeping the day where it can: 31 January
-// plus one month is the last day of February, not early March.
-func addMonths(t time.Time, months int) time.Time {
-	first := time.Date(t.Year(), t.Month()+time.Month(months), 1, 0, 0, 0, 0, time.UTC)
-	last := first.AddDate(0, 1, -1).Day()
-	return time.Date(first.Year(), first.Month(), min(t.Day(), last), 0, 0, 0, 0, time.UTC)
-}
-
 // show switches the workspace to a date. Today is remembered as "today", so
 // the workspace moves on by itself at midnight.
 func (m *model) show(date string) tea.Cmd {
@@ -171,7 +159,7 @@ func (m *model) calendarRows(width int) []string {
 func (m *model) calendarFooter() string {
 	c := m.calendar
 	if c.input == nil {
-		return " show [enter]  move [h/j/k/l]  month [</> m]  year [y]  today [t]  back [esc]"
+		return " show [enter]  move [h/j/k/l]  month [m]  year [y]  today [t]  back [esc]"
 	}
 	row := " " + m.calendarPrompt() + c.input.value()
 	if c.inputError != "" {
@@ -182,7 +170,7 @@ func (m *model) calendarFooter() string {
 
 func (m *model) calendarPrompt() string {
 	if m.calendar.prompt == "year" {
-		return "Year (1-9999): "
+		return "Year: "
 	}
 	return "Month (1-12): "
 }
