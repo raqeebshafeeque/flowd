@@ -50,9 +50,9 @@ func printDay(out io.Writer, o options, v planner.View) error {
 		return err
 	}
 	table := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(table, "#\tSTATUS\tWORK / DURATION\tTITLE\tID")
-	for i, item := range v.Items {
-		fmt.Fprintf(table, "%d\t%s\t%s\t%s\t%s\n", i+1, planner.Label(item.Status), planner.Effort(item), item.Title, item.ID)
+	fmt.Fprintln(table, "STATUS\tWORK / DURATION\tTITLE\tID")
+	for _, item := range v.Items {
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", planner.Label(item.Status), planner.Effort(item), item.Title, item.ID)
 	}
 	return table.Flush()
 }
@@ -83,7 +83,7 @@ func printResult(out io.Writer, o options, r planner.Result) error {
 		return writeJSON(out, item)
 	}
 	verb := map[string]string{"add": "Planned", "edit": "Updated", "delete": "Deleted", "start": "Started", "pause": "Paused", "resume": "Resumed", "finish": "Finished", "skip": "Skipped", "unskip": "Brought back", "reopen": "Reopened"}[o.command]
-	fmt.Fprintf(out, "%s %s (%s, %s)\n", verb, item.Title, planner.Label(item.Status), planner.Effort(item))
+	fmt.Fprintf(out, "%s %s (%s, %s) %s\n", verb, item.Title, planner.Label(item.Status), planner.Effort(item), item.ID)
 	for _, id := range r.AutoPaused {
 		fmt.Fprintf(out, "Paused %s\n", titleOf(r, id))
 	}

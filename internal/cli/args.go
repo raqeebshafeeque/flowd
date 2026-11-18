@@ -133,11 +133,11 @@ func parse(args []string) (options, error) {
 		}
 	case "ITEM":
 		if len(o.args) != 1 {
-			return o, usage(o.command + " needs one ITEM, a row number or an item ID")
+			return o, usage(o.command + " needs the ID of one item")
 		}
 	case "DURATION TITLE":
 		if len(o.args) < 2 {
-			return o, usage("add needs a DURATION and a TITLE")
+			return o, usage("add needs a <DURATION> and a <TITLE>")
 		}
 	}
 	if o.command == "edit" && o.title == nil && o.duration == nil {
@@ -159,33 +159,37 @@ const help = `flowd plans your day as a list of efforts and records the work you
 
 Usage:
   flowd [options] [command]
-  flowd [options] 2026-11-17      Show that date
+  flowd [options] <YYYY-MM-DD>    Show that date
 
 Commands:
-  list                       Show the day (the default)
-  add DURATION TITLE         Plan an item, for example: add 1h30m "Study"
-  edit [--title T] [--duration D] ITEM
-  delete [--yes] ITEM        Delete an item, after asking. --yes skips the question
-  start ITEM | pause ITEM | resume ITEM | finish ITEM | skip ITEM
-  unskip ITEM                Bring back a skipped item
-  reopen ITEM                Keep working on a finished item
-  now                        Show the running item
-  review                     Show the day's totals, progress and statuses
-  events ITEM                Show an item's recorded history
-  backup                     Write a backup next to the database
-  doctor [--repair]          Check the database, or restore the backup
+  list                         Show the day (the default)
+  add <DURATION> <TITLE>       Plan an item, for example: add 1h30m "Study"
+  edit [--title <TITLE>] [--duration <DURATION>] <ID>
+  delete [--yes] <ID>          Delete an item, after asking. --yes skips the question
+  start <ID>                   Start an item, pausing whatever was running
+  pause <ID>                   Pause the running item
+  resume <ID>                  Continue a paused item
+  finish <ID>                  Mark an item done for today
+  skip <ID>                    Drop an item for today
+  unskip <ID>                  Bring back a skipped item
+  reopen <ID>                  Keep working on a finished item
+  now                          Show the running item
+  review                       Show the day's totals, progress and statuses
+  events <ID>                  Show an item's recorded history
+  backup                       Write a backup next to the database
+  doctor [--repair]            Check the database, or restore the backup
 
-ITEM is a row number from list, or a full item ID.
-DURATION is whole minutes or hours: 30, 30m, 2h or 1h30m.
+<ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G.
+<DURATION> is whole minutes or hours: 30, 30m, 2h or 1h30m.
 
 Options:
-  --db PATH                  Use this database instead of the default one
-  --date YYYY-MM-DD          Use this date instead of today
-  --timezone ZONE            Timezone for a new day, like Asia/Kolkata
-  --json                     Print JSON for scripts and agents
-  --version                  Print the version
-  --licenses                 Print the licenses of the code flowd is built with
-  --help                     Print this help
+  --db <PATH>                  Use this database instead of the default one
+  --date <YYYY-MM-DD>          Use this date instead of today
+  --timezone <ZONE>            Timezone for a new day, like Asia/Kolkata
+  --json                       Print JSON for scripts and agents
+  --version                    Print the version
+  --licenses                   Print the licenses of the code flowd is built with
+  --help                       Print this help
 `
 
 func printHelp(out io.Writer) error {
