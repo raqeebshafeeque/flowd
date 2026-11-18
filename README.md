@@ -4,46 +4,88 @@
 
 <h1 align="center">flowd</h1>
 
-<p align="center"><strong>Plan it. Lock in. Stay in flow.</strong></p>
+<p align="center">
+  <strong>Plan it. Lock in. Stay in flow.</strong>
+</p>
 
-Most planners ask you to promise *when* you will do things, and by mid morning
-the day has already broken the plan. flowd asks something easier: how much of
-yourself do you want to give each thing today? An hour for study, thirty minutes
-for that bug, two hours for the feature. Then start anything, in any order, and
-let flowd keep count.
+<p align="center">
+  A terminal first daily planner for focused work.
+</p>
 
-- **One thing at a time.** One key starts, pauses or finishes. Starting something
-  else pauses what was running, so your attention stays on the work.
+<p align="center">
+  <a href="https://github.com/raqeebshafeeque/flowd/releases/latest"><img src="https://img.shields.io/github/v/release/raqeebshafeeque/flowd?color=teal" alt="Latest release"></a>
+  <a href="https://github.com/raqeebshafeeque/flowd/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/raqeebshafeeque/flowd/ci.yml?branch=main&label=CI" alt="CI"></a>
+  <img src="https://img.shields.io/badge/macOS%20%7C%20Linux-informational" alt="macOS and Linux">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="Apache 2.0"></a>
+</p>
+
+<p align="center">
+  <a href="#install">Install</a> &nbsp;&nbsp;
+  <a href="#quick-start">Quick start</a> &nbsp;&nbsp;
+  <a href="#the-workspace">The workspace</a> &nbsp;&nbsp;
+  <a href="#with-an-ai-agent">AI agents</a> &nbsp;&nbsp;
+  <a href="#learn-more">Docs</a>
+</p>
+
+<br>
+
+Most planners ask you to promise *when* you will do things, and by mid morning the day has
+already broken the plan. flowd asks something easier: **how much of yourself do you want to give
+each thing today?**
+
+An hour for study, thirty minutes for that bug, two hours for the feature. Then start anything, in
+any order, and let flowd keep count.
+
+```
+┌───────┬─────────────────────────────────────────┬─────────────────┬──────────┐
+│ flowd │                                         │ Tue 17 Nov 2026 │ 10:59:57 │
+├───────┴─────────────────────────────────────────┴─────────────────┴──────────┤
+│   Review open pull requests                           38m / 45m         DONE │
+│ > Deep work on the parser                          1h3m54s / 2h  IN PROGRESS │
+│   Read the scheduler paper                           18m3s / 1h       PAUSED │
+│   Write release notes                                       30m         TODO │
+│   Inbox and messages                                        20m         TODO │
+│                                                                              │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ pause [space]  finish [f]  skip [s]  new [n]  help [?]  quit [q]             │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+<br>
+
+## Why flowd
+
+- **One thing at a time.** One key starts, pauses or finishes. Starting something else pauses what
+  was running.
 - **No nagging.** No alarms, no timers going off, no guilt when you run over.
-- **Honest numbers.** You see the time you really spent, not the time you hoped
-  to. The evening review tells you how the day actually went.
-- **Every day starts fresh.** At midnight unfinished work stays in today's record,
-  and tomorrow begins empty. Nothing carries over unless you decide it should.
-- **Lives in your terminal.** Planning takes a couple of minutes and never pulls
-  you out of the work you are in.
-- **Yours alone.** One file on your computer. Offline, no account, nothing is
-  ever sent anywhere.
+- **Honest numbers.** You see the time you really spent, not the time you hoped to.
+- **Every day starts fresh.** At midnight unfinished work is marked incomplete and tomorrow begins
+  empty.
+- **Lives in your terminal.** Planning takes a minute and never pulls you out of the work.
+- **Yours alone.** One file on your computer. Offline, no account, nothing is ever sent anywhere.
 
-It works just as well with an AI agent: ask it to plan or log your day, and it
-uses flowd for you, safely.
+<br>
 
 ## Install
-
-flowd runs on macOS and Linux, on Intel and ARM. You need curl, tar, gzip and `shasum` or
-`sha256sum`. You do not need Go or sudo.
 
 ```sh
 curl -fsSL https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh | sh
 ```
 
-The installer puts `flowd` in `~/.local/bin` and the Agent Skill in `~/.agents/skills/flowd`. It
-checks the download against the release checksums before installing anything, and it tells you if
-`~/.local/bin` is not on your PATH yet. Run the same command again to update.
+Runs on macOS and Linux, Intel and ARM. No Go and no sudo needed. Run it again any time to update.
 
-Every release is signed with build provenance that proves it was built by this repository. If the
-[GitHub CLI](https://cli.github.com) is installed and signed in, the installer checks that proof too.
-To refuse installing without it, download the installer, check it, and run it with
-`--require-attestation`:
+<details>
+<summary>What the installer does, and how to verify it</summary>
+
+<br>
+
+The installer puts `flowd` in `~/.local/bin` and the Agent Skill in `~/.agents/skills/flowd`. It
+needs curl, tar, gzip and `shasum` or `sha256sum`, checks the download against the release
+checksums before installing anything, and tells you if `~/.local/bin` is not on your PATH yet.
+
+Every release is signed with build provenance. If the [GitHub CLI](https://cli.github.com) is
+installed and signed in, the installer checks that proof too. To refuse installing without it:
 
 ```sh
 curl -fsSLO https://github.com/raqeebshafeeque/flowd/releases/latest/download/install.sh
@@ -51,80 +93,86 @@ gh attestation verify install.sh --repo raqeebshafeeque/flowd
 sh install.sh --require-attestation
 ```
 
-## Use it
+</details>
+
+<br>
+
+## Quick start
 
 ```sh
 flowd add 1h "Study"        # plan an item, which prints its ID
 flowd add 2h "Code review"
 flowd list                  # see the day, with every item's ID
-flowd start ID              # start an item, using its ID from the list
+flowd start ID              # start an item by its ID
 flowd finish ID             # done with it for today
-flowd review                # totals, progress and every item by status
+flowd review                # how the day really went
 ```
 
-- A duration is a budget, not a time slot. Write it as `30`, `30m`, `2h` or `1h30m`.
-- The durations planned on a day cannot add up to more than the time left in it. flowd tells you how
-  much is left when something does not fit.
-- Work is the time an item actually ran. Elapsed is the time since it first started, pauses
-  included.
-- Starting an item pauses the one that was running.
-- Titles are visible text. Hidden or direction-changing characters are refused, so a title always
-  reads the way it is stored, for you and for an AI agent.
-- Items you started are listed first, in the order you started them.
-- Commands take an item's full ID, which `flowd list` shows and every change prints. A position in
-  the list is never used, because the order changes when items start.
-- At midnight anything unfinished becomes incomplete. Tomorrow starts empty.
-- Only today can be tracked. Today and later days can be planned. Past days are for looking back.
+A few things to know:
 
-Run `flowd` with no arguments for the terminal workspace. Move with `j` and `k`, open the details
-of an item with `enter`, close them with `esc` and quit with `q`. Space starts, pauses or resumes
-the selected item, `f` finishes it, `s` skips it, `u` brings back a skipped item and `R` reopens a
-finished one. `n` adds an item and `e` edits the selected one: type the title, press Tab, type the
-duration and save with Ctrl+S. `c` opens a calendar to look at or plan another day, `t` comes back to
-today, `r` shows the review, `d` deletes the selected item after asking, and `?` lists every key. The window needs to be at least 80
-by 24.
+- **Duration** is a budget, not a time slot. Write it as `30`, `30m`, `2h` or `1h30m`.
+- **Work** is the time an item actually ran. **Elapsed** is the time since it first started,
+  pauses included.
+- **Only today** can be tracked. Today and later days can be planned. Past days are for looking
+  back.
 
-`flowd delete ID` asks before deleting, because a deleted item cannot be brought back. Scripts and
-agents have to add `--yes`.
+Add `--json` to any command for output scripts can read, and `--date 2026-11-20` to work on
+another day. `flowd --help` lists everything.
 
-Add `--json` to any command for output that scripts can read, and `--date 2026-11-20` to work on
-another day. `flowd --help` lists every command.
+<br>
 
-## Use it with an AI agent
+## The workspace
+
+Run `flowd` with no arguments to open it. Everything is one key.
+
+| Key | Action | Key | Action |
+| :---: | --- | :---: | --- |
+| `j` `k` | Move up and down | `n` | New item |
+| `space` | Start, pause or resume | `e` | Edit the selected item |
+| `f` | Finish | `d` | Delete, after asking |
+| `s` `u` | Skip and bring back | `c` | Calendar, to see or plan another day |
+| `R` | Reopen a finished item | `t` | Back to today |
+| `enter` | Details | `r` | Review of the day |
+| `?` | Every key | `q` | Quit |
+
+In a form, type the title, press Tab for the duration and save with Ctrl+S. The window needs to
+be at least 80 by 24.
+
+<br>
+
+## With an AI agent
 
 The installer also adds an Agent Skill, so an agent that supports skills can plan and track your
 day when you ask it to. It reads the day as JSON, changes only what you asked for, and treats item
 titles as plain data. Reload your agent after installing to pick it up.
 
+<br>
+
 ## Your data
 
-The database is `$XDG_DATA_HOME/flowd/flowd.sqlite`, or `~/.local/share/flowd/flowd.sqlite` when
-`XDG_DATA_HOME` is not set to an absolute path. Use `--db PATH` to pick another file.
+Everything lives in one SQLite file at `~/.local/share/flowd/flowd.sqlite`, or under
+`$XDG_DATA_HOME` when that is set to an absolute path. Use `--db PATH` to pick another file.
 
 ```sh
-flowd backup              # write flowd.sqlite.bak next to the database
-flowd doctor              # check the database, prints OK or the problem
-flowd doctor --repair     # put the backup back in place
+flowd backup            # write a backup next to the database
+flowd doctor            # check the database
+flowd doctor --repair   # put the backup back, keeping the current files aside
 ```
 
-Repair checks the backup first and never deletes your current files. It moves them into a
-recovery folder next to the database.
+<br>
 
-## Build from source
+## Learn more
 
-You need Go 1.27.4 or newer.
+- [Vision](docs/00-vision.md) for why flowd exists
+- [Requirements](docs/01-requirements.md) for everything it does
+- [Domain](docs/02-domain.md) for the rules a day follows
+- [Architecture](docs/03-architecture.md) for how it is built
 
-```sh
-go build -o flowd ./cmd/flowd
-go test ./...
-```
+To build from source you need Go 1.27.4 or newer, then `go build -o flowd ./cmd/flowd`.
 
-## More
+<br>
 
-- [Vision](docs/00-vision.md)
-- [Requirements](docs/01-requirements.md)
-- [Domain](docs/02-domain.md)
-- [Architecture](docs/03-architecture.md)
+## License
 
-flowd is licensed under the [Apache License 2.0](LICENSE). `flowd --licenses` prints the licenses of the libraries it is
-built with.
+flowd is licensed under the [Apache License 2.0](LICENSE). `flowd --licenses` prints the licenses
+of the libraries it is built with.
