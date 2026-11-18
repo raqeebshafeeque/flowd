@@ -47,7 +47,7 @@ func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w.now = w.now.Add(10 * time.Minute)
 	w.refresh()
 	text := plain(w)
-	for _, want := range []string{"flowd", "Tue 17 Nov 2026  09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  skip [s]", "help [?]", "quit [q]"} {
+	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  skip [s]", "help [?]", "quit [q]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
@@ -148,5 +148,43 @@ func TestTimingAndStatusSitAtTheRightEdge(t *testing.T) {
 	w.m.style.noColor = false
 	if !strings.Contains(w.m.View().Content, "\x1b[36m> ") {
 		t.Error("the selected item should be teal")
+	}
+}
+
+// The header has four cells, flowd, a note, the date and the clock, and the
+// dividers between them meet the borders above and below.
+func TestTheHeaderIsSplitIntoJoinedCells(t *testing.T) {
+	w := newWorkspace(t)
+	w.refresh()
+	for _, size := range [][2]int{{80, 24}, {100, 30}, {160, 40}} {
+		w.m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+		rows := strings.Split(plain(w), "\n")
+		top, header, below := []rune(rows[0]), []rune(rows[1]), []rune(rows[2])
+		var dividers []int
+		for i, r := range header {
+			if r == '│' && i > 0 && i < len(header)-1 {
+				dividers = append(dividers, i)
+			}
+		}
+		if len(dividers) != 3 {
+			t.Fatalf("%v: want 3 dividers in %q", size, rows[1])
+		}
+		for _, i := range dividers {
+			if top[i] != '┬' || below[i] != '┴' {
+				t.Fatalf("%v: divider at %d is not joined: %q / %q", size, i, string(top[i]), string(below[i]))
+			}
+		}
+		if !strings.HasPrefix(rows[1], "│ flowd │") || !strings.HasSuffix(rows[1], "│ Tue 17 Nov 2026 │ 09:00:00 │") {
+			t.Fatalf("%v: unexpected header %q", size, rows[1])
+		}
+		if middle := string(header[dividers[0]+1 : dividers[1]]); strings.TrimSpace(middle) != "" {
+			t.Fatalf("today should leave the middle empty, got %q", middle)
+		}
+	}
+	w.press(key("c"), key("l"))
+	w.run(w.press(key("enter")))
+	rows := strings.Split(plain(w), "\n")
+	if !strings.HasPrefix(rows[1], "│ flowd │ Viewing: 2026-11-18 ") {
+		t.Fatalf("another day should be named in the middle: %q", rows[1])
 	}
 }

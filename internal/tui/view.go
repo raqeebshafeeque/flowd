@@ -36,7 +36,7 @@ func (m *model) View() tea.View {
 func (m *model) frame() []string {
 	inner := m.width - 2
 	body := m.height - 6
-	rows := []string{m.border("┌", "┐"), m.side(m.header(inner)), m.border("├", "┤")}
+	rows := []string{m.headerEdge("┌", "┬", "┐"), m.side(m.header(inner)), m.headerEdge("├", "┴", "┤")}
 	var content []string
 	caretRow, caretCol := -1, 0
 	if m.help {
@@ -100,12 +100,40 @@ func fit(row string, width int) string {
 // current local date and time.
 func (m *model) header(width int) string {
 	now := m.now().In(m.zone)
-	left := " " + m.style.paint("brand", "flowd")
-	if day := m.viewing(); day != now.Format("2006-01-02") {
-		left += "   Viewing " + day
+	cells := headerCells(width)
+	bar := m.style.paint("border", "│")
+	return " " + m.style.paint("brand", "flowd") + " " + bar +
+		fit(" "+m.headerNote(now), cells[1]) + bar +
+		" " + now.Format("Mon 02 Jan 2006") + " " + bar +
+		" " + now.Format("15:04:05") + " "
+}
+
+// headerCells are the widths of the header's four cells: the brand, a note
+// about the day on screen, the date and the clock.
+func headerCells(width int) [4]int { return [4]int{7, max(0, width-37), 17, 10} }
+
+// headerNote says which day is on screen when it is not today. Today leaves
+// the middle of the header empty.
+func (m *model) headerNote(now time.Time) string {
+	day := m.viewing()
+	switch {
+	case !m.loaded && m.err == nil:
+		return "Loading: " + day
+	case day != now.Format("2006-01-02"):
+		return "Viewing: " + day
 	}
-	right := now.Format("Mon 2 Jan 2006  15:04:05") + " "
-	return spread(left, right, width)
+	return ""
+}
+
+// headerEdge draws the border above or below the header, with joints where
+// the header's dividers meet it.
+func (m *model) headerEdge(left, joint, right string) string {
+	cells := headerCells(m.width - 2)
+	parts := make([]string, len(cells))
+	for i, w := range cells {
+		parts[i] = strings.Repeat("─", w)
+	}
+	return m.style.paint("border", left+strings.Join(parts, joint)+right)
 }
 
 // spread puts left and right at the two ends of a row.

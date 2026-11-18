@@ -152,7 +152,7 @@ func TestChoosingADayShowsItWithoutCreatingIt(t *testing.T) {
 	if w.m.calendar != nil || w.m.date != "2026-11-18" || len(w.m.state.View.Items) != 0 {
 		t.Fatalf("not showing an empty 18 November: %q %d", w.m.date, len(w.m.state.View.Items))
 	}
-	if text := plain(w); !strings.Contains(text, "Viewing 2026-11-18") || !strings.Contains(text, "today [t]") {
+	if text := plain(w); !strings.Contains(text, "Viewing: 2026-11-18") || !strings.Contains(text, "today [t]") {
 		t.Fatalf("the header should say which day is shown:\n%s", text)
 	}
 	if state, _ := w.client.Read(w.m.ctx, planner.Selection{Date: "2026-11-18"}); state.Day.ID != "" {

@@ -89,7 +89,8 @@ with the same rules.
   or a year in the footer, keeping the day where it can. The cursor date is in brackets and teal,
   like `[17]`. Looking at a day never creates it.
 - Whatever is active is teal: the selected item, the cursor date and the focused form field.
-- When another day is on screen the header says `Viewing 2026-11-18` and `t` comes back to today.
+- The header is split into four cells: `flowd`, a note, the date and the clock. When another day is
+  on screen the note says `Viewing: 2026-11-18`, and `t` comes back to today. For today it is empty.
   The footer only offers what that day allows: tracking today, planning today and later, and only
   looking on past days.
 - `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
