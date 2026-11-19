@@ -30,12 +30,17 @@ type Env struct {
 	// whether a person is at a terminal to answer them.
 	In          io.Reader
 	Interactive bool
+	// Color says whether output may be colored, and Width is the width of
+	// the terminal, or zero when output is not a terminal.
+	Color bool
+	Width int
 }
 
 // Run executes one command line and returns the exit status. It never exits
 // the process itself.
 func Run(ctx context.Context, args []string, out, errOut io.Writer, env Env) int {
 	o, err := parse(args)
+	o.look = look{color: env.Color, width: env.Width}
 	if err == nil {
 		err = run(ctx, o, out, env)
 	}

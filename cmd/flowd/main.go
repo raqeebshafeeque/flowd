@@ -27,8 +27,21 @@ func main() {
 func run(ctx context.Context) int {
 	zone := planner.SystemZone()
 	if len(os.Args) > 1 {
-		interactive := term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd())
-		return cli.Run(ctx, os.Args[1:], os.Stdout, os.Stderr, cli.Env{Version: version, Zone: zone, In: os.Stdin, Interactive: interactive})
+		toTerminal := term.IsTerminal(os.Stdout.Fd())
+		width := 0
+		if toTerminal {
+			width, _, _ = term.GetSize(os.Stdout.Fd())
+		}
+		_, noColor := os.LookupEnv("NO_COLOR")
+		env := cli.Env{
+			Version:     version,
+			Zone:        zone,
+			In:          os.Stdin,
+			Interactive: term.IsTerminal(os.Stdin.Fd()) && toTerminal,
+			Color:       toTerminal && !noColor,
+			Width:       width,
+		}
+		return cli.Run(ctx, os.Args[1:], os.Stdout, os.Stderr, env)
 	}
 	path, err := store.DefaultPath()
 	if err == nil {

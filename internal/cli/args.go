@@ -26,6 +26,7 @@ type options struct {
 	yes      bool
 	title    *string
 	duration *string
+	look     look // set from Env, not from the command line
 }
 
 // command describes how a command takes its arguments.

@@ -96,11 +96,12 @@ func TestADayFromStartToReview(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
 	s.ok("add", "30m", "Code", "review")
-	if out := s.ok("start", s.id("Study")); !contains(out, "Started Study") {
+	if out := s.ok("start", s.id("Study")); !contains(out, "│ Study │") || !contains(out, "IN PROGRESS") {
 		t.Fatalf("got %q", out)
 	}
 	s.now = s.now.Add(40 * time.Minute)
-	if out := s.ok("start", s.id("Code review")); !contains(out, "Started Code review") || !contains(out, "Paused Study") {
+	// Only the item acted on is shown, not the one it paused.
+	if out := s.ok("start", s.id("Code review")); !contains(out, "Code review") || !contains(out, "IN PROGRESS") || contains(out, "Study") {
 		t.Fatalf("got %q", out)
 	}
 	s.now = s.now.Add(20 * time.Minute)
@@ -161,7 +162,7 @@ func TestErrorsHaveCodesAndExitStatuses(t *testing.T) {
 func TestEditDeleteAndEveryAction(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
-	if out := s.ok("edit", "--title", "Deep study", "--duration", "2h", s.id("Study")); !contains(out, "Updated Deep study (TODO, 2h)") {
+	if out := s.ok("edit", "--title", "Deep study", "--duration", "2h", s.id("Study")); !contains(out, "│ Deep study │       2h │   TODO │") {
 		t.Fatalf("got %q", out)
 	}
 	for _, step := range []string{"start", "pause", "resume", "finish", "reopen", "skip", "unskip"} {
@@ -305,7 +306,7 @@ func TestItemsArePickedOnlyByTheirFullID(t *testing.T) {
 	s.fails(1, "ERR_NOT_FOUND", "start", "1")
 	s.fails(1, "ERR_NOT_FOUND", "start", id[:len(id)-1])
 	s.fails(1, "ERR_NOT_FOUND", "start", id[3:])
-	if out := s.ok("start", id); !contains(out, "Started Study") || !contains(out, id) {
+	if out := s.ok("start", id); !contains(out, "Study") || !contains(out, id) {
 		t.Fatalf("got %q", out)
 	}
 	if list := s.ok("list"); contains(list, "#") || !contains(list, id) {
@@ -335,7 +336,7 @@ func TestOptionsCanGoAnywhere(t *testing.T) {
 	if out := s.ok("start", id, "--json"); !strings.HasPrefix(out, "{") {
 		t.Fatalf("--json after the ID was ignored: %q", out)
 	}
-	if out := s.ok("add", "30m", "--", "-v is a flag"); !contains(out, "Planned -v is a flag") {
+	if out := s.ok("add", "30m", "--", "-v is a flag"); !contains(out, "│ -v is a flag │") {
 		t.Fatalf("a title after -- is plain text: %q", out)
 	}
 	s.fails(2, "ERR_USAGE", "--date", "2026-11-18", "list", "--date", "2026-11-19")
