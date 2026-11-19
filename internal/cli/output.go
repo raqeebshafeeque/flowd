@@ -63,17 +63,16 @@ func printDay(out io.Writer, o options, v planner.View) error {
 			_, err := fmt.Fprintln(out, "Nothing is running")
 			return err
 		}
-		return printTable(out, o.look, []planner.ItemView{*v.Running})
+		return printDated(out, o.look, v.Date, []planner.ItemView{*v.Running})
 	case o.command == "review":
-		fmt.Fprintf(out, "%s · %s\n\n", heading(v.Date), v.Timezone)
+		fmt.Fprintf(out, "%s\n\n", heading(v.Date))
 		return printReview(out, v)
 	}
 	if len(v.Items) == 0 {
-		_, err := fmt.Fprintf(out, "%s · %s\n\nNothing planned. Add something with: flowd add 1h \"Study\"\n", heading(v.Date), v.Timezone)
+		_, err := fmt.Fprintf(out, "%s\n\nNothing planned. Add something with: flowd add 1h \"Study\"\n", heading(v.Date))
 		return err
 	}
-	fmt.Fprintf(out, "%s · %s\n", heading(v.Date), v.Timezone)
-	return printTable(out, o.look, v.Items)
+	return printDated(out, o.look, v.Date, v.Items)
 }
 
 func printReview(out io.Writer, v planner.View) error {
@@ -101,7 +100,7 @@ func printResult(out io.Writer, o options, r planner.Result) error {
 	if o.json {
 		return writeJSON(out, item)
 	}
-	return printTable(out, o.look, []planner.ItemView{item})
+	return printDated(out, o.look, r.Day.Date, []planner.ItemView{item})
 }
 
 func printEvents(out io.Writer, o options, events []domain.Event) error {

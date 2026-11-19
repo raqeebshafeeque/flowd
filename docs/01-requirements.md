@@ -24,8 +24,9 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   accepted, because the order changes when items start, and a command must never act on an item
   that moved.
 - The command line shows items in a table drawn like the workspace, with the ID, the title, the
-  Duration and the status. `flowd list` shows every item of the day. A change shows only the item it
-  changed, even when starting it paused another one. At a terminal the status has the same colors
+  Duration and the status, under the date it is about, like `Thu 19 Nov 2026`. `flowd list` shows
+  every item of the day. A change shows only the item it changed, even when starting it paused
+  another one. At a terminal the status has the same colors
   as in the workspace, and a title too long for the window is shortened with `…`. Piped output and
   `NO_COLOR` stay plain.
 
