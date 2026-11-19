@@ -30,15 +30,6 @@ archives:
       - src: .release/package/VERSION
         dst: .
         strip_parent: true
-      - src: .release/package/skills/flowd/SKILL.md
-        dst: skills/flowd
-        strip_parent: true
-      - src: .release/package/skills/flowd/VERSION
-        dst: skills/flowd
-        strip_parent: true
-      - src: .release/package/skills/flowd/references/commands.md
-        dst: skills/flowd/references
-        strip_parent: true
 
 checksum:
   name_template: checksums.txt

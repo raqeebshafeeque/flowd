@@ -23,6 +23,16 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   full ID, which `flowd list` shows and every change prints. A position in the list is never
   accepted, because the order changes when items start, and a command must never act on an item
   that moved.
+- At a terminal, a command that needs an item can be run without the ID. It then lists the items
+  that command fits, like only the todo items for `start`, and the person picks one with the arrow
+  keys or `j` and `k`, Enter to choose and Esc to cancel. Cancelling changes nothing. Without a
+  terminal, or with `--json`, a missing ID is refused as before, so nothing ever waits for an
+  answer.
+- Tab completion for fish, zsh and bash completes commands, options, dates and item IDs, showing
+  each item's title next to its ID where the shell can. It offers only the items the command fits.
+  `flowd completion <SHELL>` prints the script, and the installer prints the one line that sets it
+  up, without editing shell files itself. Completion runs on every Tab, so like the status line it
+  takes no lock, never writes and stays quiet on any problem.
 - The command line shows items in a table drawn like the workspace, with the ID, the title, the
   Duration and the status, under the date it is about, like `Thu 19 Nov 2026`. `flowd list` shows
   every item of the day. A change shows only the item it changed, even when starting it paused
@@ -72,7 +82,10 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - If a save fails in a way that leaves it unknown whether it landed, flowd says so plainly instead
   of reporting success or failure.
 - A refused or failed action never prints output that looks like success.
-- flowd ships with an Agent Skill that teaches an agent how to use these commands safely.
+- flowd ships with an Agent Skill that teaches an agent how to use these commands safely. It is
+  built into the program and only installed when asked, with `flowd skill --claude` for Claude Code
+  in `~/.claude/skills/flowd`, `flowd skill --codex` for Codex in `~/.agents/skills/flowd`, or both.
+  A folder there that holds anything other than the flowd skill is never replaced.
 - An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
   instructions.
 

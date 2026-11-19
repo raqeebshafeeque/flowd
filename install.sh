@@ -1,5 +1,6 @@
 #!/bin/sh
-# Install a flowd release and its matching Agent Skill. Nothing is built from source.
+# Install a flowd release. Nothing is built from source. The Agent Skill is
+# built into flowd and installed only when asked, with flowd skill.
 set -eu
 umask 077
 
@@ -10,15 +11,12 @@ from=
 require_attestation=false
 attestation_note=
 bin_dir=
-skills_dir=
 stage=
 binary_stage=
-skill_stage=
 binary_lock=
-skill_lock=
 publication=false
 new_binary=false
-new_skill=false
+refreshed_skills=
 install_complete=false
 interactive=false
 progress_active=false
@@ -59,25 +57,62 @@ progress_done() {
     fi
 }
 
+# say prints one line of the closing message, bold when color is allowed.
+say() {
+    if [ "$interactive" = true ]; then printf '\033[1m%s\033[0m\n' "$1"; else printf '%s\n' "$1"; fi
+}
+
 show_success() {
+    printf '\n'
     if [ "$interactive" = true ]; then
-        printf '\n  \033[1;32mInstalled flowd %s!\033[0m\n' "$version"
+        printf '\033[1;32m%s\033[0m\n' "Wohoo! Installed flowd $version!"
     else
-        printf '\n  Installed flowd %s!\n' "$version"
+        printf '%s\n' "Wohoo! Installed flowd $version!"
     fi
-    printf '\n  Binary  %s\n  Skill   %s\n  Proof   %s\n\n' "$binary_target" "$skill_target" "$attestation_note"
+    printf '%s\n' "It's time to plan and lock in 🔒"
     case :${PATH:-}: in
-        *:"$bin_dir":*) printf '  PATH    Already on PATH: %s\n' "$bin_dir" ;;
-        *) printf "  PATH    Add %s to your shell's PATH.\n" "$bin_dir" ;;
+        *:"$bin_dir":*) ;;
+        *) printf '\n%s\n' "Add $bin_dir to your PATH, then open a new terminal." ;;
     esac
-    printf '%s\n' '  Next    Reload your AI harness to load the flowd skill.'
+    [ -z "$attestation_note" ] || printf '\n%s\n' "$attestation_note"
+    if [ -n "$refreshed_skills" ]; then
+        printf '\n%s\n' "Updated the agent skill for$refreshed_skills."
+    else
+        printf '\n'
+        say 'To install the agent skill 🤖, run:'
+        printf '%s\n' '$ flowd skill --claude --codex'
+    fi
+    show_completion
+}
+
+# show_completion prints how to set up tab completion for the shell in use,
+# unless it is set up already. The installer only reads shell files, and
+# never edits them.
+show_completion() {
+    config=${XDG_CONFIG_HOME:-$HOME/.config}
+    case ${SHELL##*/} in
+        fish)
+            [ ! -e "$config/fish/completions/flowd.fish" ] || return 0
+            set -- '$ mkdir -p ~/.config/fish/completions' '$ flowd completion fish > ~/.config/fish/completions/flowd.fish' ;;
+        zsh)
+            ! grep -qs 'flowd completion zsh' "${ZDOTDIR:-$HOME}/.zshrc" || return 0
+            set -- "$ echo 'source <(flowd completion zsh)' >> ~/.zshrc" ;;
+        bash)
+            ! grep -qs 'flowd completion bash' "$HOME/.bashrc" || return 0
+            set -- "$ echo 'source <(flowd completion bash)' >> ~/.bashrc" ;;
+        *) set -- '$ flowd completion bash|fish|zsh' ;;
+    esac
+    printf '\n'
+    say 'To add tab completion, run:'
+    printf '%s\n' "$@"
 }
 
 fail() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 1; }
 usage_error() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 2; }
 help() {
-    printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--from DIR] [--bin-dir DIR] [--skills-dir DIR] [--force] [--require-attestation]' \
-        'Downloads a public release and installs it to ~/.local/bin and ~/.agents/skills.' \
+    printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--from DIR] [--bin-dir DIR] [--force] [--require-attestation]' \
+        'Downloads a public release and installs flowd to ~/.local/bin.' \
+        'The Agent Skill is installed only when asked, with flowd skill --claude --codex.' \
         '--from DIR installs from release files already downloaded into DIR instead.' \
         'Needs curl, tar, gzip, standard shell tools and sha256sum or shasum.' \
         'Checks the release checksum before installing anything, and the signed build provenance' \
@@ -87,18 +122,17 @@ help() {
 }
 
 parse_args() {
-    seen_version=false seen_bin=false seen_skills=false
+    seen_version=false seen_bin=false
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --help|-h) help; exit 0 ;;
             --force) [ "$force" = false ] || usage_error '--force supplied twice'; force=true; shift ;;
             --require-attestation) [ "$require_attestation" = false ] || usage_error '--require-attestation supplied twice'; require_attestation=true; shift ;;
-            --version|--bin-dir|--skills-dir|--from)
+            --version|--bin-dir|--from)
                 [ "$#" -ge 2 ] && [ -n "$2" ] || usage_error "$1 needs a value"
                 case "$1" in
                     --version) [ "$seen_version" = false ] || usage_error '--version supplied twice'; seen_version=true; version=$2 ;;
                     --bin-dir) [ "$seen_bin" = false ] || usage_error '--bin-dir supplied twice'; seen_bin=true; bin_dir=$2 ;;
-                    --skills-dir) [ "$seen_skills" = false ] || usage_error '--skills-dir supplied twice'; seen_skills=true; skills_dir=$2 ;;
                     --from) [ -z "$from" ] || usage_error '--from supplied twice'; from=$2 ;;
                 esac
                 shift 2 ;;
@@ -108,7 +142,7 @@ parse_args() {
 }
 
 prerequisites() {
-    for utility in curl tar awk cat chmod cmp cp dirname env grep gzip mkdir mktemp mv rm rmdir sort uname; do
+    for utility in curl tar awk cat chmod cmp cp dirname env grep gzip mkdir mktemp mv rm rmdir sed sort uname; do
         command -v "$utility" >/dev/null 2>&1 || fail "required utility not found: $utility"
     done
     if command -v sha256sum >/dev/null 2>&1; then checksum_tool=sha256sum
@@ -125,12 +159,6 @@ cleanup() {
     progress_pause
     restored=true
     if [ "$publication" = true ]; then
-        if [ "$new_skill" = true ]; then rm -rf "$skill_target" || restored=false; fi
-        if [ -n "$skill_stage" ] && [ -e "$skill_stage/old" ]; then
-            if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then restored=false
-            elif ! mv "$skill_stage/old" "$skill_target"; then restored=false
-            fi
-        fi
         if [ "$new_binary" = true ]; then rm -f "$binary_target" || restored=false; fi
         if [ -n "$binary_stage" ] && [ -e "$binary_stage/old" ]; then
             if [ -e "$binary_target" ] || [ -L "$binary_target" ]; then restored=false
@@ -140,25 +168,23 @@ cleanup() {
         if [ "$restored" = true ]; then
             printf '%s\n' 'flowd install: prior installation restored after failed publication' >&2
         else
-            printf 'flowd install: restoration incomplete; inspect binary %s and skill %s\nrecovery: %s %s\n' \
-                "$binary_target" "$skill_target" "$binary_stage" "$skill_stage" >&2
+            printf 'flowd install: restoration incomplete; inspect %s\nrecovery: %s\n' \
+                "$binary_target" "$binary_stage" >&2
             status=1
         fi
     fi
     [ -z "$stage" ] || rm -rf "$stage" || status=1
     if [ "$restored" = true ]; then
         [ -z "$binary_stage" ] || rm -rf "$binary_stage" || status=1
-        [ -z "$skill_stage" ] || rm -rf "$skill_stage" || status=1
     fi
-    for lock in "$binary_lock" "$skill_lock"; do
-        [ -n "$lock" ] || continue
-        if ! rm -f "$lock/owner" || ! rmdir "$lock"; then
-            printf 'flowd install: cannot release install lock: %s\n' "$lock" >&2
+    if [ -n "$binary_lock" ]; then
+        if ! rm -f "$binary_lock/owner" || ! rmdir "$binary_lock"; then
+            printf 'flowd install: cannot release install lock: %s\n' "$binary_lock" >&2
             status=1
         fi
-    done
+    fi
     if [ "$status" -eq 0 ] && [ "$install_complete" = true ]; then
-        progress_done 'Installed binary and skill'
+        progress_done 'Installed flowd'
         show_success
     fi
     exit "$status"
@@ -197,7 +223,7 @@ verify_attestation() {
     if command -v gh >/dev/null 2>&1 && gh attestation verify --help >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
         if gh attestation verify "$stage/archive.tar.gz" --repo "$attestation_repository" \
             --signer-workflow "$attestation_repository/.github/workflows/release.yml" >"$stage/attestation.log" 2>&1; then
-            attestation_note='Verified (signed build provenance)'
+            attestation_note=
             return 0
         fi
         fail 'build provenance verification failed; no files installed'
@@ -205,7 +231,7 @@ verify_attestation() {
     if [ "$require_attestation" = true ]; then
         fail 'build provenance verification is required but needs the GitHub CLI (gh), installed and signed in; no files installed'
     fi
-    attestation_note='Checksum verified. Install and sign in to the GitHub CLI (gh) to also verify provenance'
+    attestation_note='Checked the download with its checksum. Sign in to the GitHub CLI (gh) to also check it was built by this repository.'
 }
 
 # Environment isolation avoids incidental planner access and credential inheritance.
@@ -219,25 +245,18 @@ run_staged() (
 validate_payload() {
     payload=$stage/payload
     tar -tzf "$stage/archive.tar.gz" > "$stage/members" || fail 'cannot list release archive'
-    printf '%s\n' flowd VERSION LICENSE skills/flowd/SKILL.md skills/flowd/VERSION \
-        skills/flowd/references/commands.md | sort > "$stage/expected"
+    printf '%s\n' flowd VERSION LICENSE | sort > "$stage/expected"
     sort "$stage/members" > "$stage/actual"
     cmp -s "$stage/expected" "$stage/actual" || fail 'unexpected, duplicate or missing archive members'
     tar -tvzf "$stage/archive.tar.gz" > "$stage/types" || fail 'cannot inspect archive types'
     awk 'substr($0,1,1) != "-" { bad=1 } END { exit bad }' "$stage/types" || fail 'archive links or unsupported entry types are refused'
-    mkdir -p "$payload/skills/flowd/references" || fail 'cannot create payload staging'
-    for member in flowd VERSION LICENSE skills/flowd/SKILL.md skills/flowd/VERSION \
-        skills/flowd/references/commands.md; do
+    mkdir -p "$payload" || fail 'cannot create payload staging'
+    for member in flowd VERSION LICENSE; do
         tar -xzOf "$stage/archive.tar.gz" "$member" > "$payload/$member" || fail "cannot stage $member"
         [ -s "$payload/$member" ] || fail "empty package member: $member"
     done
     printf '%s\n' "$version" > "$stage/version"
-    if ! cmp -s "$stage/version" "$payload/VERSION" || ! cmp -s "$stage/version" "$payload/skills/flowd/VERSION"; then
-        fail 'package version records disagree'
-    fi
-    grep -q '^name: flowd$' "$payload/skills/flowd/SKILL.md" || fail 'invalid skill name'
-    grep -q '^description: .' "$payload/skills/flowd/SKILL.md" || fail 'missing skill description'
-    grep -Fq "(references/commands.md)" "$payload/skills/flowd/SKILL.md" || fail 'skill reference missing: references/commands.md'
+    cmp -s "$stage/version" "$payload/VERSION" || fail 'package version records disagree'
     chmod 755 "$payload/flowd" || fail 'cannot mark staged executable'
     mkdir "$stage/home" || fail 'cannot create private preflight home'
     actual_version=$(run_staged --version) || fail 'release executable cannot run on this host'
@@ -304,63 +323,62 @@ prepare_install() {
 publish_payload() {
     [ -n "${HOME:-}" ] || fail 'HOME must be set for user installation'
     bin_dir=${bin_dir:-"$HOME/.local/bin"}
-    skills_dir=${skills_dir:-"$HOME/.agents/skills"}
-    mkdir -p "$bin_dir" "$skills_dir" || fail 'cannot create install directories'
+    mkdir -p "$bin_dir" || fail 'cannot create install directory'
     bin_dir=$(CDPATH='' cd "$bin_dir" && pwd -P)
-    skills_dir=$(CDPATH='' cd "$skills_dir" && pwd -P)
     binary_target=$bin_dir/flowd
-    skill_target=$skills_dir/flowd
-    [ "$binary_target" != "$skill_target" ] || fail 'binary and skill destinations must be distinct'
-    case "$bin_dir/" in "$skill_target/"*) fail 'binary directory must not be inside the managed skill destination' ;; esac
-    # Cooperating installers must own both parents before inspecting or moving targets.
+    # Cooperating installers must own the directory before inspecting or moving the target.
     # Never override an existing lock, including after a crash or with --force.
     if mkdir "$bin_dir/.flowd-install.lock" 2>/dev/null; then binary_lock=$bin_dir/.flowd-install.lock
     else fail "cannot acquire install lock: $bin_dir/.flowd-install.lock; inspect for another or interrupted installer"
     fi
-    if mkdir "$skills_dir/.flowd-install.lock" 2>/dev/null; then skill_lock=$skills_dir/.flowd-install.lock
-    else fail "cannot acquire install lock: $skills_dir/.flowd-install.lock; inspect for another or interrupted installer"
-    fi
-    for lock in "$binary_lock" "$skill_lock"; do
-        printf '%s\n' "$$" > "$lock/owner" || fail 'cannot record install lock owner'
-    done
-    if [ -L "$binary_target" ] || [ -L "$skill_target" ]; then fail 'destination symlinks are refused, even with --force'; fi
+    printf '%s\n' "$$" > "$binary_lock/owner" || fail 'cannot record install lock owner'
+    if [ -L "$binary_target" ]; then fail 'destination symlinks are refused, even with --force'; fi
     if [ -e "$binary_target" ] && [ ! -f "$binary_target" ]; then fail 'executable destination is not a regular file'; fi
-    if [ -e "$skill_target" ] && [ ! -d "$skill_target" ]; then fail 'skill destination is not a real directory'; fi
+    # The record says this installer put the binary there. Older installers
+    # kept it in the skill folder, which is still accepted.
+    record=$bin_dir/.flowd-install
+    printf 'flowd-install-v2\n%s\n' "$binary_target" > "$stage/record"
     managed=false
-    record=$skill_target/.flowd-install
-    if [ -f "$record" ] && [ ! -L "$record" ] && [ -f "$skill_target/VERSION" ] && [ ! -L "$skill_target/VERSION" ]; then
-        previous_version=$(cat "$skill_target/VERSION")
-        if normal_version "$previous_version"; then
-            printf 'flowd-install-v1\n%s\n%s\n' "$previous_version" "$binary_target" > "$stage/previous-record"
-            if cmp -s "$stage/previous-record" "$record"; then managed=true; fi
-        fi
+    if [ -f "$record" ] && [ ! -L "$record" ] && cmp -s "$stage/record" "$record"; then managed=true; fi
+    legacy=$HOME/.agents/skills/flowd/.flowd-install
+    if [ "$managed" = false ] && [ -f "$legacy" ] && [ ! -L "$legacy" ] &&
+        [ "$(sed -n 1p "$legacy")" = flowd-install-v1 ] && [ "$(sed -n 3p "$legacy")" = "$binary_target" ]; then
+        managed=true
     fi
-    if [ "$force" = false ] && [ "$managed" = false ]; then
-        if [ -e "$binary_target" ] || [ -e "$skill_target" ]; then fail 'unmanaged flowd destination exists; review it before using --force'; fi
+    if [ "$force" = false ] && [ "$managed" = false ] && [ -e "$binary_target" ]; then
+        fail 'unmanaged flowd destination exists; review it before using --force'
     fi
     binary_stage=$(mktemp -d "$bin_dir/.flowd-bin.XXXXXX") || fail 'cannot stage executable beside destination'
-    skill_stage=$(mktemp -d "$skills_dir/.flowd-skill.XXXXXX") || fail 'cannot stage skill beside destination'
     cp "$payload/flowd" "$binary_stage/new" || fail 'cannot stage executable'
     chmod 755 "$binary_stage/new" || fail 'cannot set executable mode'
-    cp -R "$payload/skills/flowd" "$skill_stage/new" || fail 'cannot stage skill'
-    cp "$payload/LICENSE" "$skill_stage/new/LICENSE" || fail 'cannot retain LICENSE'
-    chmod -R u=rwX,go=rX "$skill_stage/new" || fail 'cannot set skill modes'
-    printf 'flowd-install-v1\n%s\n%s\n' "$version" "$binary_target" > "$skill_stage/new/.flowd-install" || fail 'cannot record installation ownership'
-    chmod 600 "$skill_stage/new/.flowd-install" || fail 'cannot set ownership record mode'
     publication=true
     if [ -e "$binary_target" ]; then mv "$binary_target" "$binary_stage/old" || fail 'cannot retain prior executable'; fi
-    if [ -e "$skill_target" ]; then mv "$skill_target" "$skill_stage/old" || fail 'cannot retain prior skill'; fi
     new_binary=true
     mv "$binary_stage/new" "$binary_target" || fail 'cannot publish executable'
-    new_skill=true
-    mv "$skill_stage/new" "$skill_target" || fail 'cannot publish skill'
     publication=false
+    cp "$stage/record" "$record" || fail 'cannot record installation ownership'
+    chmod 600 "$record" || fail 'cannot set ownership record mode'
+    refresh_skills
     install_complete=true
+}
+
+# refresh_skills updates the Agent Skill where it was installed before, so it
+# always matches the new flowd. It is never installed anywhere new, and a
+# failure here only means the old skill stays.
+refresh_skills() {
+    for pair in "claude:$HOME/.claude/skills/flowd:Claude Code" "codex:$HOME/.agents/skills/flowd:Codex"; do
+        flag=${pair%%:*} rest=${pair#*:}
+        folder=${rest%%:*} name=${rest#*:}
+        [ -f "$folder/SKILL.md" ] && [ "$(sed -n 2p "$folder/SKILL.md")" = 'name: flowd' ] || continue
+        if "$binary_target" skill "--$flag" > /dev/null 2>&1; then
+            if [ -z "$refreshed_skills" ]; then refreshed_skills=" $name"; else refreshed_skills="$refreshed_skills and $name"; fi
+        fi
+    done
 }
 
 main() {
     prepare_install "$@"
-    progress_start 4 'Installing binary and skill'
+    progress_start 4 'Installing flowd'
     publish_payload
 }
 

@@ -25,6 +25,7 @@ type options struct {
 	repair   bool
 	short    bool
 	max      int
+	agents   map[string]bool // for skill: which agents to install it for
 	yes      bool
 	title    *string
 	duration *string
@@ -51,15 +52,22 @@ var commands = map[string]command{
 		f.Func("title", "", func(v string) error { o.title = &v; return nil })
 		f.Func("duration", "", func(v string) error { o.duration = &v; return nil })
 	}},
-	"delete": {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
-	"start":  {positional: "ITEM"},
-	"pause":  {positional: "ITEM"},
-	"resume": {positional: "ITEM"},
-	"finish": {positional: "ITEM"},
-	"skip":   {positional: "ITEM"},
-	"unskip": {positional: "ITEM"},
-	"reopen": {positional: "ITEM"},
-	"events": {positional: "ITEM"},
+	"delete":     {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
+	"start":      {positional: "ITEM"},
+	"pause":      {positional: "ITEM"},
+	"resume":     {positional: "ITEM"},
+	"finish":     {positional: "ITEM"},
+	"skip":       {positional: "ITEM"},
+	"unskip":     {positional: "ITEM"},
+	"reopen":     {positional: "ITEM"},
+	"events":     {positional: "ITEM"},
+	"completion": {positional: "SHELL"},
+	"skill": {flags: func(f *flag.FlagSet, o *options) {
+		o.agents = map[string]bool{}
+		for _, a := range agents {
+			f.BoolFunc(a.flag, "", func(string) error { o.agents[a.flag] = true; return nil })
+		}
+	}},
 }
 
 // commandNames lists every command, sorted.
@@ -177,13 +185,22 @@ func parse(args []string) (options, error) {
 			return o, usage(capitalize(o.command) + " takes no arguments")
 		}
 	case "ITEM":
+		// No ID at all is allowed here. At a terminal it opens the picker,
+		// and anywhere else run refuses it.
+		if len(o.args) > 1 {
+			return o, planner.InputError(nil, capitalize(o.command)+" takes the ID of one item", "Find the ID with flowd list")
+		}
+	case "SHELL":
 		if len(o.args) != 1 {
-			return o, planner.InputError(nil, capitalize(o.command)+" needs the ID of one item", "Find the ID with flowd list")
+			return o, planner.InputError(nil, "Completion needs a shell", "Use flowd completion bash, fish or zsh")
 		}
 	case "DURATION TITLE":
 		if len(o.args) < 2 {
 			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
+	}
+	if o.command == "skill" && len(o.agents) == 0 {
+		return o, planner.InputError(nil, "Choose which agents get the skill", "Use --claude, --codex or both")
 	}
 	if o.command == "now" && o.max < 1 {
 		return o, planner.InputError(nil, "--max needs a number of at least 1", "For example: flowd now --short --max 30")
@@ -239,8 +256,11 @@ Commands:
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
+  completion <SHELL>           Print tab completion for bash, fish or zsh
+  skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
 
-<ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G.
+<ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G. Leave it
+out at a terminal to pick the item with the arrow keys, or press Tab with completion set up.
 <DURATION> is whole minutes or hours: 30, 30m, 2h or 1h30m.
 Options can go before or after the command. Put -- before a title that starts with a dash.
 

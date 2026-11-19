@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	tea "charm.land/bubbletea/v2"
 	"context"
 	"encoding/json"
 	"os"
@@ -19,6 +20,12 @@ type session struct {
 	now time.Time
 	// answer, when set, is typed at a terminal for any question.
 	answer *string
+	// keys, when set, are pressed in the item picker, as at a terminal.
+	keys []string
+	// offered is what the picker showed, for checking.
+	offered []string
+	// picker, when set, runs the picker instead of pressing keys.
+	picker func(tea.Model) (tea.Model, error)
 }
 
 func newSession(t *testing.T) *session {
@@ -30,6 +37,13 @@ func (s *session) run(args ...string) (stdout, stderr string, code int) {
 	env := Env{Version: "1.2.3", Now: func() time.Time { return s.now }, Zone: time.UTC}
 	if s.answer != nil {
 		env.In, env.Interactive = strings.NewReader(*s.answer), true
+	}
+	if s.keys != nil {
+		env.Interactive = true
+		env.pick = s.press
+		if s.picker != nil {
+			env.pick = s.picker
+		}
 	}
 	code = Run(context.Background(), append([]string{"--db", s.db}, args...), &out, &errOut, env)
 	return out.String(), errOut.String(), code

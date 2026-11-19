@@ -35,8 +35,8 @@ func TestParseRefusesBadCommandLines(t *testing.T) {
 	bad := [][]string{
 		{"dance"},
 		{"add", "1h"},
-		{"start"},
 		{"start", "1", "2"},
+		{"completion"},
 		{"list", "extra"},
 		{"edit", "1"},
 		{"--date", "2026-02-30"},

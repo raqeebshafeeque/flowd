@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	tea "charm.land/bubbletea/v2"
 	"context"
 	_ "embed"
 	"errors"
@@ -34,11 +35,16 @@ type Env struct {
 	// the terminal, or zero when output is not a terminal.
 	Color bool
 	Width int
+	// pick runs the item picker. Tests set it to answer without a terminal.
+	pick func(tea.Model) (tea.Model, error)
 }
 
 // Run executes one command line and returns the exit status. It never exits
 // the process itself.
 func Run(ctx context.Context, args []string, out, errOut io.Writer, env Env) int {
+	if len(args) > 0 && args[0] == "__complete" {
+		return complete(ctx, out, args[1:], env)
+	}
 	o, err := parse(args)
 	o.look = look{color: env.Color, width: env.Width}
 	if err == nil {
@@ -77,6 +83,10 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 	case o.licenses:
 		_, err := fmt.Fprint(out, licenses)
 		return err
+	case o.command == "completion":
+		return printCompletion(out, o.args[0])
+	case o.command == "skill":
+		return installSkill(out, o, env.Version)
 	}
 	path := o.db
 	if path == "" {
@@ -90,6 +100,17 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		return statusLine(ctx, out, o, client)
 	}
 	selection := planner.Selection{Date: o.date, Timezone: o.zone}
+	if commands[o.command].positional == "ITEM" && len(o.args) == 0 {
+		run := env.pick
+		if run == nil {
+			run = runPicker(ctx, env, out)
+		}
+		id, err := choose(ctx, o, client, selection, env, run)
+		if err != nil || id == "" {
+			return err
+		}
+		o.args = []string{id}
+	}
 	switch o.command {
 	case "list", "review", "now":
 		state, err := client.Read(ctx, selection)

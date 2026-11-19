@@ -66,8 +66,13 @@ jobs:
       - name: Build a release and install it with the real installer
         run: |
           goreleaser release --snapshot --clean
-          sh install.sh --from dist --version 0.0.0 --bin-dir "$RUNNER_TEMP/bin" --skills-dir "$RUNNER_TEMP/skills"
+          sh install.sh --from dist --version 0.0.0 --bin-dir "$RUNNER_TEMP/bin"
           test "$("$RUNNER_TEMP/bin/flowd" --version)" = "flowd 0.0.0"
           sh scripts/test-installer.sh dist
+      - name: Shells for the completion test
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y --no-install-recommends fish zsh
+      - name: Tab completion in real shells
+        run: sh scripts/test-completion.sh "$RUNNER_TEMP/bin/flowd"
       - name: Known Go vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...

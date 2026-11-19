@@ -133,20 +133,34 @@ How the parts fit together.
   status line refresh would look like a change and force a full scan.
 - Work is worked out with the same domain rules as everywhere else, so it matches `flowd list`.
 
+## Tab completion and the picker
+
+- The shell scripts are a few lines each. They pass the words typed so far to a hidden
+  `flowd __complete` command, and flowd works out the candidates in Go, so every shell offers the
+  same thing. Each candidate is one line, the value and a tab and its meaning.
+- Item IDs and dates are read with the same lock free, read only path as the status line, so a Tab
+  never makes a real command wait, and never writes or creates anything.
+- Which items a command fits is decided once, by the item's own rules in the domain, and shared by
+  completion, the picker and the checks before a change.
+- The picker is a small inline view on the terminal. It reads the day like any other command, and
+  the chosen item goes through the normal checks, so it can never do more than typing its ID would.
+
 ## Agents
 
 - Agents use the same command line as people. There is no separate interface for them.
 - The JSON output is a contract. Its fields only change with a new schema version.
-- The Agent Skill lives in `skills/flowd/` and is installed together with the program, so its
-  instructions always match the installed version.
+- The Agent Skill lives in `skills/flowd/` and is built into the program. `flowd skill` writes it
+  for the agents asked for, so its instructions always match the installed version. It replaces
+  the folder whole, by writing the new copy beside it and swapping them.
 
 ## Distribution
 
 - Each release has an archive per operating system and processor, with checksums. The archive holds
-  the program, the Agent Skill, a VERSION file and flowd's license. The licenses of the libraries
+  the program, a VERSION file and flowd's license. The licenses of the libraries
   flowd is built with are inside the program and printed by `flowd --licenses`.
-- An `install.sh` script downloads, checks and installs the program and the Agent Skill without
-  needing Go. It refuses an archive whose checksum or contents do not match, runs the new program
+- An `install.sh` script downloads, checks and installs the program without needing Go. It never
+  installs the Agent Skill anywhere new and never edits shell files. It updates the skill where it
+  is already installed, and prints how to add the skill and tab completion. It refuses an archive whose checksum or contents do not match, runs the new program
   once in an empty private home to check its version, and only then puts the files in place.
 - If installing fails halfway, the previous version is put back. Two installers cannot run at once.
 - `install.sh --from DIR` installs from release files that are already downloaded.

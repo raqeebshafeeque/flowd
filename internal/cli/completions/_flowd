@@ -1,0 +1,27 @@
+#compdef flowd
+# flowd tab completion for zsh. Load it from ~/.zshrc with:
+#   source <(flowd completion zsh)
+# flowd itself works out the candidates, so this only passes on what was
+# typed so far and the word being completed.
+
+_flowd() {
+    local -a lines described
+    local line
+    lines=("${(@f)$(flowd __complete "${(@)words[2,CURRENT-1]}" "${words[CURRENT]}" 2>/dev/null)}")
+    for line in "${lines[@]}"; do
+        [[ -z $line ]] && continue
+        if [[ $line == *$'\t'* ]]; then
+            described+=("${${line%%$'\t'*}//:/\\:}:${line#*$'\t'}")
+        else
+            described+=("${line//:/\\:}")
+        fi
+    done
+    _describe -t flowd flowd described
+}
+
+if [[ $funcstack[1] == _flowd ]]; then
+    _flowd "$@"
+else
+    (( $+functions[compdef] )) || { autoload -Uz compinit && compinit; }
+    compdef _flowd flowd
+fi

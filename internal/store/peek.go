@@ -29,62 +29,115 @@ type Glance struct {
 // to read safely. Only the schema is checked. Looking for damage is left to
 // the commands that open the file properly.
 func Peek(ctx context.Context, path, date string) (_ Glance, err error) {
-	absolute, err := filepath.Abs(path)
+	var glance Glance
+	err = peek(ctx, path, func(tx *sql.Tx) error {
+		day, err := readDay(ctx, tx, "date", date)
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		glance.Day = day
+		item, err := scanItem(tx.QueryRowContext(ctx, "SELECT "+itemColumns+" FROM items WHERE day_id=? AND archived=0 AND status=?", day.ID, domain.InProgress))
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		events, err := readEvents(ctx, tx, "item_id=?", item.ID)
+		if err != nil {
+			return err
+		}
+		if len(events) == 0 {
+			return fmt.Errorf("%w: item %s has no history", ErrCorrupt, item.ID)
+		}
+		glance.Item, glance.Events, glance.Running = item, events, true
+		return nil
+	})
 	if err != nil {
 		return Glance{}, err
+	}
+	return glance, nil
+}
+
+// PeekItems reads the visible items of a date the same way as Peek, with no
+// lock and no writes, for tab completion. A date never planned has none.
+func PeekItems(ctx context.Context, path, date string) (items []domain.Item, err error) {
+	err = peek(ctx, path, func(tx *sql.Tx) error {
+		day, err := readDay(ctx, tx, "date", date)
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		items, err = readItems(ctx, tx, day.ID)
+		return err
+	})
+	return items, err
+}
+
+// PeekDates reads the most recent planned dates, newest first, the same way
+// as Peek, for completing --date.
+func PeekDates(ctx context.Context, path string, limit int) (dates []string, err error) {
+	err = peek(ctx, path, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, "SELECT date FROM days ORDER BY date DESC LIMIT ?", limit)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var date string
+			if err := rows.Scan(&date); err != nil {
+				return err
+			}
+			dates = append(dates, date)
+		}
+		return rows.Err()
+	})
+	return dates, err
+}
+
+// peek opens the database read only without the lock, checks its schema and
+// runs read in one read transaction, so everything read comes from the same
+// saved state. A missing database reads as empty, and nothing is created.
+func peek(ctx context.Context, path string, read func(*sql.Tx) error) (err error) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
 	}
 	if resolved, err := filepath.EvalSymlinks(absolute); err == nil {
 		absolute = resolved
 	} else if errors.Is(err, os.ErrNotExist) {
-		return Glance{}, nil
+		return nil
 	} else {
-		return Glance{}, err
+		return err
 	}
 	if _, err := os.Stat(absolute + repairSuffix); err == nil {
-		return Glance{}, ErrIncompleteRepair
+		return ErrIncompleteRepair
 	}
 	for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
 		if err := plainFile(absolute + suffix); err != nil {
-			return Glance{}, err
+			return err
 		}
 	}
 	db, err := connect(ctx, absolute, true)
 	if err != nil {
-		return Glance{}, err
+		return err
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	if err := checkSchema(ctx, db); err != nil {
-		return Glance{}, err
+		return err
 	}
-	// One read transaction, so the day, the item and its history all come
-	// from the same saved state.
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return Glance{}, classify(err)
+		return classify(err)
 	}
 	defer func() { err = errors.Join(err, rollback(tx)) }()
-	day, err := readDay(ctx, tx, "date", date)
-	if errors.Is(err, ErrNotFound) {
-		return Glance{}, nil
+	if err := read(tx); err != nil {
+		return classify(err)
 	}
-	if err != nil {
-		return Glance{}, classify(err)
-	}
-	glance := Glance{Day: day}
-	item, err := scanItem(tx.QueryRowContext(ctx, "SELECT "+itemColumns+" FROM items WHERE day_id=? AND archived=0 AND status=?", day.ID, domain.InProgress))
-	if errors.Is(err, ErrNotFound) {
-		return glance, nil
-	}
-	if err != nil {
-		return Glance{}, classify(err)
-	}
-	events, err := readEvents(ctx, tx, "item_id=?", item.ID)
-	if err != nil {
-		return Glance{}, classify(err)
-	}
-	if len(events) == 0 {
-		return Glance{}, fmt.Errorf("%w: item %s has no history", ErrCorrupt, item.ID)
-	}
-	glance.Item, glance.Events, glance.Running = item, events, true
-	return glance, nil
+	return nil
 }
