@@ -145,7 +145,9 @@ How the parts fit together.
   minimal ones like Alpine. Building them as position independent would make them depend on the
   system's loader, so that is not done.
 - Releases are cut by release-please from the commit history. Merging its release PR tags the
-  version. CI then builds the archives as a draft, installs that draft with the real installer and
-  only publishes it if that works.
+  version and makes a draft release. CI waits until GitHub lists that draft, builds the archives
+  into it, installs it with the real installer and only publishes it if that works. If the tag
+  ever has more than one release, or the draft has no files, the release stops before anything
+  is signed or published.
 - CI builds a full release and installs it with the real installer on every pull request, on Linux
   and macOS.
