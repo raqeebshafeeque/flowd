@@ -82,7 +82,10 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - If a save fails in a way that leaves it unknown whether it landed, flowd says so plainly instead
   of reporting success or failure.
 - A refused or failed action never prints output that looks like success.
-- flowd ships with an Agent Skill that teaches an agent how to use these commands safely.
+- flowd ships with an Agent Skill that teaches an agent how to use these commands safely. It is
+  built into the program and only installed when asked, with `flowd skill --claude` for Claude Code
+  in `~/.claude/skills/flowd`, `flowd skill --codex` for Codex in `~/.agents/skills/flowd`, or both.
+  A folder there that holds anything other than the flowd skill is never replaced.
 - An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
   instructions.
 

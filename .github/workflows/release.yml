@@ -99,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag_name }}
         run: |
-          sh install.sh --from "$RUNNER_TEMP/assets" --version "$TAG" --require-attestation --bin-dir "$RUNNER_TEMP/bin" --skills-dir "$RUNNER_TEMP/skills"
+          sh install.sh --from "$RUNNER_TEMP/assets" --version "$TAG" --require-attestation --bin-dir "$RUNNER_TEMP/bin"
           test "$("$RUNNER_TEMP/bin/flowd" --version)" = "flowd ${TAG#v}"
       - name: Publish
         env:

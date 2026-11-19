@@ -82,9 +82,10 @@ Runs on macOS and Linux, Intel and ARM. No Go and no sudo needed. Run it again a
 
 <br>
 
-The installer puts `flowd` in `~/.local/bin` and the Agent Skill in `~/.agents/skills/flowd`. It
-needs curl, tar, gzip and `shasum` or `sha256sum`, checks the download against the release
-checksums before installing anything, and tells you if `~/.local/bin` is not on your PATH yet.
+The installer puts `flowd` in `~/.local/bin`. It needs curl, tar, gzip and `shasum` or
+`sha256sum`, checks the download against the release checksums before installing anything, and
+tells you if `~/.local/bin` is not on your PATH yet. It then prints how to add the agent skill and
+tab completion, and leaves both to you.
 
 Every release is signed with build provenance. If the [GitHub CLI](https://cli.github.com) is
 installed and signed in, the installer checks that proof too. To refuse installing without it:
@@ -203,9 +204,17 @@ and `--max 20` changes that.
 
 ## With an AI agent
 
-The installer also adds an Agent Skill, so an agent that supports skills can plan and track your
-day when you ask it to. It reads the day as JSON, changes only what you asked for, and treats item
-titles as plain data. Reload your agent after installing to pick it up.
+flowd comes with an Agent Skill, so an agent that supports skills can plan and track your day when
+you ask it to. It reads the day as JSON, changes only what you asked for, and treats item titles as
+plain data. Install it for the agents you use:
+
+```sh
+flowd skill --claude          # Claude Code, in ~/.claude/skills/flowd
+flowd skill --codex           # Codex, in ~/.agents/skills/flowd
+flowd skill --claude --codex  # both
+```
+
+Reload your agent to pick it up. Updating flowd later updates the skill wherever it is installed.
 
 <br>
 

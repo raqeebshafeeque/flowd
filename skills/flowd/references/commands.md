@@ -121,6 +121,12 @@ Agents never need it. A command that needs an ID and gets none opens an arrow ke
 terminal, but an agent is never at one, so it must always pass the full ID. Without a terminal, or
 with `--json`, a missing ID is refused with `ERR_USAGE`.
 
+### skill
+
+`flowd skill --claude --codex` installs this skill for a person, into `~/.claude/skills/flowd` for
+Claude Code and `~/.agents/skills/flowd` for Codex. Only run it when the user asks. A folder of
+that name that holds anything other than the flowd skill is refused, never replaced.
+
 ## Exit status
 
 `0` success, `1` a refused action or a problem with the database, `2` bad input, `130` stopped.

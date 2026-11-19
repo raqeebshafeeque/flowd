@@ -42,6 +42,7 @@ var summaries = map[string]string{
 	"backup":     "Write a backup of the database",
 	"doctor":     "Check the database",
 	"completion": "Print the tab completion script for a shell",
+	"skill":      "Install the Agent Skill for your agents",
 }
 
 // option is one --name a command accepts, and whether a value follows it.
@@ -63,6 +64,7 @@ var commandOptions = map[string][]option{
 	"delete": {{"yes", "Delete without asking", false}},
 	"doctor": {{"repair", "Restore the backup", false}},
 	"now":    {{"short", "One line for a status bar", false}, {"max", "Longest title for --short", true}},
+	"skill":  {{"claude", "Install it for Claude Code", false}, {"codex", "Install it for Codex", false}},
 }
 
 // candidate is one completion: the text to insert and what it means.

@@ -25,6 +25,7 @@ type options struct {
 	repair   bool
 	short    bool
 	max      int
+	agents   map[string]bool // for skill: which agents to install it for
 	yes      bool
 	title    *string
 	duration *string
@@ -61,6 +62,12 @@ var commands = map[string]command{
 	"reopen":     {positional: "ITEM"},
 	"events":     {positional: "ITEM"},
 	"completion": {positional: "SHELL"},
+	"skill": {flags: func(f *flag.FlagSet, o *options) {
+		o.agents = map[string]bool{}
+		for _, a := range agents {
+			f.BoolFunc(a.flag, "", func(string) error { o.agents[a.flag] = true; return nil })
+		}
+	}},
 }
 
 // commandNames lists every command, sorted.
@@ -192,6 +199,9 @@ func parse(args []string) (options, error) {
 			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
 	}
+	if o.command == "skill" && len(o.agents) == 0 {
+		return o, planner.InputError(nil, "Choose which agents get the skill", "Use --claude, --codex or both")
+	}
 	if o.command == "now" && o.max < 1 {
 		return o, planner.InputError(nil, "--max needs a number of at least 1", "For example: flowd now --short --max 30")
 	}
@@ -247,6 +257,7 @@ Commands:
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
   completion <SHELL>           Print tab completion for bash, fish or zsh
+  skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
 
 <ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G. Leave it
 out at a terminal to pick the item with the arrow keys, or press Tab with completion set up.

@@ -85,6 +85,8 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		return err
 	case o.command == "completion":
 		return printCompletion(out, o.args[0])
+	case o.command == "skill":
+		return installSkill(out, o, env.Version)
 	}
 	path := o.db
 	if path == "" {
