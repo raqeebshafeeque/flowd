@@ -27,7 +27,7 @@ JSON:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "date": "2026-11-17",
   "timezone": "Asia/Kolkata",
   "at": "2026-11-17T04:30:00Z",
@@ -40,8 +40,9 @@ JSON:
 ```
 
 Each ITEM has `id`, `day_id`, `title`, `status`, `duration_minutes`, `started_at`, `finished_at`,
-`closed_at`, `archived`, `created_at`, `updated_at`, `work_ns` and `elapsed_ns`. Times are UTC.
-`work_ns` and `elapsed_ns` are whole seconds written in nanoseconds. `elapsed_ns` is null until the
+`closed_at`, `archived`, `created_at`, `updated_at`, `work_ns` and `paused_ns`. Times are UTC.
+`work_ns` and `paused_ns` are whole seconds written in nanoseconds. `work_ns` is the time the item
+ran and `paused_ns` the time it waited as paused after it started. `paused_ns` is null until the
 item first starts.
 
 ### add

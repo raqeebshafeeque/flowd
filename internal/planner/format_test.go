@@ -16,16 +16,16 @@ func TestSpanWritesWholeSeconds(t *testing.T) {
 	}
 }
 
-func TestEffortAndElapsed(t *testing.T) {
+func TestEffortAndPaused(t *testing.T) {
 	item := ItemView{Item: domain.Item{DurationMinutes: 90}}
-	if Effort(item) != "1h30m" || Elapsed(item) != "0m" {
-		t.Fatalf("not started: %q %q", Effort(item), Elapsed(item))
+	if Effort(item) != "1h30m" || Paused(item) != "-" {
+		t.Fatalf("not started: %q %q", Effort(item), Paused(item))
 	}
 	started := time.Now()
-	elapsed := int64(20 * time.Minute)
-	item.StartedAt, item.WorkNS, item.ElapsedNS = &started, int64(10*time.Minute), &elapsed
-	if Effort(item) != "10m / 1h30m" || Elapsed(item) != "20m" {
-		t.Fatalf("started: %q %q", Effort(item), Elapsed(item))
+	paused := int64(20 * time.Minute)
+	item.StartedAt, item.WorkNS, item.PausedNS = &started, int64(10*time.Minute), &paused
+	if Effort(item) != "10m / 1h30m" || Paused(item) != "20m" {
+		t.Fatalf("started: %q %q", Effort(item), Paused(item))
 	}
 }
 

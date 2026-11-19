@@ -9,12 +9,13 @@ import (
 
 // Metrics is what really happened to an item at one moment.
 //
-// Work is the total time it ran. Elapsed is the time from its first start to
-// that moment, or to when it was closed, including pauses. Elapsed is nil for
-// an item that never started. Both are whole seconds, held in nanoseconds.
+// Work is the total time it ran. Paused is the total time it waited as
+// paused after it had started. Time spent done before a reopen, or skipped
+// before an unskip, is neither. Paused is nil for an item that never
+// started. Both are whole seconds, held in nanoseconds.
 type Metrics struct {
-	WorkNS    int64  `json:"work_ns"`
-	ElapsedNS *int64 `json:"elapsed_ns"`
+	WorkNS   int64  `json:"work_ns"`
+	PausedNS *int64 `json:"paused_ns"`
 }
 
 // Measure works out the metrics of item at the instant observed from its
@@ -35,7 +36,8 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 		observed = cutoff
 	}
 	var previous *Item
-	var runningSince *time.Time
+	var runningSince, pausedSince *time.Time
+	var paused int64
 	var lastOccurred, lastRecorded time.Time
 	var lastSeq int64
 	stopRunning := func(at time.Time) error {
@@ -48,6 +50,18 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 		}
 		result.WorkNS += span
 		runningSince = nil
+		return nil
+	}
+	stopPause := func(at time.Time) error {
+		span, err := Span(*pausedSince, at)
+		if err != nil {
+			return err
+		}
+		if span > math.MaxInt64-paused {
+			return fmt.Errorf("%w: paused time is too large", ErrInvalidEvidence)
+		}
+		paused += span
+		pausedSince = nil
 		return nil
 	}
 	for i, e := range events {
@@ -71,6 +85,17 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 			at := e.OccurredAt
 			runningSince = &at
 		}
+		wasPaused := previous != nil && previous.Status == Paused && !previous.Archived
+		isPaused := e.After.Status == Paused && !e.After.Archived
+		if wasPaused && !isPaused {
+			if err := stopPause(e.OccurredAt); err != nil {
+				return result, err
+			}
+		}
+		if !wasPaused && isPaused {
+			at := e.OccurredAt
+			pausedSince = &at
+		}
 		after := e.After
 		previous = &after
 		lastOccurred, lastRecorded, lastSeq = e.OccurredAt, e.RecordedAt, e.Seq
@@ -83,21 +108,24 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 			return result, err
 		}
 	}
-	if item.StartedAt != nil {
-		end := observed
-		if item.ClosedAt != nil {
-			end = *item.ClosedAt
+	if pausedSince != nil {
+		if err := stopPause(observed); err != nil {
+			return result, err
 		}
-		elapsed, err := Span(*item.StartedAt, end)
+	}
+	if item.StartedAt != nil {
+		span, err := Span(*item.StartedAt, observed)
 		if err != nil {
 			return result, err
 		}
-		if result.WorkNS > elapsed {
-			return result, fmt.Errorf("%w: work is longer than elapsed time", ErrInvalidEvidence)
+		if result.WorkNS > span-paused {
+			return result, fmt.Errorf("%w: work and pauses are longer than the time since the first start", ErrInvalidEvidence)
 		}
-		result.ElapsedNS = &elapsed
+		result.PausedNS = &paused
+	} else if paused != 0 {
+		return result, fmt.Errorf("%w: paused before it ever started", ErrInvalidEvidence)
 	}
-	if result.WorkNS%int64(time.Second) != 0 || (result.ElapsedNS != nil && *result.ElapsedNS%int64(time.Second) != 0) {
+	if result.WorkNS%int64(time.Second) != 0 || paused%int64(time.Second) != 0 {
 		return result, fmt.Errorf("%w: times are not whole seconds", ErrInvalidEvidence)
 	}
 	return result, nil

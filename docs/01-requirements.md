@@ -42,8 +42,9 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 ### F3. Show what really happened
 
 - Work is the time an item actually ran, adding up every running stretch.
-- Elapsed is the time from its first start until now or until it was closed, pauses included.
-- Ten minutes running, twenty paused and five more running is 15 minutes of work and 35 elapsed.
+- Paused is the time it waited as paused after it started, adding up every pause. Time spent done
+  before a reopen, or skipped before an unskip, is not a pause.
+- Ten minutes running, twenty paused and five more running is 15 minutes of work and 20 paused.
 - Items you started come first, in the order you first started them. Items not started yet follow.
 
 ### F4. Close the day at midnight
@@ -80,7 +81,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   command line instead, so scripts and pipes never get the workspace.
 - It lists the day the same way the command line does and keeps the selected item selected while
   the list refreshes, even when the item moves.
-- Details show the full title, status, Duration, Work, Elapsed, Started At and Finished At in a
+- Details show the full title, status, Duration, Work, Paused, Started At and Finished At in a
   panel at the bottom that takes about a quarter of the screen.
 - The workspace needs at least 80 by 24 cells. In a smaller window it shows only a request to make
   the window larger, and every key except Ctrl+C does nothing, so nothing happens that cannot be

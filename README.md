@@ -111,8 +111,8 @@ flowd review                # how the day really went
 A few things to know:
 
 - **Duration** is a budget, not a time slot. Write it as `30`, `30m`, `2h` or `1h30m`.
-- **Work** is the time an item actually ran. **Elapsed** is the time since it first started,
-  pauses included.
+- **Work** is the time an item actually ran. **Paused** is the time it waited after you started
+  it.
 - **Only today** can be tracked. Today and later days can be planned. Past days are for looking
   back.
 

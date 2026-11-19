@@ -30,12 +30,13 @@ func Span(ns int64) string {
 	return b.String()
 }
 
-// Elapsed writes an item's elapsed time. An item that never started shows 0m.
-func Elapsed(item ItemView) string {
-	if item.ElapsedNS == nil {
-		return "0m"
+// Paused writes how long an item has waited as paused. An item that never
+// started shows a dash, because it could not have paused.
+func Paused(item ItemView) string {
+	if item.PausedNS == nil {
+		return "-"
 	}
-	return Span(*item.ElapsedNS)
+	return Span(*item.PausedNS)
 }
 
 // Effort is "work / duration" once an item has started, and only its

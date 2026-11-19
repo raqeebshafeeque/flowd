@@ -7,7 +7,7 @@ What days and items are, and the rules they always follow.
 - Item. Something you want to put effort into today, like `Study` for one hour.
 - Duration. How long you want to spend on an item. It is a budget, not a deadline.
 - Work. The time an item actually ran.
-- Elapsed. The time from an item's first start until now or until it was closed.
+- Paused. The time an item waited as paused after it first started.
 - Archived means hidden from the list but still stored.
 
 ## Day
@@ -43,7 +43,7 @@ What days and items are, and the rules they always follow.
 - It also keeps a full copy of the item before and after the change. That lets flowd replay the
   history and refuse any event that no real action could have produced.
 - The reasons are user, auto pause, reopen and day end.
-- Events are never edited or deleted. Work and elapsed are always worked out from them.
+- Events are never edited or deleted. Work and paused time are always worked out from them.
 
 ## What can happen to an item
 
@@ -84,9 +84,9 @@ What days and items are, and the rules they always follow.
 - Order. Started items come first, ordered by their first start. Items not started yet follow, in
   the order they were created. Pausing, finishing or editing never moves an item.
 - Time. Times are stored in UTC and shown in local time.
-- Whole seconds. Every time is recorded to the nearest second, so work and elapsed are always whole
-  seconds and read the same everywhere. A time just before midnight is never rounded up into the
-  next day.
+- Whole seconds. Every time is recorded to the nearest second, so work and paused time are always
+  whole seconds and read the same everywhere. A time just before midnight is never rounded up into
+  the next day.
 - Broken history. If the events of an item do not add up, flowd reports an error instead of
   guessing a number.
 - Delete. Deleting only hides an item. Nothing is ever removed.
@@ -98,4 +98,4 @@ What days and items are, and the rules they always follow.
 3. Code starts at 09:40, so Study pauses on its own with 40 minutes of work.
 4. Code is finished at 11:10 with 1 hour 30 minutes of work.
 5. Study resumes at 11:15 and is finished at 11:30.
-6. Study ends with 55 minutes of work and 2 hours 30 minutes elapsed. Both items are done.
+6. Study ends with 55 minutes of work and 1 hour 35 minutes paused. Both items are done.

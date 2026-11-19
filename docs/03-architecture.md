@@ -30,7 +30,7 @@ How the parts fit together.
 ## Saving
 
 - A change to an item and its event are written in the same transaction.
-- Work and elapsed are never stored. They are worked out from the events when they are needed.
+- Work and paused time are never stored. They are worked out from the events when they are needed.
 - Closing a day at midnight happens the next time the file is opened, so it works even if flowd
   was not running. Every operation does this first.
 - Times are stored as UTC text in RFC 3339 format.
