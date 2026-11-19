@@ -29,7 +29,7 @@ func (s *Store) DayByDate(ctx context.Context, date string) (domain.Day, error) 
 	return readDay(ctx, s.db, "date", date)
 }
 
-// Items returns the visible items of a day in the shared order.
+// Items returns the visible items of a day in the order set for it.
 func (s *Store) Items(ctx context.Context, dayID domain.ID) ([]domain.Item, error) {
 	items, err := readItems(ctx, s.db, dayID)
 	return items, classify(err)

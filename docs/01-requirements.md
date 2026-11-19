@@ -19,57 +19,20 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   be brought back, so `flowd delete` asks first at a terminal, and needs `--yes` in scripts and for
   agents, which never get asked.
 - You can plan today and future days. Past days are only for looking back.
-- `flowd` opens today and `flowd 2026-10-12` shows that date. Commands that need an item take its
-  full ID, which `flowd list` shows and every change prints. A position in the list is never
-  accepted, because the order can be changed, and a command must never act on an item that moved.
-- At a terminal, a command that needs an item can be run without the ID. It then lists the items
-  that command fits, like only the todo items for `start`, and the person picks one with the arrow
-  keys or `j` and `k`, Enter to choose and Esc to cancel. Cancelling changes nothing. Without a
-  terminal, or with `--json`, a missing ID is refused as before, so nothing ever waits for an
-  answer.
-- Tab completion for fish, zsh and bash completes commands, options, dates and item IDs, showing
-  each item's title next to its ID where the shell can. It offers only the items the command fits.
-  `flowd completion <SHELL>` prints the script, and the installer prints the one line that sets it
-  up, without editing shell files itself. Completion runs on every Tab, so like the status line it
-  takes no lock, never writes and stays quiet on any problem.
-- The command line shows items in a table drawn like the workspace, with the ID, the title, the
-  Duration and the status, under the date it is about, like `Thu 19 Nov 2026`. `flowd list` shows
-  every item of the day. A change shows only the item it changed, even when starting it paused
-  another one. At a terminal the status has the same colors
-  as in the workspace, and a title too long for the window is shortened with `…`. Piped output and
-  `NO_COLOR` stay plain.
 
-### F2. Track with one key
+### F2. Put the day in your order
 
-- Start, pause, resume, finish and skip are one action each.
-- Any item can be started at any time, in any order.
-- Starting an item while another one runs pauses the running one.
-- Going past the duration is fine. Nothing stops and nothing nags you.
-- Finish means you are done with it for today, not that the problem is solved forever.
-- A skipped item can be brought back, and a finished one can be reopened, on the same day.
-- Only today's items can be started, paused, finished or skipped.
-
-### F3. Show what really happened
-
-- Work is the time an item actually ran, adding up every running stretch.
-- Paused is the time it waited as paused after it started, adding up every pause. Time spent done
-  before a reopen, or skipped before an unskip, is not a pause.
-- Ten minutes running, twenty paused and five more running is 15 minutes of work and 20 paused.
 - The day is listed in the order you set, and nothing reorders it by itself. Starting, pausing,
   finishing or skipping an item never moves it. New and carried items join the end.
 - `o` in the workspace arranges the day: `j` and `k` select an item, `J` and `K` move it, and
   Ctrl+S saves the whole order at once. Nothing is saved until then, and Esc asks before throwing a
-  new order away. `flowd order <ID>...` saves an order from a script, naming every item of the day
-  once. Any item can move, whatever its status, on today and later days. If the day changed while
-  it was being arranged, nothing is saved and you arrange it again.
+  new order away.
+- `flowd order <ID>...` saves an order from a script, naming every item of the day once. At a
+  terminal, `flowd order` arranges it the same way.
+- Any item can move, whatever its status, on today and later days. If the day changed while it was
+  being arranged, nothing is saved and you arrange it again.
 
-### F4. Close the day at midnight
-
-- At midnight anything still not done becomes incomplete, even if the app was closed.
-- Done and skipped items stay as they are.
-- Incomplete is final. Tomorrow starts empty until you plan it.
-
-### F4a. Carry unfinished work forward
+### F3. Carry unfinished work forward
 
 - Nothing moves to another day by itself. You choose what to carry.
 - `C` in the workspace, or `flowd carry` at a terminal, lists the incomplete and skipped items from
@@ -85,23 +48,67 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Everything picked is carried in one save. If it does not all fit in what is left of the day,
   nothing is carried and the message says how much it needs and how much is left.
 - Only items from the 7 days before the day can be carried, and never onto a past day.
-- The footer offers `carry [C]` whenever the day on screen can be planned.
 
-### F5. Review the day
+### F4. Track with one key
+
+- Start, pause, resume, finish and skip are one action each.
+- Any item can be started at any time, in any order.
+- Starting an item while another one runs pauses the running one.
+- Going past the duration is fine. Nothing stops and nothing nags you.
+- Finish means you are done with it for today, not that the problem is solved forever.
+- A skipped item can be brought back, and a finished one can be reopened, on the same day.
+- Only today's items can be started, paused, finished or skipped.
+
+### F5. Show what really happened
+
+- Work is the time an item actually ran, adding up every running stretch.
+- Paused is the time it waited as paused after it started, adding up every pause. Time spent done
+  before a reopen, or skipped before an unskip, is not a pause.
+- Ten minutes running, twenty paused and five more running is 15 minutes of work and 20 paused.
+
+### F6. Close the day at midnight
+
+- At midnight anything still not done becomes incomplete, even if the app was closed.
+- Done and skipped items stay as they are.
+- Incomplete is final. Tomorrow starts empty until you plan it or carry something over.
+
+### F7. Review the day
 
 - The total duration you planned and the total work you recorded.
 - Progress as finished items out of all items, like `3 / 5 finished`.
 - Every item grouped by its status.
 
-### F6. Work with scripts and AI agents
+### F8. The command line
+
+- `flowd` opens the workspace, and any argument runs the command line instead. `flowd 2026-10-12`
+  shows that date.
+- Commands that need an item take its full ID, which `flowd list` shows and every change prints. A
+  position in the list is never accepted, because the order can be changed, and a command must
+  never act on an item that moved.
+- At a terminal, a command that needs an item can be run without the ID. It then lists the items
+  that command fits, like only the todo items for `start`, and you pick one with the arrow keys or
+  `j` and `k`, Enter to choose and Esc to cancel. Cancelling changes nothing. Without a terminal, or
+  with `--json`, a missing ID is refused, so nothing ever waits for an answer.
+- Items are shown in a table drawn like the workspace, with the ID, the title, the Duration and the
+  status, under the date it is about, like `Thu 19 Nov 2026`. `flowd list` shows every item of the
+  day, and a change shows only the item it changed. At a terminal the status has the same colors as
+  in the workspace, and a title too long for the window is shortened with `…`. Piped output and
+  `NO_COLOR` stay plain.
+- Options can go before or after the command, like `flowd list --date 2026-11-18`. Each one can be
+  given only once.
+- A person sees an error as one sentence and a hint, like `Error: Only 2h30m left on this day.`
+- Tab completion for fish, zsh and bash completes commands, options, dates and item IDs, showing
+  each item's title next to its ID where the shell can. It offers only the items the command fits.
+  `flowd completion <SHELL>` prints the script, and the installer prints the one line that sets it
+  up, without editing shell files itself. Completion runs on every Tab, so like the status line it
+  takes no lock, never writes and stays quiet on any problem.
+
+### F9. Work with scripts and AI agents
 
 - Every command can print JSON with `--json`, so scripts and agents never have to parse text.
 - Errors have stable codes and exit codes. Bad input exits with 2 and a refused action exits with 1.
-- A person sees an error as one sentence and a hint, like `Error: Only 2h30m left on this day.`
-  The code is only for scripts and agents: with `--json` the error is printed as JSON with its code,
-  its message and its hint.
-- Options can go before or after the command, like `flowd list --date 2026-11-18`. Each one can be
-  given only once.
+  With `--json` an error is printed as JSON with its code, its message and its hint. The code is
+  only for scripts and agents, and people never see it.
 - If a save fails in a way that leaves it unknown whether it landed, flowd says so plainly instead
   of reporting success or failure.
 - A refused or failed action never prints output that looks like success.
@@ -112,10 +119,10 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - An agent only changes the plan when you ask it to. Titles are treated as plain data, never as
   instructions.
 
-### F7. A terminal workspace
+### F10. A terminal workspace
 
-- `flowd` with no arguments opens a keyboard-only workspace showing today. Any argument runs the
-  command line instead, so scripts and pipes never get the workspace.
+- `flowd` with no arguments opens a keyboard-only workspace showing today, so scripts and pipes
+  never get the workspace.
 - It lists the day the same way the command line does and keeps the selected item selected while
   the list refreshes, even when the item moves.
 - Details show the full title, status, Duration, Work, Paused, Started At and Finished At in a
@@ -129,22 +136,24 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - `n` adds an item and `e` edits the selected one, in a form at the bottom with a Title and a
   Duration field. While the form is open every letter is text, never an action. Tab and Enter move
   between the fields, Enter never saves, Ctrl+S saves, and Esc asks before throwing away changes.
-- Anything you put together and then commit saves with Ctrl+S: a form, a new order and the items to
-  carry. Enter only chooses or moves, and never saves.
 - An empty Duration shows the example `e.g. 30m, 1h, 1h30m`. A bad title or Duration is explained
   under its field and what was typed stays. Saving an edit that changed nothing just closes it.
+- Anything you put together and then commit saves with Ctrl+S: a form, a new order and the items to
+  carry. Enter only chooses or moves, and never saves.
+- `o` arranges the day and `C` carries unfinished work, as described above. The footer offers both
+  whenever the day on screen can be planned, and `order [o]` once it has two items.
 - `c` opens a month calendar at the bottom. `h` and `l` move a day, `j` and `k` a week, `t` goes to
   today and Enter shows the chosen day. `m` and `y` let you type a month number or a year in the
-  footer, keeping the day where it can. The cursor date is in brackets and teal,
-  like `[17]`. Looking at a day never creates it.
+  footer, keeping the day where it can. The cursor date is in brackets and teal, like `[17]`.
+  Looking at a day never creates it.
 - Whatever is active is teal: the selected item, the cursor date and the focused form field.
 - The header is split into four cells: `flowd`, a note, the date and the clock. When another day is
-  on screen the note says `Viewing: 2026-11-18`, and `t` comes back to today. For today it is empty.
-  The footer only offers what that day allows: tracking today, planning today and later, and only
-  looking on past days.
-- The footer never drops a key. When they do not all fit on one row, the ones for the selected item
-  and the day come first, and `more [.]` sits at the right edge. `.` opens the rest on the rows
-  below, with `less [.]` in its place, and any other key folds them away again.
+  on screen the note says `Viewing: 2026-11-18`, and `t` comes back to today. While the day is being
+  arranged it says `Reordering`. For today it is empty.
+- The footer only offers what that day allows: tracking today, planning today and later, and only
+  looking on past days. It never drops a key. When they do not all fit on one row, the ones for the
+  selected item and the day come first, and `more [.]` sits at the right edge. `.` opens the rest on
+  the rows below, with `less [.]` in its place, and any other key folds them away again.
 - `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
   recorded work, progress as finished out of all items, and every item grouped under its status with
   a count. `j` and `k` scroll it and Esc goes back. Nothing can be changed from it.
@@ -156,7 +165,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 
-### F8. A status line
+### F11. A status line
 
 - `flowd now --short` prints the running item as one line for tmux, a shell prompt or any bar that
   runs a command, like `Deep work on the parser 1h3m/2h`. Past its duration it adds how far over,
@@ -168,9 +177,11 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - A missing, busy or broken database prints nothing and still succeeds. A prompt is the wrong place
   for an error, and `flowd doctor` explains it.
 
-### F9. Never lose a day
+### F12. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
+- A file made by an older flowd is backed up before it is upgraded, and the upgrade either finishes
+  or leaves the file exactly as it was.
 
 ## How well it does it
 

@@ -50,7 +50,7 @@ any order, and let flowd keep count.
 │                                                                              │
 │                                                                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ pause [space]  finish [f]  skip [s]  new [n]  help [?]  quit [q]             │
+│ pause [space]  finish [f]  skip [s]  edit [e]  delete [d]           more [.] │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -103,18 +103,19 @@ sh install.sh --require-attestation
 ## Quick start
 
 ```sh
+flowd carry                 # bring over what is left from the last 7 days
 flowd add 1h "Study"        # plan an item
 flowd add 2h "Code review"
+flowd order                 # arrange the day in the order you will work it
 flowd start                 # pick what to start with the arrow keys
 flowd finish                # pick what you are done with for today
 flowd list                  # see the day
 flowd review                # how the day really went
-flowd carry                 # pick what to carry over from the last 7 days
-flowd order                 # arrange the day in the order you want
 ```
 
 Leave out the ID and flowd lets you pick the item with the arrow keys, offering only the items that
-command fits. Scripts pass the full ID instead, like `flowd start it_01M7...`.
+command fits. Scripts pass the full ID instead, like `flowd start it_01M7...`. Anything you put
+together, like a new order or the items to carry, saves with Ctrl+S.
 
 A few things to know:
 
@@ -163,8 +164,9 @@ Run `flowd` with no arguments to open it. Everything is one key.
 | `r` | Review of the day | `?` | Every key |
 | `.` | More keys in the footer | `q` | Quit |
 
-In a form, type the title, press Tab for the duration and save with Ctrl+S. The window needs to
-be at least 80 by 24.
+In a form, type the title, press Tab for the duration and save with Ctrl+S. A new order and the
+items to carry save with Ctrl+S too. When the keys do not fit in the footer, `.` shows the rest.
+The window needs to be at least 80 by 24.
 
 <br>
 
