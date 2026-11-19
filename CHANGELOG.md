@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/raqeebshafeeque/flowd/compare/v0.7.0...v0.7.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **cli:** name the day above every table ([#44](https://github.com/raqeebshafeeque/flowd/issues/44)) ([b093c3c](https://github.com/raqeebshafeeque/flowd/commit/b093c3c81ff0fdf425012c7a3903e4fa1517685b))
+* **cli:** show the date above the list table ([#42](https://github.com/raqeebshafeeque/flowd/issues/42)) ([34a85e5](https://github.com/raqeebshafeeque/flowd/commit/34a85e51aff9a35a5f5cb83ecd013d32f6038de3))
+
 ## [0.7.0](https://github.com/raqeebshafeeque/flowd/compare/v0.6.0...v0.7.0) (2026-11-19)
 
 
