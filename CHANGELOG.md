@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0](https://github.com/raqeebshafeeque/flowd/compare/v0.8.0...v0.9.0) (2026-11-19)
+
+
+### Features
+
+* carry incomplete and skipped items forward, by choice ([#50](https://github.com/raqeebshafeeque/flowd/issues/50)) ([9cc6ed2](https://github.com/raqeebshafeeque/flowd/commit/9cc6ed2dc3544b44b2b98b9b24c7aff28cb2ca0b))
+* **cli:** add tab completion, an item picker and flowd skill ([#47](https://github.com/raqeebshafeeque/flowd/issues/47)) ([3631c68](https://github.com/raqeebshafeeque/flowd/commit/3631c6871597fa2c95ca8a2be327a33f03fca5d8))
+* put the day in your own order, saved with Ctrl+S ([#51](https://github.com/raqeebshafeeque/flowd/issues/51)) ([c184e5f](https://github.com/raqeebshafeeque/flowd/commit/c184e5fb58a4fb5faca534edb91620437b6b65d1))
+
 ## [0.8.0](https://github.com/raqeebshafeeque/flowd/compare/v0.7.1...v0.8.0) (2026-11-19)
 
 
