@@ -23,6 +23,11 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   full ID, which `flowd list` shows and every change prints. A position in the list is never
   accepted, because the order changes when items start, and a command must never act on an item
   that moved.
+- The command line shows items in a table drawn like the workspace, with the ID, the title, the
+  Duration and the status. `flowd list` shows every item of the day. A change shows only the item it
+  changed, even when starting it paused another one. At a terminal the status has the same colors
+  as in the workspace, and a title too long for the window is shortened with `…`. Piped output and
+  `NO_COLOR` stay plain.
 
 ### F2. Track with one key
 

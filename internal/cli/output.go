@@ -63,23 +63,20 @@ func printDay(out io.Writer, o options, v planner.View) error {
 			_, err := fmt.Fprintln(out, "Nothing is running")
 			return err
 		}
-		_, err := fmt.Fprintf(out, "%s, %s of work\n", v.Running.Title, planner.Span(v.Running.WorkNS))
-		return err
-	}
-	fmt.Fprintf(out, "%s · %s\n\n", heading(v.Date), v.Timezone)
-	if o.command == "review" {
+		return printTable(out, o.look, []planner.ItemView{*v.Running})
+	case o.command == "review":
+		fmt.Fprintf(out, "%s · %s\n\n", heading(v.Date), v.Timezone)
 		return printReview(out, v)
 	}
 	if len(v.Items) == 0 {
-		_, err := fmt.Fprintln(out, "Nothing planned. Add something with: flowd add 1h \"Study\"")
+		_, err := fmt.Fprintf(out, "%s · %s\n\nNothing planned. Add something with: flowd add 1h \"Study\"\n", heading(v.Date), v.Timezone)
 		return err
 	}
-	table := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(table, "STATUS\tWORK / DURATION\tTITLE\tID")
-	for _, item := range v.Items {
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\n", planner.Label(item.Status), planner.Effort(item), item.Title, item.ID)
+	if err := printTable(out, o.look, v.Items); err != nil {
+		return err
 	}
-	return table.Flush()
+	_, err := fmt.Fprintf(out, "  %s · %s\n", heading(v.Date), v.Timezone)
+	return err
 }
 
 func printReview(out io.Writer, v planner.View) error {
@@ -107,19 +104,7 @@ func printResult(out io.Writer, o options, r planner.Result) error {
 	if o.json {
 		return writeJSON(out, item)
 	}
-	verb := map[string]string{"add": "Planned", "edit": "Updated", "delete": "Deleted", "start": "Started", "pause": "Paused", "resume": "Resumed", "finish": "Finished", "skip": "Skipped", "unskip": "Brought back", "reopen": "Reopened"}[o.command]
-	fmt.Fprintf(out, "%s %s (%s, %s) %s\n", verb, item.Title, planner.Label(item.Status), planner.Effort(item), item.ID)
-	for _, id := range r.AutoPaused {
-		fmt.Fprintf(out, "Paused %s\n", titleOf(r, id))
-	}
-	return nil
-}
-
-func titleOf(r planner.Result, id domain.ID) string {
-	if events := r.History[id]; len(events) > 0 {
-		return events[len(events)-1].After.Title
-	}
-	return string(id)
+	return printTable(out, o.look, []planner.ItemView{item})
 }
 
 func printEvents(out io.Writer, o options, events []domain.Event) error {
