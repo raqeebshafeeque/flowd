@@ -115,7 +115,19 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 
-### F8. Never lose a day
+### F8. A status line
+
+- `flowd now --short` prints the running item as one line for tmux, a shell prompt or any bar that
+  runs a command, like `Deep work on the parser 1h3m/2h`. Past its duration it adds how far over,
+  like `2h10m/2h +10m`. Work is in whole minutes, so a bar that refreshes every second stays calm.
+- The title is cut to 30 columns with `…`, and `--max <N>` changes that.
+- When nothing is running it prints nothing.
+- It can be asked every second without ever making a real command wait or fail. It takes no lock,
+  never writes, never creates the database and never closes a day.
+- A missing, busy or broken database prints nothing and still succeeds. A prompt is the wrong place
+  for an error, and `flowd doctor` explains it.
+
+### F9. Never lose a day
 
 - A saved day survives a crash, a kill or a restart.
 

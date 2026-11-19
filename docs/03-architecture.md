@@ -118,6 +118,21 @@ How the parts fit together.
   command line, so they always read the same.
 - Every row is drawn exactly as wide as the window, so resizing never leaves stray characters.
 
+## Status line
+
+- `flowd now --short` has its own read path, because a status bar may ask every second. A normal
+  command takes the lock, may close a day and sometimes scans the whole file, and any of those
+  would get in the way.
+- It opens the file read only, without the lock, and reads today's running item and its history in
+  one read transaction. SQLite's WAL mode gives a reader the last saved state as a whole even while
+  another flowd saves, so no lock is needed, and the reader never blocks a save.
+- It never creates the file or its folder, never closes a day and never scans for damage. It only
+  checks the schema version.
+- SQLite may leave an empty WAL file behind after such a read. An empty WAL holds nothing, so the
+  quick check record and the workspace's fingerprint count it the same as no WAL. Otherwise every
+  status line refresh would look like a change and force a full scan.
+- Work is worked out with the same domain rules as everywhere else, so it matches `flowd list`.
+
 ## Agents
 
 - Agents use the same command line as people. There is no separate interface for them.

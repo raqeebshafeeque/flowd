@@ -86,6 +86,9 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		}
 	}
 	client := planner.Client{Path: path, Now: env.Now, Zone: env.Zone}
+	if o.command == "now" && o.short {
+		return statusLine(ctx, out, o, client)
+	}
 	selection := planner.Selection{Date: o.date, Timezone: o.zone}
 	switch o.command {
 	case "list", "review", "now":
