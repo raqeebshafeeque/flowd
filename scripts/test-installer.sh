@@ -30,6 +30,8 @@ SCRIPT
 
 # expect NAME FAKE OUTCOME [installer options]
 # The run's HOME is $work/NAME/home, which a test can prepare beforehand.
+# XDG_CONFIG_HOME and ZDOTDIR point inside it too, because CI runners set
+# their own.
 expect() {
     name=$1 fake=$2 outcome=$3
     shift 3
@@ -37,7 +39,7 @@ expect() {
     mkdir -p "$target/home"
     existed=false
     [ ! -e "$target/bin/flowd" ] || existed=true
-    if HOME="$target/home" PATH="$fake:$PATH" sh install.sh --from "$dist" --version 0.0.0 --bin-dir "$target/bin" "$@" > "$work/$name.out" 2>&1; then
+    if HOME="$target/home" XDG_CONFIG_HOME="$target/home/.config" ZDOTDIR="$target/home" PATH="$fake:$PATH" sh install.sh --from "$dist" --version 0.0.0 --bin-dir "$target/bin" "$@" > "$work/$name.out" 2>&1; then
         result=installed
     else
         result=refused
