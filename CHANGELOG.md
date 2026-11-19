@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/raqeebshafeeque/flowd/compare/v0.5.0...v0.6.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** plain errors for people and options anywhere ([#37](https://github.com/raqeebshafeeque/flowd/issues/37))
+
+### Features
+
+* **cli:** plain errors for people and options anywhere ([#37](https://github.com/raqeebshafeeque/flowd/issues/37)) ([7009cb3](https://github.com/raqeebshafeeque/flowd/commit/7009cb3d30ca698eef9b1f661562093950b28a83))
+
 ## [0.5.0](https://github.com/raqeebshafeeque/flowd/compare/v0.4.2...v0.5.0) (2026-11-18)
 
 
