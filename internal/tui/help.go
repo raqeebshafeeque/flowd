@@ -15,6 +15,7 @@ var helpSections = []struct {
 		{"c", "Open the calendar to look at another day"},
 		{"t", "Come back to today"},
 		{"r", "Review the day on screen"},
+		{".", "Show the rest of the keys in the footer, or hide them"},
 		{"? ", "Open or close this help"},
 		{"q", "Quit (Ctrl+C always quits)"},
 	}},

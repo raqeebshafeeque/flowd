@@ -35,7 +35,8 @@ func (m *model) View() tea.View {
 // frame is the header, the body and the footer inside one border.
 func (m *model) frame() []string {
 	inner := m.width - 2
-	body := m.height - 6
+	footer := m.footer(inner)
+	body := m.height - 5 - len(footer)
 	rows := []string{m.headerEdge("┌", "┬", "┐"), m.side(m.header(inner)), m.headerEdge("├", "┴", "┤")}
 	var content []string
 	caretRow, caretCol := -1, 0
@@ -76,7 +77,11 @@ func (m *model) frame() []string {
 		m.caret = tea.NewCursor(1+caretCol, 3+caretRow)
 		m.caret.Shape = tea.CursorBar
 	}
-	return append(rows, m.border("├", "┤"), m.side(m.footer(inner)), m.border("└", "┘"))
+	rows = append(rows, m.border("├", "┤"))
+	for _, row := range footer {
+		rows = append(rows, m.side(row))
+	}
+	return append(rows, m.border("└", "┘"))
 }
 
 // detailsHeight is about a quarter of the body, never less than nine rows.
@@ -244,68 +249,105 @@ func (m *model) instant(t *time.Time) string {
 }
 
 // footer lists the keys that do something right now.
-func (m *model) footer(width int) string {
+func (m *model) footer(width int) []string {
+	one := func(row string) []string { return []string{fit(row, width)} }
 	switch {
 	case m.unresolved != nil:
-		return fit(" Checking whether the last change was saved…", width)
+		return one(" Checking whether the last change was saved…")
 	case m.form != nil:
-		return fit(m.formFooter(), width)
+		return one(m.formFooter())
 	case m.deleting != "":
-		return m.deleteQuestion(width)
+		return []string{m.deleteQuestion(width)}
 	case m.help:
-		return fit(" scroll [j/k]  back [esc]", width)
+		return one(" scroll [j/k]  back [esc]")
 	case m.carrying != nil:
-		return fit(m.carryFooter(), width)
+		return one(m.carryFooter())
 	case m.calendar != nil:
-		return fit(m.calendarFooter(), width)
+		return one(m.calendarFooter())
 	case m.review:
-		return fit(" scroll [j/k]  back [esc]  quit [q]", width)
+		return one(" scroll [j/k]  back [esc]  quit [q]")
 	case m.pending:
-		return fit(" Saving…", width)
+		return one(" Saving…")
 	}
-	type hint struct {
-		text string
-		keep int // higher is dropped later when the row is too narrow
-	}
-	var hints []hint
+	return m.hintRows(m.hints(), width)
+}
+
+// hints are the keys the footer offers, the ones for the selected item and
+// the day first and help and quit last.
+func (m *model) hints() []string {
+	var hints []string
 	if i := m.index(); i >= 0 {
 		if m.trackable() {
 			for _, op := range allowed(m.state.View.Items[i]) {
-				hints = append(hints, hint{string(op) + " [" + actionKey(op) + "]", 5})
+				hints = append(hints, string(op)+" ["+actionKey(op)+"]")
 			}
-		}
-		open := hint{"details [enter]", 2}
-		if m.details {
-			open = hint{"close [esc]", 7}
 		}
 		if m.plannable() {
-			hints = append(hints, hint{"edit [e]", 3}, hint{"delete [d]", 2})
+			hints = append(hints, "edit [e]", "delete [d]")
 		}
-		hints = append(hints, open, hint{"move [j/k]", 1})
+		if m.details {
+			hints = append(hints, "close [esc]")
+		} else {
+			hints = append(hints, "details [enter]")
+		}
+		hints = append(hints, "move [j/k]")
 	}
 	if m.plannable() {
-		hints = append(hints, hint{"new [n]", 4})
-		if len(m.state.View.Items) == 0 && m.carryable > 0 {
-			hints = append(hints, hint{"carry [C]", 7})
-		}
+		hints = append(hints, "new [n]", "carry [C]")
 	}
-	hints = append(hints, hint{"review [r]", 3}, hint{"calendar [c]", 3})
+	hints = append(hints, "review [r]", "calendar [c]")
 	if m.viewing() != m.today() {
-		hints = append(hints, hint{"today [t]", 6})
+		hints = append(hints, "today [t]")
 	}
-	hints = append(hints, hint{"help [?]", 8}, hint{"quit [q]", 9})
-	for keep := 0; ; keep++ {
-		var texts []string
-		for _, h := range hints {
-			if h.keep >= keep {
-				texts = append(texts, h.text)
-			}
+	return append(hints, "help [?]", "quit [q]")
+}
+
+const (
+	moreHint = "more [.]"
+	lessHint = "less [.]"
+)
+
+// hintRows lays the hints out on one row. When they do not all fit, the ones
+// that fit stay and more [.] sits at the right edge. Pressing . opens the
+// rest on the rows below, with less [.] in its place, and any other key
+// folds them away again. No hint is ever dropped.
+func (m *model) hintRows(hints []string, width int) []string {
+	row := func(items []string, edge string) string {
+		left := " " + strings.Join(items, "  ")
+		if edge == "" {
+			return fit(left, width)
 		}
-		row := " " + strings.Join(texts, "  ")
-		if ansi.StringWidth(row) <= width || keep > 9 {
-			return fit(row, width)
-		}
+		return fit(left+strings.Repeat(" ", max(2, width-ansi.StringWidth(left)-ansi.StringWidth(edge)-1))+edge+" ", width)
 	}
+	if ansi.StringWidth(" "+strings.Join(hints, "  ")) <= width {
+		m.moreHints = false
+		return []string{row(hints, "")}
+	}
+	var shown, hidden []string
+	used := 1 + ansi.StringWidth(moreHint) + 3
+	for i, h := range hints {
+		need := ansi.StringWidth(h) + 2
+		if len(hidden) == 0 && used+need <= width {
+			shown = append(shown, h)
+			used += need
+			continue
+		}
+		hidden = append(hidden, hints[i:]...)
+		break
+	}
+	if !m.moreHints {
+		return []string{row(shown, moreHint)}
+	}
+	rows := []string{row(shown, lessHint)}
+	var line []string
+	for _, h := range hidden {
+		if len(line) > 0 && ansi.StringWidth(" "+strings.Join(append(line, h), "  ")) > width {
+			rows = append(rows, row(line, ""))
+			line = nil
+		}
+		line = append(line, h)
+	}
+	return append(rows, row(line, ""))
 }
 
 // suspended is all that shows in a window smaller than 80 by 24.

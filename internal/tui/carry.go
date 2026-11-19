@@ -14,7 +14,8 @@ import (
 // The carry panel lists the incomplete and skipped items from the seven
 // days before the day on screen, with a box to tick for each. Space ticks
 // one, a ticks or clears them all, and Enter copies what is ticked onto the
-// day, or the highlighted item when nothing is ticked. Esc closes it.
+// day, or the highlighted item when nothing is ticked. Esc closes it. The
+// footer offers carry [C] whenever the day can be planned.
 
 // carryPanel is the open carry panel.
 type carryPanel struct {
@@ -26,20 +27,18 @@ type carryPanel struct {
 	offset int
 }
 
-// leftoversMsg is what can be carried, as read. count is true when it was
-// only read to know whether to offer carry on an empty day.
+// leftoversMsg is what can be carried, as read.
 type leftoversMsg struct {
 	date  string
 	items []planner.Leftover
 	err   error
-	count bool
 }
 
-func (m *model) readLeftovers(count bool) tea.Cmd {
+func (m *model) readLeftovers() tea.Cmd {
 	date := m.date
 	return func() tea.Msg {
 		items, err := m.client.Leftovers(m.ctx, planner.Selection{Date: date})
-		return leftoversMsg{date, items, err, count}
+		return leftoversMsg{date, items, err}
 	}
 }
 
@@ -48,23 +47,12 @@ func (m *model) openCarry() tea.Cmd {
 		return nil
 	}
 	m.carrying, m.details = &carryPanel{}, false
-	return m.readLeftovers(false)
+	return m.readLeftovers()
 }
 
-// receiveLeftovers fills the panel, or remembers how many items an empty
-// day could carry, if the answer is still about the day on screen.
+// receiveLeftovers fills the panel, if it is still open on the same day.
 func (m *model) receiveLeftovers(msg leftoversMsg) {
-	if msg.date != m.date {
-		return
-	}
-	if msg.count {
-		m.carryable = 0
-		if msg.err == nil {
-			m.carryable = len(msg.items)
-		}
-		return
-	}
-	if m.carrying == nil {
+	if msg.date != m.date || m.carrying == nil {
 		return
 	}
 	m.carrying.loaded, m.carrying.err = true, msg.err

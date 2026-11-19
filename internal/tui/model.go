@@ -38,7 +38,7 @@ type model struct {
 	form       *form
 	calendar   *calendar
 	carrying   *carryPanel // the carry panel, when it is open
-	carryable  int         // items an empty day could carry, to offer carry
+	moreHints  bool        // the footer shows every hint, on more rows
 	date       string      // the date on screen, or "" for today
 
 	review       bool // the review report replaces the list
@@ -98,9 +98,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case stateMsg:
 		m.receive(msg)
-		if msg.err == nil && msg.date == m.date && m.plannable() && len(m.state.View.Items) == 0 {
-			return m, m.readLeftovers(true) // to offer carry on an empty day
-		}
 	case leftoversMsg:
 		m.receiveLeftovers(msg)
 	case tickMsg:
@@ -168,6 +165,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if !m.usable() {
 		return nil // nothing happens that cannot be seen
 	}
+	// Any key but . folds the extra hints away again.
+	if msg.String() != "." {
+		m.moreHints = false
+	}
 	if m.form != nil {
 		return m.formKey(msg)
 	}
@@ -204,6 +205,8 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = false
 	case "C":
 		return m.openCarry()
+	case ".":
+		m.moreHints = !m.moreHints
 	case "n":
 		if m.plannable() {
 			m.openNew()

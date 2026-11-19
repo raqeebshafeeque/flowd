@@ -26,14 +26,6 @@ func leftoverDays(t *testing.T) *workspace {
 	return w
 }
 
-// An empty day offers to carry when there is something to carry.
-func TestAnEmptyDayOffersToCarry(t *testing.T) {
-	w := leftoverDays(t)
-	if w.m.carryable != 3 || !strings.Contains(plain(w), "carry [C]") {
-		t.Fatalf("carryable %d:\n%s", w.m.carryable, plain(w))
-	}
-}
-
 func TestThePanelCarriesWhatIsTicked(t *testing.T) {
 	w := leftoverDays(t)
 	w.run(w.press(key("C")))
@@ -79,7 +71,7 @@ func TestNothingToCarrySaysSo(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
 	w.run(w.press(key("C")))
-	if text := plain(w); !strings.Contains(text, "Nothing to carry from the last 7 days.") || strings.Contains(text, "carry [C]") {
+	if text := plain(w); !strings.Contains(text, "Nothing to carry from the last 7 days.") {
 		t.Fatalf("got:\n%s", text)
 	}
 }
