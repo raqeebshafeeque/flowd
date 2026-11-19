@@ -107,6 +107,9 @@ func TestADayFromStartToReview(t *testing.T) {
 	s.now = s.now.Add(20 * time.Minute)
 	s.ok("finish", s.id("Code review"))
 	list := s.ok("list")
+	if !strings.HasPrefix(list, "Tue 17 Nov 2026 · UTC\n┌") {
+		t.Errorf("the date should sit right above the table:\n%s", list)
+	}
 	for _, want := range []string{"Tue 17 Nov 2026 · UTC", "PAUSED", "40m / 1h", "Study", "DONE", "20m / 30m"} {
 		if !contains(list, want) {
 			t.Errorf("list is missing %q:\n%s", want, list)

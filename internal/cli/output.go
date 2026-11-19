@@ -72,11 +72,8 @@ func printDay(out io.Writer, o options, v planner.View) error {
 		_, err := fmt.Fprintf(out, "%s · %s\n\nNothing planned. Add something with: flowd add 1h \"Study\"\n", heading(v.Date), v.Timezone)
 		return err
 	}
-	if err := printTable(out, o.look, v.Items); err != nil {
-		return err
-	}
-	_, err := fmt.Fprintf(out, "  %s · %s\n", heading(v.Date), v.Timezone)
-	return err
+	fmt.Fprintf(out, "%s · %s\n", heading(v.Date), v.Timezone)
+	return printTable(out, o.look, v.Items)
 }
 
 func printReview(out io.Writer, v planner.View) error {
