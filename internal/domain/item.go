@@ -56,7 +56,7 @@ var (
 // MaxTitleLength is the longest title in characters.
 const MaxTitleLength = 120
 
-// Item is the saved state of one effort. Work and elapsed time are not part of
+// Item is the saved state of one effort. Work and paused time are not part of
 // it, they are measured from its events.
 type Item struct {
 	ID              ID         `json:"id"`

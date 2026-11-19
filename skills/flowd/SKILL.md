@@ -9,7 +9,7 @@ compatibility: Needs the flowd command installed and an agent that can run shell
 
 flowd is a local daily planner. Each day is a list of items, and each item has a title and a
 Duration, which is how long the user wants to spend on it today. Work is the time an item actually
-ran. Elapsed is the time since it first started, pauses included.
+ran. Paused is the time it waited as paused after it started.
 
 Use the `flowd` command for everything. Never open its SQLite file directly. Always name a
 command, such as `flowd --json list`: `flowd` alone opens a terminal workspace meant for people.

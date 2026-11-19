@@ -66,7 +66,7 @@ func TestDetailsShowEveryMeasurement(t *testing.T) {
 	w.refresh()
 	w.press(key("enter"))
 	text := plain(w)
-	for _, want := range []string{"Details", "Title        Study the scheduler", "Duration     1h30m", "Work         5m6s", "Elapsed      5m6s", "Started At   17 Nov 2026 09:00:00", "Finished At  -", "close [esc]"} {
+	for _, want := range []string{"Details", "Title        Study the scheduler", "Duration     1h30m", "Work         5m6s", "Paused       0m", "Started At   17 Nov 2026 09:00:00", "Finished At  -", "close [esc]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}

@@ -126,7 +126,7 @@ func TestJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(s.ok("--json", "add", "1h", "Study")), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created["title"] != "Study" || created["duration_minutes"] != float64(60) || created["elapsed_ns"] != nil {
+	if created["title"] != "Study" || created["duration_minutes"] != float64(60) || created["paused_ns"] != nil {
 		t.Fatalf("unexpected item: %v", created)
 	}
 	if strings.TrimSpace(s.ok("--json", "now")) != "null" {
@@ -137,7 +137,7 @@ func TestJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(s.ok("--json")), &day); err != nil {
 		t.Fatal(err)
 	}
-	if day["schema_version"] != float64(1) || day["running"] == nil || len(day["items"].([]any)) != 1 {
+	if day["schema_version"] != float64(2) || day["running"] == nil || len(day["items"].([]any)) != 1 {
 		t.Fatalf("unexpected day: %v", day)
 	}
 	var events []map[string]any

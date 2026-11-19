@@ -215,7 +215,7 @@ func (m *model) detailRows(width, height int) []string {
 		{"Status", m.style.status(item.Status, planner.Label(item.Status))},
 		{"Duration", duration},
 		{"Work", planner.Span(item.WorkNS)},
-		{"Elapsed", planner.Elapsed(item)},
+		{"Paused", planner.Paused(item)},
 		{"Started At", m.instant(item.StartedAt)},
 		{"Finished At", m.instant(item.FinishedAt)},
 	}
