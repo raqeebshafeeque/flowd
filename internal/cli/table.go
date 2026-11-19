@@ -113,3 +113,12 @@ func statusLabel(item planner.ItemView) string {
 	}
 	return planner.Label(item.Status)
 }
+
+// printDated shows the day the items belong to, then the items, so every
+// table says which day it is about, including one picked with --date.
+func printDated(out io.Writer, l look, date string, items []planner.ItemView) error {
+	if _, err := io.WriteString(out, heading(date)+"\n"); err != nil {
+		return err
+	}
+	return printTable(out, l, items)
+}

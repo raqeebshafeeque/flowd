@@ -107,10 +107,10 @@ func TestADayFromStartToReview(t *testing.T) {
 	s.now = s.now.Add(20 * time.Minute)
 	s.ok("finish", s.id("Code review"))
 	list := s.ok("list")
-	if !strings.HasPrefix(list, "Tue 17 Nov 2026 · UTC\n┌") {
+	if !strings.HasPrefix(list, "Tue 17 Nov 2026\n┌") {
 		t.Errorf("the date should sit right above the table:\n%s", list)
 	}
-	for _, want := range []string{"Tue 17 Nov 2026 · UTC", "PAUSED", "40m / 1h", "Study", "DONE", "20m / 30m"} {
+	for _, want := range []string{"Tue 17 Nov 2026", "PAUSED", "40m / 1h", "Study", "DONE", "20m / 30m"} {
 		if !contains(list, want) {
 			t.Errorf("list is missing %q:\n%s", want, list)
 		}
@@ -367,5 +367,21 @@ func TestErrorsReadAsSentencesForPeople(t *testing.T) {
 	}
 	if _, errOut, _ := s.run("dance", "--json"); jsonCode(t, errOut) != "ERR_USAGE" {
 		t.Fatalf("a command line that cannot be read still answers in JSON: %q", errOut)
+	}
+}
+
+// Every table starts with the day it is about, and never the timezone.
+func TestEveryTableNamesItsDay(t *testing.T) {
+	s := newSession(t)
+	out := s.ok("add", "--date", "2026-11-20", "1h", "Later")
+	if !strings.HasPrefix(out, "Fri 20 Nov 2026\n┌") {
+		t.Fatalf("add: %q", out)
+	}
+	s.ok("add", "1h", "Study")
+	id := s.id("Study")
+	for _, args := range [][]string{{"start", id}, {"now"}, {"pause", id}, {"edit", "--title", "Deep study", id}, {"list"}, {"delete", "--yes", id}} {
+		if out := s.ok(args...); !strings.HasPrefix(out, "Tue 17 Nov 2026\n┌") || contains(out, "UTC") {
+			t.Fatalf("%v: %q", args, out)
+		}
 	}
 }
