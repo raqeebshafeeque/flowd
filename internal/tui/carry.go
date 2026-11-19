@@ -13,8 +13,8 @@ import (
 
 // The carry panel lists the incomplete and skipped items from the seven
 // days before the day on screen, with a box to tick for each. Space ticks
-// one, a ticks or clears them all, and Enter copies what is ticked onto the
-// day, or the highlighted item when nothing is ticked. Esc closes it. The
+// one, a ticks or clears them all, and Ctrl+S copies what is ticked onto the
+// day, like every save. Esc closes it. The
 // footer offers carry [C] whenever the day can be planned.
 
 // carryPanel is the open carry panel.
@@ -84,8 +84,8 @@ func (m *model) carryKey(key string) tea.Cmd {
 		for i := range c.picked {
 			c.picked[i] = !all
 		}
-	case "enter":
-		if m.busy() {
+	case "ctrl+s":
+		if m.busy() || c.ticked() == 0 {
 			return nil
 		}
 		ids := c.chosen()
@@ -99,16 +99,13 @@ func (m *model) carryKey(key string) tea.Cmd {
 	return nil
 }
 
-// chosen is what Enter carries: the ticked items, or the highlighted one.
+// chosen is what Ctrl+S carries: the ticked items.
 func (c *carryPanel) chosen() []domain.ID {
 	var ids []domain.ID
 	for i, on := range c.picked {
 		if on {
 			ids = append(ids, c.items[i].Item.ID)
 		}
-	}
-	if len(ids) == 0 {
-		ids = append(ids, c.items[c.cursor].Item.ID)
 	}
 	return ids
 }
@@ -188,11 +185,10 @@ func (m *model) carryFooter() string {
 	if !c.loaded || len(c.items) == 0 {
 		return " cancel [esc]"
 	}
-	n := c.ticked()
-	if n == 0 {
-		n = 1
+	if n := c.ticked(); n > 0 {
+		return fmt.Sprintf(" pick [space]  all [a]  move [j/k]  carry %d [ctrl+s]  cancel [esc]", n)
 	}
-	return fmt.Sprintf(" pick [space]  all [a]  move [j/k]  carry %d [enter]  cancel [esc]", n)
+	return " pick [space]  all [a]  move [j/k]  cancel [esc]"
 }
 
 // dayName is the day on screen as the panel names it.

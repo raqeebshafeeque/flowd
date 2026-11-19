@@ -38,6 +38,7 @@ type model struct {
 	form       *form
 	calendar   *calendar
 	carrying   *carryPanel // the carry panel, when it is open
+	ordering   *ordering   // reorder mode, when it is on
 	moreHints  bool        // the footer shows every hint, on more rows
 	date       string      // the date on screen, or "" for today
 
@@ -131,6 +132,9 @@ func (m *model) receive(msg stateMsg) {
 	if msg.date != m.date {
 		return // an answer for a date no longer on screen
 	}
+	if m.ordering != nil {
+		return // the day being arranged is not replaced until it is saved
+	}
 	m.err = msg.err
 	if msg.err != nil {
 		return
@@ -185,6 +189,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.carrying != nil {
 		return m.carryKey(msg.String())
 	}
+	if m.ordering != nil {
+		return m.orderKey(msg.String())
+	}
 	if m.review {
 		if msg.String() == "q" {
 			return tea.Quit
@@ -205,6 +212,8 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = false
 	case "C":
 		return m.openCarry()
+	case "o":
+		m.openOrdering()
 	case ".":
 		m.moreHints = !m.moreHints
 	case "n":

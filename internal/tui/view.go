@@ -128,6 +128,8 @@ func (m *model) headerNote(now time.Time) string {
 	switch {
 	case !m.loaded && m.err == nil:
 		return "Loading: " + day
+	case m.ordering != nil:
+		return "Reordering"
 	case day != now.Format("2006-01-02"):
 		return "Viewing: " + day
 	}
@@ -262,6 +264,8 @@ func (m *model) footer(width int) []string {
 		return one(" scroll [j/k]  back [esc]")
 	case m.carrying != nil:
 		return one(m.carryFooter())
+	case m.ordering != nil:
+		return one(m.orderFooter())
 	case m.calendar != nil:
 		return one(m.calendarFooter())
 	case m.review:
@@ -293,7 +297,11 @@ func (m *model) hints() []string {
 		hints = append(hints, "move [j/k]")
 	}
 	if m.plannable() {
-		hints = append(hints, "new [n]", "carry [C]")
+		hints = append(hints, "new [n]")
+		if len(m.state.View.Items) > 1 {
+			hints = append(hints, "order [o]")
+		}
+		hints = append(hints, "carry [C]")
 	}
 	hints = append(hints, "review [r]", "calendar [c]")
 	if m.viewing() != m.today() {

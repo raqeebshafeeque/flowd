@@ -32,9 +32,7 @@ type View struct {
 // saved yet simply has no items.
 func NewView(day domain.Day, items []domain.Item, history map[domain.ID][]domain.Event, now time.Time) (View, error) {
 	v := View{SchemaVersion: ViewSchemaVersion, Date: day.Date, Timezone: day.Timezone, At: now, Items: []ItemView{}, Summary: domain.NewSummary()}
-	sorted := append([]domain.Item(nil), items...)
-	domain.Sort(sorted)
-	for _, item := range sorted {
+	for _, item := range items {
 		if item.Archived {
 			continue
 		}

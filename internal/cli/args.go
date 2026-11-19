@@ -63,6 +63,7 @@ var commands = map[string]command{
 	"reopen":     {positional: "ITEM"},
 	"events":     {positional: "ITEM"},
 	"completion": {positional: "SHELL"},
+	"order":      {positional: "IDS"},
 	"carry": {positional: "IDS", flags: func(f *flag.FlagSet, o *options) {
 		f.BoolVar(&o.all, "all", false, "")
 	}},
@@ -264,6 +265,7 @@ Commands:
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
+  order [<ID>...]              Put the day in this order, or arrange it at a terminal
   carry [<ID>...] [--all]      Copy incomplete or skipped items from the last 7 days onto the day
   completion <SHELL>           Print tab completion for bash, fish or zsh
   skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both

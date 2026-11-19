@@ -285,14 +285,15 @@ func TestOnlyOneItemRunsPerDay(t *testing.T) {
 	}
 }
 
-func TestStartingOrderWins(t *testing.T) {
+// The order lists had before you could set it, which an upgrade keeps.
+func TestTheOldOrderPutStartedItemsFirst(t *testing.T) {
 	a, b, c := newTestItem(t, "A"), newTestItem(t, "B"), newTestItem(t, "C")
 	_ = c.Apply(Start, at("09:00:00"), testDay)
 	_ = c.Apply(Pause, at("09:05:00"), testDay)
 	_ = b.Apply(Start, at("09:05:00"), testDay)
 	_ = c.Apply(Finish, at("09:20:00"), testDay)
 	items := []Item{a, b, c}
-	Sort(items)
+	SortAsBefore(items)
 	if got := items[0].Title + items[1].Title + items[2].Title; got != "CBA" {
 		t.Fatalf("got order %s, want CBA (started first, then not started)", got)
 	}
@@ -307,7 +308,7 @@ func TestOrderBreaksTiesByCreationThenID(t *testing.T) {
 	sameA, sameB := first, first
 	sameA.ID, sameB.ID = "it_a", "it_b"
 	items := []Item{second, sameB, sameA}
-	Sort(items)
+	SortAsBefore(items)
 	if items[0].ID != "it_a" || items[1].ID != "it_b" || items[2].Title != "Second" {
 		t.Fatalf("unexpected order: %v %v %v", items[0].ID, items[1].ID, items[2].Title)
 	}

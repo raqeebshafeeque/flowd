@@ -80,7 +80,9 @@ func (s *Store) Create(ctx context.Context, newDay *domain.Day, items ...Change)
 			}
 		}
 		for _, c := range items {
-			if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+") VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", append(itemValues(c.Item), carriedFrom(c.Item))...); err != nil {
+			// A new item goes to the end of its day's list.
+			values := append(itemValues(c.Item), carriedFrom(c.Item), c.Item.DayID)
+			if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+",position) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,(SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE day_id=? AND archived=0))", values...); err != nil {
 				return err
 			}
 			if err := record(ctx, tx, c.Item.DayID, c.Event); err != nil {
@@ -125,8 +127,88 @@ func save(ctx context.Context, tx *sql.Tx, changes []Change) error {
 		if err := record(ctx, tx, c.Item.DayID, c.Event); err != nil {
 			return err
 		}
+		// A deleted item gives up its place, and the rest close the gap.
+		if c.Item.Archived && !c.Event.Before.Archived {
+			if _, err := tx.ExecContext(ctx, "UPDATE items SET position = 0 WHERE id=?", c.Item.ID); err != nil {
+				return err
+			}
+			if err := renumber(ctx, tx, c.Item.DayID, nil); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+// ErrOrderChanged means a new order did not name exactly the visible items
+// of the day, because something was added, deleted or named twice.
+var ErrOrderChanged = errors.New("the day changed while it was being reordered")
+
+// SetOrder saves a day's order: order names every visible item of the day
+// exactly once, in the order they are to be listed. Anything else is refused
+// with ErrOrderChanged and nothing is saved. The order is how the list is
+// laid out, not part of any item's history, so it records no events.
+func (s *Store) SetOrder(ctx context.Context, dayID domain.ID, order []domain.ID) error {
+	return s.transact(ctx, func(tx *sql.Tx) error {
+		current, err := visibleIDs(ctx, tx, dayID)
+		if err != nil {
+			return err
+		}
+		if len(order) != len(current) {
+			return ErrOrderChanged
+		}
+		named := map[domain.ID]bool{}
+		for _, id := range current {
+			named[id] = false
+		}
+		for _, id := range order {
+			if done, ok := named[id]; !ok || done {
+				return ErrOrderChanged
+			}
+			named[id] = true
+		}
+		return renumber(ctx, tx, dayID, order)
+	})
+}
+
+// visibleIDs lists a day's visible items in their current order.
+func visibleIDs(ctx context.Context, tx *sql.Tx, dayID domain.ID) ([]domain.ID, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT id FROM items WHERE day_id=? AND archived=0 ORDER BY position, id", dayID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []domain.ID
+	for rows.Next() {
+		var id domain.ID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// renumber gives a day's visible items the positions 1, 2, 3 and so on, in
+// the given order, or in their current order when order is nil. No two
+// visible items of a day may share a position, and SQLite checks that after
+// every row, so it is done in two passes: first every item takes its new
+// position as a negative number, then they all turn positive. No two rows
+// share a number at any moment.
+func renumber(ctx context.Context, tx *sql.Tx, dayID domain.ID, order []domain.ID) error {
+	if order == nil {
+		var err error
+		if order, err = visibleIDs(ctx, tx, dayID); err != nil {
+			return err
+		}
+	}
+	for i, id := range order {
+		if _, err := tx.ExecContext(ctx, "UPDATE items SET position=? WHERE id=?", -(i + 1), id); err != nil {
+			return err
+		}
+	}
+	_, err := tx.ExecContext(ctx, "UPDATE items SET position = -position WHERE day_id=? AND archived=0 AND position < 0", dayID)
+	return err
 }
 
 // record appends an event, then checks the whole day: the event fits its day,
@@ -206,7 +288,7 @@ func readDay(ctx context.Context, q querier, column, value string) (domain.Day, 
 }
 
 func readItems(ctx context.Context, q querier, dayID domain.ID) ([]domain.Item, error) {
-	rows, err := q.QueryContext(ctx, "SELECT "+itemColumns+" FROM items WHERE day_id=? AND archived=0", dayID)
+	rows, err := q.QueryContext(ctx, "SELECT "+itemColumns+" FROM items WHERE day_id=? AND archived=0 ORDER BY position, id", dayID)
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +304,6 @@ func readItems(ctx context.Context, q querier, dayID domain.ID) ([]domain.Item, 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	domain.Sort(items)
 	return items, nil
 }
 
@@ -373,7 +454,7 @@ func (s *Store) Leftovers(ctx context.Context, first, last string) ([]Leftover, 
 	rows, err := s.db.QueryContext(ctx, `SELECT d.id, i.id FROM items i JOIN days d ON d.id = i.day_id
  WHERE d.date >= ? AND d.date <= ? AND i.archived = 0 AND i.status IN ('incomplete', 'skipped')
  AND NOT EXISTS (SELECT 1 FROM items c WHERE c.carried_from = i.id AND c.archived = 0)
- ORDER BY d.date DESC`, first, last)
+ ORDER BY d.date DESC, i.position, i.id`, first, last)
 	if err != nil {
 		return nil, classify(err)
 	}

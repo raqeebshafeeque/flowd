@@ -26,7 +26,7 @@ func leftovers(t *testing.T) *session {
 
 func TestThePickerCarriesWhatIsTicked(t *testing.T) {
 	s := leftovers(t)
-	s.keys = []string{"space", "down", "down", "space", "enter"}
+	s.keys = []string{"space", "down", "down", "space", "ctrl+s"}
 	out := s.ok("carry")
 	if strings.Join(s.offered, ", ") != "Refactor the scheduler, Write release notes, Reply to the review" {
 		t.Fatalf("offered %v", s.offered)
@@ -40,15 +40,18 @@ func TestThePickerCarriesWhatIsTicked(t *testing.T) {
 	}
 }
 
-// Enter with nothing ticked carries the highlighted item, and Esc carries
-// nothing.
-func TestEnterCarriesTheHighlightedItemAndEscNothing(t *testing.T) {
+// Ctrl+S with nothing ticked saves nothing, and Esc carries nothing.
+func TestNothingTickedCarriesNothing(t *testing.T) {
 	s := leftovers(t)
 	s.keys = []string{"esc"}
 	if out := s.ok("carry"); out != "" {
 		t.Fatalf("got %q", out)
 	}
-	s.keys = []string{"down", "enter"}
+	s.keys = []string{"down", "enter", "ctrl+s", "esc"}
+	if out := s.ok("carry"); out != "" {
+		t.Fatalf("enter and an empty ctrl+s should carry nothing: %q", out)
+	}
+	s.keys = []string{"down", "space", "ctrl+s"}
 	if out := s.ok("carry"); !contains(out, "Write release notes") || contains(out, "Refactor") {
 		t.Fatalf("got %q", out)
 	}

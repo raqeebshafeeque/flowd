@@ -37,10 +37,13 @@ What days and items are, and the rules they always follow.
 - Whether it is archived, and when it was created and updated.
 - The item it was carried from, if it is a copy of an unfinished item from an earlier day. This is
   set when it is created and never changes.
+- Its place in the day's list. This is how the list is laid out, not something that happened to the
+  item, so it is not part of the item's history.
 
 ## Events
 
-- Every change adds one event in the same save as the change itself.
+- Every change to an item adds one event in the same save as the change itself. Putting the day in
+  a new order is the one exception, because an item's place is not part of its history.
 - An event records the item, the old and new status, the time and the reason.
 - It also keeps a full copy of the item before and after the change. That lets flowd replay the
   history and refuse any event that no real action could have produced.
@@ -86,8 +89,9 @@ What days and items are, and the rules they always follow.
   onto the day as a new todo item with the same title and Duration. The original stays as it was,
   and its copy remembers it, so an item is only carried once while its copy is planned.
 - First start. The first start time never changes, even after pauses, skips or reopening.
-- Order. Started items come first, ordered by their first start. Items not started yet follow, in
-  the order they were created. Pausing, finishing or editing never moves an item.
+- Order. A day is listed in the order you set. Nothing changes it by itself: starting, pausing,
+  finishing, skipping or editing never moves an item, and new or carried items join the end. Any
+  item can be moved, on today and later days.
 - Time. Times are stored in UTC and shown in local time.
 - Whole seconds. Every time is recorded to the nearest second, so work and paused time are always
   whole seconds and read the same everywhere. A time just before midnight is never rounded up into

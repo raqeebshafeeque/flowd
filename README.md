@@ -110,6 +110,7 @@ flowd finish                # pick what you are done with for today
 flowd list                  # see the day
 flowd review                # how the day really went
 flowd carry                 # pick what to carry over from the last 7 days
+flowd order                 # arrange the day in the order you want
 ```
 
 Leave out the ID and flowd lets you pick the item with the arrow keys, offering only the items that
@@ -156,10 +157,11 @@ Run `flowd` with no arguments to open it. Everything is one key.
 | `j` `k` | Move up and down | `n` | New item |
 | `space` | Start, pause or resume | `e` | Edit the selected item |
 | `f` | Finish | `d` | Delete, after asking |
-| `s` `u` | Skip and bring back | `C` | Carry over unfinished work |
-| `R` | Reopen a finished item | `c` `t` | Calendar, and back to today |
-| `enter` | Details | `r` | Review of the day |
-| `?` | Every key | `q` | Quit |
+| `s` `u` | Skip and bring back | `o` | Put the day in your order |
+| `R` | Reopen a finished item | `C` | Carry over unfinished work |
+| `enter` | Details | `c` `t` | Calendar, and back to today |
+| `r` | Review of the day | `?` | Every key |
+| `.` | More keys in the footer | `q` | Quit |
 
 In a form, type the title, press Tab for the duration and save with Ctrl+S. The window needs to
 be at least 80 by 24.

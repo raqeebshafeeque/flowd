@@ -99,6 +99,14 @@ that exact item.
 `flowd review` shows the total Duration, the recorded work, how many items are finished and every
 item grouped by status. JSON is the same as `list`.
 
+### order
+
+`flowd order ID ID ...` puts the day in this order. It has to name every visible item of the day
+exactly once, in the order they should be listed. Changing an item's status never moves it, and new
+or carried items go to the end, so the order only changes when it is saved. If the day changed
+since it was read, for example because an item was added, flowd refuses with `ERR_STALE` and
+nothing changes. Read the day again and send the whole order. Only reorder when the user asks.
+
 ### carry
 
 `flowd carry ID [ID...]` copies incomplete or skipped items from the 7 days before the day onto it,

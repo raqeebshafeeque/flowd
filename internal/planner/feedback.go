@@ -65,6 +65,7 @@ var kinds = []struct {
 	{domain.ErrInvalidDuration, "ERR_DURATION", 2, "Durations are whole minutes, like 30m, 2h or 1h30m", ""},
 	{ErrInput, "ERR_USAGE", 2, "That command is not valid", "See flowd --help"},
 	{ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},
+	{store.ErrOrderChanged, "ERR_STALE", 1, "The day changed while it was being reordered", "Reorder it again"},
 	{store.ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},
 	{ErrNotCarryable, "ERR_NOT_CARRYABLE", 1, "That item cannot be carried", ""},
 	{store.ErrNotFound, "ERR_NOT_FOUND", 1, "No such item on this day", "Check the ID with flowd list"},

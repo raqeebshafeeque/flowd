@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -42,27 +41,11 @@ func (s *session) leftovers(ctx context.Context) ([]Leftover, error) {
 	if err != nil {
 		return nil, err
 	}
-	slices.SortStableFunc(found, func(a, b store.Leftover) int {
-		if a.Day.Date != b.Day.Date {
-			return -compareText(a.Day.Date, b.Day.Date)
-		}
-		return domain.Compare(a.Item, b.Item)
-	})
 	out := make([]Leftover, 0, len(found))
 	for _, f := range found {
 		out = append(out, Leftover{f.Day.Date, f.Item})
 	}
 	return out, nil
-}
-
-func compareText(a, b string) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
-	}
-	return 0
 }
 
 // Leftovers lists the items that can be carried onto the selected day:

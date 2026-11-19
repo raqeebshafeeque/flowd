@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -202,5 +203,95 @@ func TestDamagedStoredTimeIsReported(t *testing.T) {
 	}
 	if _, err := s.Item(ctx, item.ID); !errors.Is(err, ErrCorrupt) {
 		t.Fatal("a broken stored time must be reported as damage", err)
+	}
+}
+
+// plan adds items to the test day, in order, a second apart from from, and
+// returns their IDs.
+func plan(t *testing.T, s *Store, day domain.Day, from string, titles ...string) []domain.ID {
+	t.Helper()
+	var ids []domain.ID
+	for i, title := range titles {
+		it, _ := domain.NewItem(day.ID, title, 30, clock(from).Add(time.Duration(i)*time.Second))
+		if err := s.Create(ctx, nil, Change{Item: it, Event: domain.Record(nil, it, it.CreatedAt, it.CreatedAt, domain.ReasonUser)}); err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, it.ID)
+	}
+	return ids
+}
+
+func order(t *testing.T, s *Store, day domain.Day) string {
+	t.Helper()
+	items, err := s.Items(ctx, day.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var titles []string
+	for _, it := range items {
+		titles = append(titles, it.Title)
+	}
+	return strings.Join(titles, " ")
+}
+
+// New items go to the end, and a saved order is kept exactly.
+func TestTheOrderIsWhatWasSaved(t *testing.T) {
+	s := openTest(t)
+	day, first := createTestItem(t, s)
+	ids := plan(t, s, day, "08:10:00", "B", "C", "D")
+	if got := order(t, s, day); got != "Study B C D" {
+		t.Fatalf("got %s", got)
+	}
+	if err := s.SetOrder(ctx, day.ID, []domain.ID{first.ID, ids[2], ids[0], ids[1]}); err != nil {
+		t.Fatal(err)
+	}
+	if got := order(t, s, day); got != "Study D B C" {
+		t.Fatalf("got %s", got)
+	}
+	plan(t, s, day, "08:20:00", "E")
+	if got := order(t, s, day); got != "Study D B C E" {
+		t.Fatalf("a new item goes to the end, got %s", got)
+	}
+}
+
+// An order that leaves an item out, names one twice or names a stranger is
+// refused, and the order stays as it was.
+func TestAnOrderMustNameEveryItemOnce(t *testing.T) {
+	s := openTest(t)
+	day, first := createTestItem(t, s)
+	ids := plan(t, s, day, "08:10:00", "B", "C")
+	for name, bad := range map[string][]domain.ID{
+		"missing one": {first.ID, ids[0]},
+		"one twice":   {first.ID, ids[0], ids[0]},
+		"a stranger":  {first.ID, ids[0], "it_stranger"},
+	} {
+		if err := s.SetOrder(ctx, day.ID, bad); !errors.Is(err, ErrOrderChanged) {
+			t.Errorf("%s: got %v", name, err)
+		}
+	}
+	if got := order(t, s, day); got != "Study B C" {
+		t.Fatalf("the order changed: %s", got)
+	}
+}
+
+// A deleted item gives up its place, and the rest close the gap.
+func TestDeletingClosesTheGap(t *testing.T) {
+	s := openTest(t)
+	day, first := createTestItem(t, s)
+	ids := plan(t, s, day, "08:10:00", "B", "C")
+	b, err := s.Item(ctx, ids[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := b.Clone()
+	_ = b.Archive(clock("09:00:00"))
+	if err := s.Save(ctx, Change{b, domain.Record(&before, b, clock("09:00:00"), clock("09:00:00"), domain.ReasonUser)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetOrder(ctx, day.ID, []domain.ID{ids[1], first.ID}); err != nil {
+		t.Fatalf("the two left should be numbered without a gap: %v", err)
+	}
+	if got := order(t, s, day); got != "C Study" {
+		t.Fatalf("got %s", got)
 	}
 }
