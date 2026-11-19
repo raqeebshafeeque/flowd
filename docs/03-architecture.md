@@ -18,6 +18,7 @@ How the parts fit together.
 | `internal/planner` | The operations every frontend shares |
 | `internal/cli` | Commands and their output |
 | `internal/tui` | The terminal workspace |
+| `internal/report` | Draws reviews as rows of text, for both frontends |
 | `scripts/notices` | Writes the license texts that `flowd --licenses` prints |
 | `scripts/repocheck` | Tests that keep the repository's own rules: one `doc.go` per package, one test file per source file, and no hidden characters. Never part of the program |
 
@@ -117,6 +118,16 @@ How the parts fit together.
 - Durations, work and statuses are written by the same planner functions in the workspace and the
   command line, so they always read the same.
 - Every row is drawn exactly as wide as the window, so resizing never leaves stray characters.
+
+## Reviews
+
+- A review is worked out from the saved history, never stored. The domain lays each item's
+  history out as running and paused stretches and counts its switches and stops. The planner adds
+  those up for a day, and reads a week or a month in one open of the database.
+- `internal/report` draws a review as rows of text for a given width. Each row is laid out on
+  plain text and colored last, so color never changes alignment, and a test checks that every row
+  fits the width with a margin on both sides, from 60 to 160 columns.
+- The command line and the workspace both draw with it, so a review looks the same in either.
 
 ## Status line
 

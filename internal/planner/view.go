@@ -54,8 +54,3 @@ func NewView(day domain.Day, items []domain.Item, history map[domain.ID][]domain
 	}
 	return v, nil
 }
-
-// Finished is how many items are done, out of all visible items.
-func (v View) Finished() (done, total int) {
-	return v.Counts[domain.Done], len(v.Items)
-}

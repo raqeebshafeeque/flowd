@@ -112,7 +112,9 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		o.args = []string{id}
 	}
 	switch o.command {
-	case "list", "review", "now":
+	case "review":
+		return review(ctx, out, o, client, env)
+	case "list", "now":
 		state, err := client.Read(ctx, selection)
 		if err != nil {
 			return err

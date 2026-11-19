@@ -64,34 +64,12 @@ func printDay(out io.Writer, o options, v planner.View) error {
 			return err
 		}
 		return printDated(out, o.look, v.Date, []planner.ItemView{*v.Running})
-	case o.command == "review":
-		fmt.Fprintf(out, "%s\n\n", heading(v.Date))
-		return printReview(out, v)
 	}
 	if len(v.Items) == 0 {
 		_, err := fmt.Fprintf(out, "%s\n\nNothing planned. Add something with: flowd add 1h \"Study\"\n", heading(v.Date))
 		return err
 	}
 	return printDated(out, o.look, v.Date, v.Items)
-}
-
-func printReview(out io.Writer, v planner.View) error {
-	done, total := v.Finished()
-	fmt.Fprintln(out, "Summary")
-	fmt.Fprintf(out, "  Total duration   %s\n", planner.TotalDuration(v))
-	fmt.Fprintf(out, "  Recorded work    %s\n\n", planner.Span(v.WorkNS))
-	fmt.Fprintln(out, "Progress")
-	fmt.Fprintf(out, "  %d / %d finished\n\n", done, total)
-	fmt.Fprintln(out, "Status")
-	for _, status := range []domain.Status{domain.Todo, domain.InProgress, domain.Paused, domain.Done, domain.Skipped, domain.Incomplete} {
-		fmt.Fprintf(out, "  %s (%d)\n", planner.Label(status), v.Counts[status])
-		for _, item := range v.Items {
-			if item.Status == status {
-				fmt.Fprintf(out, "  • %s\n", item.Title)
-			}
-		}
-	}
-	return nil
 }
 
 // printResult prints a confirmed change.

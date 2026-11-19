@@ -15,6 +15,12 @@ var roles = map[string]string{
 	"selected": "\x1b[36m", // teal, like the brand: whatever is active
 	"error":    "\x1b[31m",
 	"border":   "\x1b[2m",
+	// For the review, matching the status colors.
+	"label":  "\x1b[2m",
+	"work":   "\x1b[34m",
+	"paused": "\x1b[33m",
+	"good":   "\x1b[32m",
+	"today":  "\x1b[1;36m",
 }
 
 var statusColors = map[domain.Status]string{

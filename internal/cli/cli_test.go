@@ -130,7 +130,8 @@ func TestADayFromStartToReview(t *testing.T) {
 		}
 	}
 	review := s.ok("review")
-	for _, want := range []string{"Total duration   1h30m", "Recorded work    1h", "1 / 2 finished", "DONE (1)", "• Code review", "INCOMPLETE (0)"} {
+	for _, want := range []string{"Tuesday 17 November 2026", "Focused      1h", "Sessions     2", "Interrupted  1  (1 switch, 0 stops)",
+		"50%   1 of 2 items", "67%   1h of 1h30m planned", "Timeline", "Study", "Code review", "█ working"} {
 		if !contains(review, want) {
 			t.Errorf("review is missing %q:\n%s", want, review)
 		}

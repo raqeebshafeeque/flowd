@@ -41,6 +41,10 @@ type model struct {
 
 	review       bool // the review report replaces the list
 	reviewOffset int
+	reviewPeriod planner.Period
+	reviewAnchor string // a date in the period on screen
+	reviewData   *planner.PeriodInsight
+	reviewErr    error
 	help         bool // the help page replaces the list
 	helpOffset   int
 	lastError    *planner.Feedback // kept for help after its popup expires
@@ -96,6 +100,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case stateMsg:
 		m.receive(msg)
+		if m.review && msg.err == nil {
+			return m, m.readReview() // keep running work current in the review too
+		}
+	case reviewMsg:
+		m.receiveReview(msg)
 	case tickMsg:
 		cmds := []tea.Cmd{tick()}
 		if m.readDue() {
@@ -178,8 +187,7 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		if msg.String() == "q" {
 			return tea.Quit
 		}
-		m.reviewKey(msg.String())
-		return nil
+		return m.reviewKey(msg.String())
 	}
 	switch msg.String() {
 	case "q":
@@ -203,7 +211,7 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case "c":
 		m.openCalendar()
 	case "r":
-		m.openReview()
+		return m.openReview()
 	case "d":
 		m.askDelete()
 	case "?":

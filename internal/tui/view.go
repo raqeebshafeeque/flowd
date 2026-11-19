@@ -253,7 +253,7 @@ func (m *model) footer(width int) string {
 	case m.calendar != nil:
 		return fit(m.calendarFooter(), width)
 	case m.review:
-		return fit(" scroll [j/k]  back [esc]  quit [q]", width)
+		return fit(" day/week/month [1/2/3]  earlier/later [h/l]  now [t]  scroll [j/k]  back [esc]", width)
 	case m.pending:
 		return fit(" Saving…", width)
 	}

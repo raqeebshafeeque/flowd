@@ -95,8 +95,13 @@ that exact item.
 
 ### review
 
-`flowd review` shows the total Duration, the recorded work, how many items are finished and every
-item grouped by status. JSON is the same as `list`.
+`flowd review` shows how the day went: focused time, sessions, pauses, interruptions, how much was
+finished and a timeline. `flowd review --week` covers the week from Monday to Sunday and
+`flowd review --month` the calendar month, both around `--date` or today. JSON for the day is the
+same as `list`. JSON for a week or a month is `{"period", "from", "to", "today", "days": [...]}`,
+with one entry for every date, planned or not. Each day has `date`, `items` (each with its
+`stretches` of `from`, `to` and `running`), `focused_ns`, `paused_ns`, `sessions`, `longest_ns`,
+`interruptions` (`switches` and `stops`), `planned_minutes`, `finished` and `total`.
 
 ### events
 

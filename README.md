@@ -22,6 +22,7 @@
 <p align="center">
   <a href="#install">Install</a> &nbsp;&nbsp;
   <a href="#quick-start">Quick start</a> &nbsp;&nbsp;
+  <a href="#look-back">Look back</a> &nbsp;&nbsp;
   <a href="#tab-completion">Tab completion</a> &nbsp;&nbsp;
   <a href="#the-workspace">The workspace</a> &nbsp;&nbsp;
   <a href="#in-your-status-bar">Status bar</a> &nbsp;&nbsp;
@@ -109,6 +110,8 @@ flowd start                 # pick what to start with the arrow keys
 flowd finish                # pick what you are done with for today
 flowd list                  # see the day
 flowd review                # how the day really went
+flowd review --week         # the week, Monday to Sunday
+flowd review --month        # the month, as a heatmap
 ```
 
 Leave out the ID and flowd lets you pick the item with the arrow keys, offering only the items that
@@ -146,6 +149,36 @@ echo 'source <(flowd completion bash)' >> ~/.bashrc
 
 <br>
 
+## Look back
+
+`flowd review` shows how the day really went: how long you focused, how often you were pulled away,
+how much you finished, and a timeline of when each thing ran and waited.
+
+```
+  Thursday 19 November 2026
+
+  Focused      5h2m     Sessions     6
+  Paused       1h55m    Average      50m
+  Longest      1h25m    Interrupted  2  (1 switch, 1 stop)
+
+  Completed    ██████████████████░░░░░░   75%   3 of 4 items
+  Worked       ███████████████████████▊   99%   5h2m of 5h5m planned
+
+  Timeline
+                           09    11    13    15
+  Deep work on the parser  ████░░░░███░░███            3h25m / 3h         DONE
+  Code review                  ███                      38m / 45m         DONE
+  Inbox                          ██                     22m / 20m         DONE
+  Write release notes                      ███           37m / 1h  IN PROGRESS
+                           █ working   ░ paused
+```
+
+`--week` adds a bar chart of each day's focused hours, and `--month` shows the month as a heatmap,
+so a slow week or a strong streak stands out at a glance. In the workspace, `r` opens the same
+review, and `1`, `2` and `3` switch between the day, the week and the month.
+
+<br>
+
 ## The workspace
 
 Run `flowd` with no arguments to open it. Everything is one key.
@@ -157,7 +190,7 @@ Run `flowd` with no arguments to open it. Everything is one key.
 | `f` | Finish | `d` | Delete, after asking |
 | `s` `u` | Skip and bring back | `c` | Calendar, to see or plan another day |
 | `R` | Reopen a finished item | `t` | Back to today |
-| `enter` | Details | `r` | Review of the day |
+| `enter` | Details | `r` | Review: day, week and month |
 | `?` | Every key | `q` | Quit |
 
 In a form, type the title, press Tab for the duration and save with Ctrl+S. The window needs to

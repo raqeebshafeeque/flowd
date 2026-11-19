@@ -26,6 +26,8 @@ type options struct {
 	short    bool
 	max      int
 	agents   map[string]bool // for skill: which agents to install it for
+	week     bool
+	month    bool
 	yes      bool
 	title    *string
 	duration *string
@@ -39,8 +41,11 @@ type command struct {
 }
 
 var commands = map[string]command{
-	"list":   {},
-	"review": {},
+	"list": {},
+	"review": {flags: func(f *flag.FlagSet, o *options) {
+		f.BoolVar(&o.week, "week", false, "")
+		f.BoolVar(&o.month, "month", false, "")
+	}},
 	"now": {flags: func(f *flag.FlagSet, o *options) {
 		f.BoolVar(&o.short, "short", false, "")
 		f.IntVar(&o.max, "max", 30, "")
@@ -199,6 +204,9 @@ func parse(args []string) (options, error) {
 			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
 	}
+	if o.week && o.month {
+		return o, planner.InputError(nil, "Review one week or one month, not both", "Use --week or --month")
+	}
 	if o.command == "skill" && len(o.agents) == 0 {
 		return o, planner.InputError(nil, "Choose which agents get the skill", "Use --claude, --codex or both")
 	}
@@ -252,7 +260,7 @@ Commands:
   unskip <ID>                  Bring back a skipped item
   reopen <ID>                  Keep working on a finished item
   now [--short] [--max <N>]    Show the running item. --short prints one line for a status bar
-  review                       Show the day's totals, progress and statuses
+  review [--week | --month]    Show how the day, its week or its month went
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup

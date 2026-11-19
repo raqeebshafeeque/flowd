@@ -64,11 +64,25 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Done and skipped items stay as they are.
 - Incomplete is final. Tomorrow starts empty until you plan it.
 
-### F5. Review the day
+### F5. Review the day, the week and the month
 
-- The total duration you planned and the total work you recorded.
-- Progress as finished items out of all items, like `3 / 5 finished`.
-- Every item grouped by its status.
+- Focused time is the time items ran. A session is one unbroken stretch of it, and the review shows
+  how many there were, the longest one and the average.
+- An interruption is every pause after a start. A switch is a pause because another item started,
+  and a stop is one you asked for. Finishing or skipping ends the work and is neither.
+- Every review shows how much was completed, as finished items out of all items with a bar, like
+  `3 of 4 items  75%`, and how much of the planned time was worked, like `5h2m of 5h5m planned`.
+- The day has a timeline: one row per item across the hours that were worked, with a full block
+  where it ran and a light one where it waited, and its work, duration and status at the end.
+- `flowd review --week` covers Monday to Sunday with a bar chart of the hours focused each day, and
+  each day's focused time, interruptions and finished items under its bar.
+- `flowd review --month` covers the calendar month as a heatmap, one row per week, each day shaded
+  by its focused hours: none, under 2, 2 to 4, 4 to 6, and 6 or more. The bands are fixed, so the
+  same shade always means the same hours.
+- Both add up focused and paused time, active days, the daily average, the longest session and
+  the interruptions, and the month also names its best day.
+- Everything lines up: labels, values, bars and charts start in the same columns, nothing touches
+  the edge of the window, and colors never move anything.
 
 ### F6. Work with scripts and AI agents
 
@@ -117,9 +131,10 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   on screen the note says `Viewing: 2026-11-18`, and `t` comes back to today. For today it is empty.
   The footer only offers what that day allows: tracking today, planning today and later, and only
   looking on past days.
-- `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
-  recorded work, progress as finished out of all items, and every item grouped under its status with
-  a count. `j` and `k` scroll it and Esc goes back. Nothing can be changed from it.
+- `r` opens a read-only review of the day on screen, the same as `flowd review`. `1`, `2` and `3`, or
+  Tab, switch between the day, its week and its month, `h` and `l` go to the previous or next one,
+  `t` comes back to now, `j` and `k` scroll and Esc goes back. The one on screen is in brackets and
+  teal, like `[Week]`. It keeps up with running work, and nothing can be changed from it.
 - `d` asks `Delete "Study"?  yes [y]  no [n]` in the footer. Only `y` deletes, `n` and Esc cancel,
   and no other key answers. A long title is shortened so the answers always show. Past days cannot
   be changed this way either.

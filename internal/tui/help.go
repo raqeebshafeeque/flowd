@@ -14,7 +14,7 @@ var helpSections = []struct {
 		{"enter / v", "Show or hide the selected item's details"},
 		{"c", "Open the calendar to look at another day"},
 		{"t", "Come back to today"},
-		{"r", "Review the day on screen"},
+		{"r", "Review the day on screen, its week or its month"},
 		{"? ", "Open or close this help"},
 		{"q", "Quit (Ctrl+C always quits)"},
 	}},
@@ -42,6 +42,13 @@ var helpSections = []struct {
 		{"y", "Type a year"},
 		{"t", "Today"},
 		{"enter", "Show the chosen day"},
+	}},
+	{"In the review", [][2]string{
+		{"1 / 2 / 3", "The day, its week or its month. Tab goes to the next one"},
+		{"h / l", "The previous or next day, week or month"},
+		{"t", "Come back to now"},
+		{"j / k", "Scroll"},
+		{"esc / r", "Go back to the list"},
 	}},
 }
 

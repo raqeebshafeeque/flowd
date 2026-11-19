@@ -37,7 +37,7 @@ var summaries = map[string]string{
 	"unskip":     "Bring back a skipped item",
 	"reopen":     "Keep working on a finished item",
 	"now":        "Show the running item",
-	"review":     "Show the day's totals and statuses",
+	"review":     "Show how the day, week or month went",
 	"events":     "Show an item's history",
 	"backup":     "Write a backup of the database",
 	"doctor":     "Check the database",
@@ -65,6 +65,7 @@ var commandOptions = map[string][]option{
 	"doctor": {{"repair", "Restore the backup", false}},
 	"now":    {{"short", "One line for a status bar", false}, {"max", "Longest title for --short", true}},
 	"skill":  {{"claude", "Install it for Claude Code", false}, {"codex", "Install it for Codex", false}},
+	"review": {{"week", "Review the whole week", false}, {"month", "Review the whole month", false}},
 }
 
 // candidate is one completion: the text to insert and what it means.

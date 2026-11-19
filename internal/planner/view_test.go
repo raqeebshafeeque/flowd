@@ -28,9 +28,6 @@ func TestViewOrdersMeasuresAndTotals(t *testing.T) {
 	if v.DurationMinutes.Int64() != 90 || v.WorkNS != int64(50*time.Minute) || v.Counts[domain.Done] != 1 {
 		t.Fatalf("totals: %v %v %v", v.DurationMinutes, time.Duration(v.WorkNS), v.Counts)
 	}
-	if done, total := v.Finished(); done != 1 || total != 2 {
-		t.Fatalf("finished %d of %d", done, total)
-	}
 }
 
 func TestViewJSONShape(t *testing.T) {
