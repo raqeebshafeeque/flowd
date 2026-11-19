@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/raqeebshafeeque/flowd/compare/v0.6.0...v0.7.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* show paused time instead of elapsed time ([#41](https://github.com/raqeebshafeeque/flowd/issues/41))
+
+### Features
+
+* **cli:** show items in a table like the workspace ([#39](https://github.com/raqeebshafeeque/flowd/issues/39)) ([20d369a](https://github.com/raqeebshafeeque/flowd/commit/20d369a73e5bcadfd0441bf9216a6695dad798be))
+* show paused time instead of elapsed time ([#41](https://github.com/raqeebshafeeque/flowd/issues/41)) ([7c834fa](https://github.com/raqeebshafeeque/flowd/commit/7c834fa016008fa11970f464ac2144db4d60ea10))
+
 ## [0.6.0](https://github.com/raqeebshafeeque/flowd/compare/v0.5.0...v0.6.0) (2026-11-19)
 
 
