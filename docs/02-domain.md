@@ -35,6 +35,8 @@ What days and items are, and the rules they always follow.
 - When it was finished. This is cleared if it is reopened.
 - When it was closed, by finishing, skipping, archiving or the end of the day.
 - Whether it is archived, and when it was created and updated.
+- The item it was carried from, if it is a copy of an unfinished item from an earlier day. This is
+  set when it is created and never changes.
 
 ## Events
 
@@ -58,6 +60,7 @@ What days and items are, and the rules they always follow.
 | done | reopen | in progress |
 | todo, in progress or paused | end of the day | incomplete |
 | any visible item | delete | archived, status unchanged |
+| incomplete or skipped | carry | unchanged, with a new todo copy on a later day |
 
 ## How much of a day is left
 
@@ -78,8 +81,10 @@ What days and items are, and the rules they always follow.
 - End of day. When a day ends, its unfinished items become incomplete at exactly midnight, even if
   that is noticed later. This happens once, no matter how many times the day is opened.
 - Incomplete is final. It cannot be started, reopened or brought back.
-- Every day stands alone. Nothing is copied, repeated or moved to another day. If you want to keep
-  working on something tomorrow, you plan it again tomorrow.
+- Every day stands alone. Nothing is copied, repeated or moved to another day by itself. To keep
+  working on something, you carry it: an incomplete or skipped item from the 7 days before is copied
+  onto the day as a new todo item with the same title and Duration. The original stays as it was,
+  and its copy remembers it, so an item is only carried once while its copy is planned.
 - First start. The first start time never changes, even after pauses, skips or reopening.
 - Order. Started items come first, ordered by their first start. Items not started yet follow, in
   the order they were created. Pausing, finishing or editing never moves an item.

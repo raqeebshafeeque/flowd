@@ -64,6 +64,25 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Done and skipped items stay as they are.
 - Incomplete is final. Tomorrow starts empty until you plan it.
 
+### F4a. Carry unfinished work forward
+
+- Nothing moves to another day by itself. You choose what to carry.
+- `C` in the workspace, or `flowd carry` at a terminal, lists the incomplete and skipped items from
+  the 7 days before the day, with their title, the day they are from, their Duration and status,
+  newest day first. You tick the ones to carry, or all of them with `a`, and Enter carries them.
+  Enter with nothing ticked carries the highlighted one.
+- `flowd carry <ID>...` carries exact items and `flowd carry --all` carries everything listed.
+  Scripts and agents have to use one of these, because the list needs a terminal.
+- A carried item is a new todo item on the day, today unless `--date` names a later one, with the
+  same title and the original Duration. It starts with no work and remembers the item it came
+  from. The original is not changed and stays incomplete or skipped.
+- An item is carried once. While its copy is still planned it is not offered again, and deleting
+  the copy frees it.
+- Everything picked is carried in one save. If it does not all fit in what is left of the day,
+  nothing is carried and the message says how much it needs and how much is left.
+- Only items from the 7 days before the day can be carried, and never onto a past day.
+- The footer offers `carry [C]` whenever the day on screen can be planned.
+
 ### F5. Review the day
 
 - The total duration you planned and the total work you recorded.
@@ -117,6 +136,9 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   on screen the note says `Viewing: 2026-11-18`, and `t` comes back to today. For today it is empty.
   The footer only offers what that day allows: tracking today, planning today and later, and only
   looking on past days.
+- The footer never drops a key. When they do not all fit on one row, the ones for the selected item
+  and the day come first, and `more [.]` sits at the right edge. `.` opens the rest on the rows
+  below, with `less [.]` in its place, and any other key folds them away again.
 - `r` opens a read-only review of the day on screen, the same as `flowd review`: total duration and
   recorded work, progress as finished out of all items, and every item grouped under its status with
   a count. `j` and `k` scroll it and Esc goes back. Nothing can be changed from it.
@@ -164,5 +186,5 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Importing calendars, phone apps or web apps.
 - Notifications while the app is closed.
 - Searching across days.
-- Recommendations about what to do next, recurring items, copying items between days or editing
-  recorded times.
+- Recommendations about what to do next, recurring items, copying items to another day by itself,
+  or editing recorded times.

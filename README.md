@@ -63,7 +63,7 @@ any order, and let flowd keep count.
 - **No nagging.** No alarms, no timers going off, no guilt when you run over.
 - **Honest numbers.** You see the time you really spent, not the time you hoped to.
 - **Every day starts fresh.** At midnight unfinished work is marked incomplete and tomorrow begins
-  empty.
+  empty. Carry over only what still matters.
 - **Lives in your terminal.** Planning takes a minute and never pulls you out of the work.
 - **Yours alone.** One file on your computer. Offline, no account, nothing is ever sent anywhere.
 
@@ -109,6 +109,7 @@ flowd start                 # pick what to start with the arrow keys
 flowd finish                # pick what you are done with for today
 flowd list                  # see the day
 flowd review                # how the day really went
+flowd carry                 # pick what to carry over from the last 7 days
 ```
 
 Leave out the ID and flowd lets you pick the item with the arrow keys, offering only the items that
@@ -155,8 +156,8 @@ Run `flowd` with no arguments to open it. Everything is one key.
 | `j` `k` | Move up and down | `n` | New item |
 | `space` | Start, pause or resume | `e` | Edit the selected item |
 | `f` | Finish | `d` | Delete, after asking |
-| `s` `u` | Skip and bring back | `c` | Calendar, to see or plan another day |
-| `R` | Reopen a finished item | `t` | Back to today |
+| `s` `u` | Skip and bring back | `C` | Carry over unfinished work |
+| `R` | Reopen a finished item | `c` `t` | Calendar, and back to today |
 | `enter` | Details | `r` | Review of the day |
 | `?` | Every key | `q` | Quit |
 
@@ -237,6 +238,7 @@ flowd doctor --repair   # put the backup back, keeping the current files aside
 - [Requirements](docs/01-requirements.md) for everything it does
 - [Domain](docs/02-domain.md) for the rules a day follows
 - [Architecture](docs/03-architecture.md) for how it is built
+- [Later](docs/04-later.md) for what is planned next
 
 To build from source you need Go 1.27.4 or newer, then `go build -o flowd ./cmd/flowd`.
 

@@ -27,7 +27,7 @@ JSON:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "date": "2026-11-17",
   "timezone": "Asia/Kolkata",
   "at": "2026-11-17T04:30:00Z",
@@ -40,7 +40,8 @@ JSON:
 ```
 
 Each ITEM has `id`, `day_id`, `title`, `status`, `duration_minutes`, `started_at`, `finished_at`,
-`closed_at`, `archived`, `created_at`, `updated_at`, `work_ns` and `paused_ns`. Times are UTC.
+`closed_at`, `archived`, `created_at`, `updated_at`, `carried_from`, `work_ns` and `paused_ns`.
+Times are UTC. `carried_from` is the ID of the item it was carried from, or null.
 `work_ns` and `paused_ns` are whole seconds written in nanoseconds. `work_ns` is the time the item
 ran and `paused_ns` the time it waited as paused after it started. `paused_ns` is null until the
 item first starts.
@@ -97,6 +98,16 @@ that exact item.
 
 `flowd review` shows the total Duration, the recorded work, how many items are finished and every
 item grouped by status. JSON is the same as `list`.
+
+### carry
+
+`flowd carry ID [ID...]` copies incomplete or skipped items from the 7 days before the day onto it,
+today unless `--date` names a later day. Each becomes a new todo item with the same title and
+Duration, and `carried_from` set to the original's ID. The originals do not change. JSON is the list
+of new items. `flowd carry --all` carries everything that can be carried. Everything is carried in
+one save, and if it does not all fit in what is left of the day, nothing is carried and flowd
+refuses with `ERR_DURATION_LIMIT`. An item that is not incomplete or skipped, is too old, or still
+has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user asked for.
 
 ### events
 

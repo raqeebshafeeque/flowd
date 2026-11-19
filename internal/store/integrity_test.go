@@ -203,7 +203,7 @@ func largeHistory(tb testing.TB, n int) string {
 			}
 			events = append(events, domain.Record(&before, item, at, at, domain.ReasonUser))
 		}
-		if _, err := tx.Exec("INSERT INTO items("+itemColumns+") VALUES(?,?,?,?,?,?,?,?,?,?,?)", itemValues(item)...); err != nil {
+		if _, err := tx.Exec("INSERT INTO items("+itemColumns+") VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", append(itemValues(item), carriedFrom(item))...); err != nil {
 			tb.Fatal(err)
 		}
 		for _, e := range events {

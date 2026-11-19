@@ -37,7 +37,9 @@ type model struct {
 	notice     *notice
 	form       *form
 	calendar   *calendar
-	date       string // the date on screen, or "" for today
+	carrying   *carryPanel // the carry panel, when it is open
+	moreHints  bool        // the footer shows every hint, on more rows
+	date       string      // the date on screen, or "" for today
 
 	review       bool // the review report replaces the list
 	reviewOffset int
@@ -96,6 +98,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case stateMsg:
 		m.receive(msg)
+	case leftoversMsg:
+		m.receiveLeftovers(msg)
 	case tickMsg:
 		cmds := []tea.Cmd{tick()}
 		if m.readDue() {
@@ -161,6 +165,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if !m.usable() {
 		return nil // nothing happens that cannot be seen
 	}
+	// Any key but . folds the extra hints away again.
+	if msg.String() != "." {
+		m.moreHints = false
+	}
 	if m.form != nil {
 		return m.formKey(msg)
 	}
@@ -173,6 +181,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	}
 	if m.calendar != nil {
 		return m.calendarKey(msg)
+	}
+	if m.carrying != nil {
+		return m.carryKey(msg.String())
 	}
 	if m.review {
 		if msg.String() == "q" {
@@ -192,6 +203,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = m.selected != "" && !m.details
 	case "esc":
 		m.details = false
+	case "C":
+		return m.openCarry()
+	case ".":
+		m.moreHints = !m.moreHints
 	case "n":
 		if m.plannable() {
 			m.openNew()

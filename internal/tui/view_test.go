@@ -48,6 +48,8 @@ func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w.now = w.now.Add(10 * time.Minute)
 	w.refresh()
 	text := plain(w)
+	w.press(key(".")) // the rest of the keys, which do not fit on one row
+	text = plain(w)
 	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  skip [s]", "help [?]", "quit [q]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
@@ -200,5 +202,60 @@ func TestStatusColors(t *testing.T) {
 	}
 	if (style{noColor: true}).status(domain.Done, "DONE") != "DONE" {
 		t.Error("NO_COLOR must stay plain")
+	}
+}
+
+// When the keys do not fit on one row, more [.] shows the rest below it and
+// less [.] hides them again. Any other key folds them away. No key is lost.
+func TestTheFooterFoldsAndNeverDropsAKey(t *testing.T) {
+	w := newWorkspace(t)
+	a := w.add("Study", "1h")
+	w.act(planner.Start, a)
+	w.refresh()
+	w.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	folded := plain(w)
+	if !strings.Contains(folded, "more [.]") || strings.Contains(folded, "quit [q]") {
+		t.Fatalf("folded:\n%s", folded)
+	}
+	w.press(key("."))
+	open := plain(w)
+	for _, want := range w.m.hints() {
+		if !strings.Contains(open, want) {
+			t.Errorf("%q is missing when the footer is open:\n%s", want, open)
+		}
+	}
+	if !strings.Contains(open, "less [.]") {
+		t.Fatalf("open:\n%s", open)
+	}
+	for i, row := range screen(w) {
+		if got := ansi.StringWidth(row); got != 80 {
+			t.Fatalf("row %d is %d wide", i, got)
+		}
+	}
+	if len(screen(w)) != 24 {
+		t.Fatal("the open footer takes rows from the list, not from the window")
+	}
+	w.press(key("j"))
+	if strings.Contains(plain(w), "less [.]") {
+		t.Fatal("any other key should fold the footer again")
+	}
+	w.m.Update(tea.WindowSizeMsg{Width: 160, Height: 24})
+	if text := plain(w); strings.Contains(text, "more [.]") || !strings.Contains(text, "quit [q]") {
+		t.Fatalf("a wide window needs no more [.]:\n%s", text)
+	}
+}
+
+// Carry is offered whenever the day can be planned.
+func TestCarryIsAlwaysOffered(t *testing.T) {
+	w := newWorkspace(t)
+	w.add("Study", "1h")
+	w.refresh()
+	if hints := strings.Join(w.m.hints(), " "); !strings.Contains(hints, "carry [C]") {
+		t.Fatalf("got %s", hints)
+	}
+	w.m.date = "2026-11-16"
+	w.refresh()
+	if hints := strings.Join(w.m.hints(), " "); strings.Contains(hints, "carry [C]") {
+		t.Fatalf("a past day cannot carry: %s", hints)
 	}
 }

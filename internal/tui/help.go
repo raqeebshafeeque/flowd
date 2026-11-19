@@ -15,6 +15,7 @@ var helpSections = []struct {
 		{"c", "Open the calendar to look at another day"},
 		{"t", "Come back to today"},
 		{"r", "Review the day on screen"},
+		{".", "Show the rest of the keys in the footer, or hide them"},
 		{"? ", "Open or close this help"},
 		{"q", "Quit (Ctrl+C always quits)"},
 	}},
@@ -29,6 +30,7 @@ var helpSections = []struct {
 		{"n", "Add an item"},
 		{"e", "Edit the selected item"},
 		{"d", "Delete the selected item, after asking"},
+		{"C", "Carry incomplete or skipped items from the last 7 days"},
 	}},
 	{"In a form", [][2]string{
 		{"tab / enter", "Move to the other field. Enter never saves"},

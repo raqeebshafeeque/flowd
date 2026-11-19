@@ -84,6 +84,9 @@ func Open(ctx context.Context, path string, options ...OpenOption) (_ *Store, er
 	if err != nil {
 		return nil, fmt.Errorf("open %q: %w", absolute, err)
 	}
+	if err := upgrade(ctx, db, absolute); err != nil {
+		return nil, errors.Join(fmt.Errorf("open %q: %w", absolute, err), db.Close())
+	}
 	if err := initialize(ctx, db); err != nil {
 		return nil, errors.Join(fmt.Errorf("open %q: %w", absolute, err), db.Close())
 	}
@@ -199,7 +202,7 @@ func inspectExisting(ctx context.Context, path string, fullCheck bool) (time.Tim
 		err = checkIntegrity(ctx, db)
 	}
 	if err == nil {
-		err = checkSchema(ctx, db)
+		err = checkSchema(ctx, db, true)
 	}
 	if err = errors.Join(err, db.Close()); err != nil {
 		return time.Time{}, err

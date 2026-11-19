@@ -48,7 +48,9 @@ Do not try to work around these. Explain them to the user instead.
 - Only today's items can be started, paused, finished or skipped.
 - At midnight, unfinished items become incomplete. Incomplete is final.
 - Going past a Duration is fine. It never means the item should be finished.
-- Nothing is copied to another day. To keep working tomorrow, add a new item tomorrow.
+- Nothing moves to another day by itself. To keep working on an incomplete or skipped item from the
+  last 7 days, carry it with `flowd --json carry ID` when the user asks. It becomes a new todo item
+  and the original stays as it was.
 
 ## When something goes wrong
 
