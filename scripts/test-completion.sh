@@ -37,14 +37,17 @@ if command -v fish > /dev/null; then
     check fish pause "$(fish --no-config -c "source $work/flowd.fish; complete -C 'flowd --db $db pause '")" "$running	Deep work"
     check fish command "$(fish --no-config -c "source $work/flowd.fish; complete -C 'flowd fin'" | cut -f1)" "finish"
 fi
-if command -v bash > /dev/null; then
+# Every bash found is checked, including the old 3.2 that macOS ships as
+# /bin/bash, which handles arrays differently.
+for shell in $(command -v bash) /bin/bash; do
+    [ -x "$shell" ] || continue
     complete_bash() {
-        bash --norc -c ". $work/flowd.bash; COMP_WORDS=($1); COMP_CWORD=$2; _flowd; printf '%s\n' \"\${COMPREPLY[@]}\""
+        "$shell" --norc -c ". $work/flowd.bash; COMP_WORDS=($1); COMP_CWORD=$2; _flowd; printf '%s\n' \"\${COMPREPLY[@]}\""
     }
-    check bash start "$(complete_bash "flowd --db $db start ''" 4)" "$waiting"
-    check bash pause "$(complete_bash "flowd --db $db pause ''" 4)" "$running"
-    check bash command "$(complete_bash "flowd fin" 1)" "finish"
-fi
+    check "$shell" start "$(complete_bash "flowd --db $db start ''" 4)" "$waiting"
+    check "$shell" pause "$(complete_bash "flowd --db $db pause ''" 4)" "$running"
+    check "$shell" command "$(complete_bash "flowd fin" 1)" "finish"
+done
 if command -v zsh > /dev/null; then
     complete_zsh() {
         zsh -f -c "compdef() { :; }; _describe() { print -l -- \"\${(@P)4}\"; }; . $work/_flowd; words=($1); CURRENT=$2; _flowd"
