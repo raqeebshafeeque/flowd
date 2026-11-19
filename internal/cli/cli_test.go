@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -43,12 +44,31 @@ func (s *session) ok(args ...string) string {
 	return out
 }
 
+// fails checks a refused command both ways: as JSON with its code, the way
+// a script sees it, and as plain words, the way a person does.
 func (s *session) fails(code int, errCode string, args ...string) {
 	s.t.Helper()
-	out, errOut, got := s.run(args...)
-	if got != code || out != "" || !strings.HasPrefix(errOut, errCode+"\n") {
+	out, errOut, got := s.run(append([]string{"--json"}, args...)...)
+	if got != code || out != "" || jsonCode(s.t, errOut) != errCode {
 		s.t.Fatalf("%v: exit %d, stdout %q, stderr %q, want %d %s", args, got, out, errOut, code, errCode)
 	}
+	if !slices.Contains(args, "--json") {
+		out, errOut, got = s.run(args...)
+		if got != code || out != "" || !strings.HasPrefix(errOut, "Error: ") || contains(errOut, "ERR_") {
+			s.t.Fatalf("%v: exit %d, stdout %q, stderr %q", args, got, out, errOut)
+		}
+	}
+}
+
+func jsonCode(t *testing.T, errOut string) string {
+	t.Helper()
+	var e struct {
+		Error struct{ Code, Message string } `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(errOut), &e); err != nil || e.Error.Message == "" {
+		t.Fatalf("not a JSON error: %q", errOut)
+	}
+	return e.Error.Code
 }
 
 func contains(text, part string) bool { return strings.Contains(text, part) }
@@ -192,7 +212,7 @@ func TestHelpAndVersionTouchNoFiles(t *testing.T) {
 func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
 	s := newSession(t)
 	_, errOut, code := s.run("add", "1h", "Pay invoice\u202e fdp.exe")
-	if code != 2 || !strings.HasPrefix(errOut, "ERR_TITLE\n") || !contains(errOut, "Titles cannot hold hidden or direction-changing characters") || !contains(errOut, "Remove the invisible or direction-changing character U+202E at position 12") {
+	if code != 2 || !strings.HasPrefix(errOut, "Error: Titles cannot hold hidden or direction-changing characters.\n") || !contains(errOut, "Titles cannot hold hidden or direction-changing characters") || !contains(errOut, "Remove the invisible or direction-changing character U+202E at position 12") {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	s.ok("add", "1h", "Ship it 👩\u200d💻 ✔︎")
@@ -205,7 +225,7 @@ func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
 func TestADurationLongerThanTheDayIsRefused(t *testing.T) {
 	s := newSession(t) // 09:00, fifteen hours left
 	_, errOut, code := s.run("add", "30h", "Too much")
-	if code != 2 || !strings.HasPrefix(errOut, "ERR_DURATION_LIMIT\nOnly 15h left on this day\n") {
+	if code != 2 || errOut != "Error: Only 15h left on this day.\n       Enter 15h or less, or plan this on another day.\n" {
 		t.Fatalf("exit %d: %q", code, errOut)
 	}
 	s.ok("add", "15h", "Exactly enough")
@@ -250,7 +270,7 @@ func TestDeleteWithoutATerminalNeedsYes(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
 	_, errOut, code := s.run("delete", s.id("Study"))
-	if code != 2 || !strings.HasPrefix(errOut, "ERR_USAGE\nDeleting needs confirmation\nAdd --yes") {
+	if code != 2 || !strings.HasPrefix(errOut, "Error: Deleting needs confirmation.\n       Add --yes") {
 		t.Fatalf("exit %d: %q", code, errOut)
 	}
 	answer := "y\n"
@@ -293,5 +313,55 @@ func TestItemsArePickedOnlyByTheirFullID(t *testing.T) {
 	}
 	if out := s.ok("add", "30m", "Code"); !contains(out, "it_") {
 		t.Fatalf("a change should print the item's ID: %q", out)
+	}
+}
+
+// Options work before the command, after it and after its arguments, but
+// each value only once.
+func TestOptionsCanGoAnywhere(t *testing.T) {
+	s := newSession(t)
+	s.ok("add", "1h", "Today")
+	s.ok("add", "--date", "2026-11-18", "1h", "Tomorrow")
+	for _, args := range [][]string{
+		{"--date", "2026-11-18", "list"},
+		{"list", "--date", "2026-11-18"},
+		{"2026-11-18"},
+	} {
+		if out := s.ok(args...); !contains(out, "Tomorrow") || contains(out, "Today") {
+			t.Fatalf("%v: %s", args, out)
+		}
+	}
+	id := s.id("Today")
+	if out := s.ok("start", id, "--json"); !strings.HasPrefix(out, "{") {
+		t.Fatalf("--json after the ID was ignored: %q", out)
+	}
+	if out := s.ok("add", "30m", "--", "-v is a flag"); !contains(out, "Planned -v is a flag") {
+		t.Fatalf("a title after -- is plain text: %q", out)
+	}
+	s.fails(2, "ERR_USAGE", "--date", "2026-11-18", "list", "--date", "2026-11-19")
+	s.fails(2, "ERR_USAGE", "2026-11-18", "--date", "2026-11-18")
+	s.fails(2, "ERR_USAGE", "list", "--colour")
+}
+
+// A person never sees an error code, only what went wrong and what to do.
+func TestErrorsReadAsSentencesForPeople(t *testing.T) {
+	s := newSession(t)
+	_, errOut, code := s.run("list", "--colour")
+	if code != 2 || errOut != "Error: There is no option --colour.\n       See flowd --help for every command and option.\n" {
+		t.Fatalf("exit %d: %q", code, errOut)
+	}
+	_, errOut, _ = s.run("start", "it_missing")
+	if errOut != "Error: No item it_missing on 2026-11-17.\n       Use the full ID shown by flowd list.\n" {
+		t.Fatalf("got %q", errOut)
+	}
+	_, errOut, _ = s.run("--json", "start", "it_missing")
+	var e struct {
+		Error struct{ Code, Message, Hint string } `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(errOut), &e); err != nil || e.Error.Code != "ERR_NOT_FOUND" || e.Error.Message != "No item it_missing on 2026-11-17" || e.Error.Hint == "" {
+		t.Fatalf("got %q", errOut)
+	}
+	if _, errOut, _ := s.run("dance", "--json"); jsonCode(t, errOut) != "ERR_USAGE" {
+		t.Fatalf("a command line that cannot be read still answers in JSON: %q", errOut)
 	}
 }

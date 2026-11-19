@@ -72,83 +72,135 @@ func newFlags(name string) *flag.FlagSet {
 	return f
 }
 
-func usage(summary string) error { return planner.InputError(nil, summary, "See flowd --help") }
+func usage(summary string) error {
+	return planner.InputError(nil, summary, "See flowd --help for every command and option")
+}
 
-// parse reads global options, then the command and its own options, then
-// its positional arguments. A bare date such as 2026-11-17 means list.
+// globals adds the options every command accepts. They can come before the
+// command, after it or after its arguments, but each value can be given
+// only once, so a later one never quietly wins over an earlier one.
+func globals(f *flag.FlagSet, o *options, seen map[string]int) {
+	value := func(name string, target *string) {
+		f.Func(name, "", func(v string) error {
+			seen[name]++
+			*target = v
+			return nil
+		})
+	}
+	value("db", &o.db)
+	value("date", &o.date)
+	value("timezone", &o.zone)
+	f.BoolVar(&o.json, "json", o.json, "")
+	f.BoolVar(&o.help, "help", o.help, "")
+	f.BoolVar(&o.help, "h", o.help, "")
+	f.BoolVar(&o.version, "version", o.version, "")
+	f.BoolVar(&o.licenses, "licenses", o.licenses, "")
+}
+
+// parseAll reads options wherever they appear among the arguments and
+// returns the rest in order. Everything after -- is an argument.
+func parseAll(f *flag.FlagSet, args []string) ([]string, error) {
+	var rest []string
+	for {
+		if err := f.Parse(args); err != nil {
+			return nil, err
+		}
+		left := f.Args()
+		if used := len(args) - len(left); used > 0 && args[used-1] == "--" {
+			return append(rest, left...), nil
+		}
+		if len(left) == 0 {
+			return rest, nil
+		}
+		rest, args = append(rest, left[0]), left[1:]
+	}
+}
+
+// parse reads the command line. Options can appear anywhere. The first
+// argument that is not an option is the command, and a bare date such as
+// 2026-11-17 means list for that date.
 func parse(args []string) (options, error) {
 	var o options
+	seen := map[string]int{}
 	global := newFlags("flowd")
-	global.StringVar(&o.db, "db", "", "")
-	global.StringVar(&o.date, "date", "", "")
-	global.StringVar(&o.zone, "timezone", "", "")
-	global.BoolVar(&o.json, "json", false, "")
-	global.BoolVar(&o.help, "help", false, "")
-	global.BoolVar(&o.help, "h", false, "")
-	global.BoolVar(&o.version, "version", false, "")
-	global.BoolVar(&o.licenses, "licenses", false, "")
+	globals(global, &o, seen)
 	if err := global.Parse(args); err != nil {
-		return o, usage(sentence(err))
-	}
-	if o.help || o.version || o.licenses {
-		return o, nil
+		return o, optionError(err)
 	}
 	rest := global.Args()
+	if used := len(args) - len(rest); used > 0 && args[used-1] == "--" {
+		return o, usage("Put the command before --")
+	}
 	o.command = "list"
 	if len(rest) > 0 {
 		o.command, rest = rest[0], rest[1:]
 	}
 	if _, err := time.Parse("2006-01-02", o.command); err == nil {
-		if o.date != "" {
-			return o, usage("Give the date only once")
-		}
+		seen["date"]++
 		o.date, o.command = o.command, "list"
 	}
-	if o.date != "" {
-		if d, err := time.Parse("2006-01-02", o.date); err != nil || d.Format("2006-01-02") != o.date {
-			return o, planner.InputError(nil, "Invalid date "+o.date, "Use a date like 2026-11-17")
-		}
-	}
 	spec, ok := commands[o.command]
-	if !ok {
-		return o, usage("Unknown command " + o.command)
+	if !ok && !(o.help || o.version || o.licenses) {
+		return o, usage("There is no command called " + o.command)
 	}
 	local := newFlags(o.command)
-	local.BoolVar(&o.help, "help", false, "")
-	local.BoolVar(&o.help, "h", false, "")
+	globals(local, &o, seen)
 	if spec.flags != nil {
 		spec.flags(local, &o)
 	}
-	if err := local.Parse(rest); err != nil {
-		return o, usage(sentence(err))
+	var err error
+	if o.args, err = parseAll(local, rest); err != nil {
+		return o, optionError(err)
 	}
-	if o.help {
+	for _, name := range []string{"db", "date", "timezone"} {
+		if seen[name] > 1 {
+			return o, usage("Give the " + name + " only once")
+		}
+	}
+	if o.help || o.version || o.licenses {
 		return o, nil
 	}
-	o.args = local.Args()
+	if o.date != "" {
+		if d, err := time.Parse("2006-01-02", o.date); err != nil || d.Format("2006-01-02") != o.date {
+			return o, planner.InputError(nil, "There is no date "+o.date, "Use a date like 2026-11-17")
+		}
+	}
 	switch spec.positional {
 	case "":
 		if len(o.args) != 0 {
-			return o, usage(o.command + " takes no arguments")
+			return o, usage(capitalize(o.command) + " takes no arguments")
 		}
 	case "ITEM":
 		if len(o.args) != 1 {
-			return o, usage(o.command + " needs the ID of one item")
+			return o, planner.InputError(nil, capitalize(o.command)+" needs the ID of one item", "Find the ID with flowd list")
 		}
 	case "DURATION TITLE":
 		if len(o.args) < 2 {
-			return o, usage("add needs a <DURATION> and a <TITLE>")
+			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
 	}
 	if o.command == "edit" && o.title == nil && o.duration == nil {
-		return o, usage("edit needs --title, --duration or both")
+		return o, planner.InputError(nil, "Edit needs a new title, a new duration or both", "Use --title, --duration or both")
 	}
 	return o, nil
 }
 
-// sentence turns a flag package error into a capitalised sentence.
-func sentence(err error) string {
+// optionError rewrites the flag package's errors in plain words, naming
+// the option the way it is written on the command line.
+func optionError(err error) error {
 	text := err.Error()
+	for _, known := range []struct{ prefix, words string }{
+		{"flag provided but not defined: -", "There is no option --"},
+		{"flag needs an argument: -", "This option needs a value: --"},
+	} {
+		if name, ok := strings.CutPrefix(text, known.prefix); ok {
+			return usage(known.words + strings.TrimPrefix(name, "-"))
+		}
+	}
+	return usage(capitalize(text))
+}
+
+func capitalize(text string) string {
 	if text == "" {
 		return text
 	}
@@ -158,8 +210,8 @@ func sentence(err error) string {
 const help = `flowd plans your day as a list of efforts and records the work you do.
 
 Usage:
-  flowd [options] [command]
-  flowd [options] <YYYY-MM-DD>    Show that date
+  flowd [command] [options]
+  flowd <YYYY-MM-DD> [options]    Show that date
 
 Commands:
   list                         Show the day (the default)
@@ -181,8 +233,9 @@ Commands:
 
 <ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G.
 <DURATION> is whole minutes or hours: 30, 30m, 2h or 1h30m.
+Options can go before or after the command. Put -- before a title that starts with a dash.
 
-Options:
+Options for every command:
   --db <PATH>                  Use this database instead of the default one
   --date <YYYY-MM-DD>          Use this date instead of today
   --timezone <ZONE>            Timezone for a new day, like Asia/Kolkata

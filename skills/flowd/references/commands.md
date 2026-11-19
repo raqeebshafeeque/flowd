@@ -1,10 +1,11 @@
 # flowd commands
 
-Global options come before the command: `flowd --json --date 2026-11-18 list`.
+Options work before or after the command, like `flowd --json list --date 2026-11-18`. Each one can
+be given only once. Put `--` before a title that starts with a dash.
 
-- `--db PATH` uses another database file.
-- `--date YYYY-MM-DD` picks a day other than today.
-- `--timezone ZONE` sets the timezone of a day that does not exist yet, like `Asia/Kolkata`.
+- `--db <PATH>` uses another database file.
+- `--date <YYYY-MM-DD>` picks a day other than today.
+- `--timezone <ZONE>` sets the timezone of a day that does not exist yet, like `Asia/Kolkata`.
 - `--json` prints JSON instead of text.
 - `--version`, `--help` and `--licenses` print the version, the help or the licenses of the code
   flowd is built with. They touch no files.
@@ -115,4 +116,6 @@ current files into a recovery folder. Only run it when the user asks.
 ## Exit status
 
 `0` success, `1` a refused action or a problem with the database, `2` bad input, `130` stopped.
-Errors print to stderr as a code, a sentence and a hint, and nothing is printed to stdout.
+With `--json`, an error is printed to stderr as `{"error": {"code": "ERR_NOT_FOUND", "message": "...",
+"hint": "..."}}` and nothing is printed to stdout. Without `--json` it is a sentence and a hint
+for a person, with no code, so always use `--json`.

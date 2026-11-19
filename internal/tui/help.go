@@ -79,7 +79,6 @@ func (m *model) helpRows(width int) []string {
 				rows = append(rows, " "+line)
 			}
 		}
-		rows = append(rows, " "+m.style.paint("muted", "Code "+f.Code))
 	}
 	for _, s := range helpSections {
 		section(s.title)

@@ -78,8 +78,10 @@ How the parts fit together.
 
 ## Errors
 
-- An error is a short code plus a plain sentence, printed to stderr. Examples are
+- Every error has a short code, a plain sentence and a hint. Examples of codes are
   `ERR_ILLEGAL_TRANSITION`, `ERR_CORRUPT`, `ERR_LOCKED` and `ERR_DISK_FULL`.
+- People only ever see the sentence and the hint, on the command line and in the workspace. The
+  code is for scripts and agents, which get the whole error as JSON on stderr with `--json`.
 - The store hands errors back with their cause and never prints anything itself.
 - A damaged or unknown file is refused and left alone, never replaced.
 
