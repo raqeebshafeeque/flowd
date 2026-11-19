@@ -96,6 +96,16 @@ func printReview(out io.Writer, v planner.View) error {
 
 // printResult prints a confirmed change.
 func printResult(out io.Writer, o options, r planner.Result) error {
+	if len(r.Carried) > 0 {
+		var items []planner.ItemView
+		for _, c := range r.Carried {
+			items = append(items, planner.ItemView{Item: c})
+		}
+		if o.json {
+			return writeJSON(out, items)
+		}
+		return printDated(out, o.look, r.Day.Date, items)
+	}
 	item := planner.ItemView{Item: r.Item, Metrics: r.Metrics}
 	if o.json {
 		return writeJSON(out, item)

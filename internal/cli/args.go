@@ -26,6 +26,7 @@ type options struct {
 	short    bool
 	max      int
 	agents   map[string]bool // for skill: which agents to install it for
+	all      bool            // for carry: every leftover
 	yes      bool
 	title    *string
 	duration *string
@@ -62,6 +63,9 @@ var commands = map[string]command{
 	"reopen":     {positional: "ITEM"},
 	"events":     {positional: "ITEM"},
 	"completion": {positional: "SHELL"},
+	"carry": {positional: "IDS", flags: func(f *flag.FlagSet, o *options) {
+		f.BoolVar(&o.all, "all", false, "")
+	}},
 	"skill": {flags: func(f *flag.FlagSet, o *options) {
 		o.agents = map[string]bool{}
 		for _, a := range agents {
@@ -190,6 +194,10 @@ func parse(args []string) (options, error) {
 		if len(o.args) > 1 {
 			return o, planner.InputError(nil, capitalize(o.command)+" takes the ID of one item", "Find the ID with flowd list")
 		}
+	case "IDS":
+		if o.all && len(o.args) > 0 {
+			return o, planner.InputError(nil, "Carry either the items named or --all, not both", "Use flowd carry --all, or name the IDs")
+		}
 	case "SHELL":
 		if len(o.args) != 1 {
 			return o, planner.InputError(nil, "Completion needs a shell", "Use flowd completion bash, fish or zsh")
@@ -256,6 +264,7 @@ Commands:
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
+  carry [<ID>...] [--all]      Copy incomplete or skipped items from the last 7 days onto the day
   completion <SHELL>           Print tab completion for bash, fish or zsh
   skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
 

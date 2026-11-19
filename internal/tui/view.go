@@ -50,6 +50,10 @@ func (m *model) frame() []string {
 		rows, row, col := m.formRows(inner, panel)
 		content = append(content, rows...)
 		caretRow, caretCol = list+1+row, col
+	} else if m.carrying != nil {
+		panel := m.carryHeight(body)
+		content = append(m.list(inner, body-panel-1), m.style.paint("border", strings.Repeat("─", inner)))
+		content = append(content, pad(m.carryRows(inner, panel), panel)...)
 	} else if m.calendar != nil {
 		panel := min(calendarHeight, body-3)
 		content = append(m.list(inner, body-panel-1), m.style.paint("border", strings.Repeat("─", inner)))
@@ -250,6 +254,8 @@ func (m *model) footer(width int) string {
 		return m.deleteQuestion(width)
 	case m.help:
 		return fit(" scroll [j/k]  back [esc]", width)
+	case m.carrying != nil:
+		return fit(m.carryFooter(), width)
 	case m.calendar != nil:
 		return fit(m.calendarFooter(), width)
 	case m.review:
@@ -279,6 +285,9 @@ func (m *model) footer(width int) string {
 	}
 	if m.plannable() {
 		hints = append(hints, hint{"new [n]", 4})
+		if len(m.state.View.Items) == 0 && m.carryable > 0 {
+			hints = append(hints, hint{"carry [C]", 7})
+		}
 	}
 	hints = append(hints, hint{"review [r]", 3}, hint{"calendar [c]", 3})
 	if m.viewing() != m.today() {

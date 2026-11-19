@@ -128,7 +128,7 @@ func peek(ctx context.Context, path string, read func(*sql.Tx) error) (err error
 		return err
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
-	if err := checkSchema(ctx, db); err != nil {
+	if err := checkSchema(ctx, db, false); err != nil {
 		return err
 	}
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})

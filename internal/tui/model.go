@@ -37,7 +37,9 @@ type model struct {
 	notice     *notice
 	form       *form
 	calendar   *calendar
-	date       string // the date on screen, or "" for today
+	carrying   *carryPanel // the carry panel, when it is open
+	carryable  int         // items an empty day could carry, to offer carry
+	date       string      // the date on screen, or "" for today
 
 	review       bool // the review report replaces the list
 	reviewOffset int
@@ -96,6 +98,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 	case stateMsg:
 		m.receive(msg)
+		if msg.err == nil && msg.date == m.date && m.plannable() && len(m.state.View.Items) == 0 {
+			return m, m.readLeftovers(true) // to offer carry on an empty day
+		}
+	case leftoversMsg:
+		m.receiveLeftovers(msg)
 	case tickMsg:
 		cmds := []tea.Cmd{tick()}
 		if m.readDue() {
@@ -174,6 +181,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.calendar != nil {
 		return m.calendarKey(msg)
 	}
+	if m.carrying != nil {
+		return m.carryKey(msg.String())
+	}
 	if m.review {
 		if msg.String() == "q" {
 			return tea.Quit
@@ -192,6 +202,8 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.details = m.selected != "" && !m.details
 	case "esc":
 		m.details = false
+	case "C":
+		return m.openCarry()
 	case "n":
 		if m.plannable() {
 			m.openNew()

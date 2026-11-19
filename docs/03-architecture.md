@@ -53,6 +53,15 @@ How the parts fit together.
   never a skip. On two years of daily use, this makes opening take a few milliseconds.
 - Hard links and special files are refused. A symbolic link to a real database is followed.
 
+## Upgrading the file
+
+- The schema has a version. Version 2 added the item a copy was carried from.
+- When flowd opens an older file to change it, it first writes a backup, the same one
+  `flowd backup` makes, and then upgrades the file in one transaction. If anything fails, the file
+  stays exactly as it was. Checking a file, `flowd doctor` and the lock free reads never upgrade.
+- After the upgrade an older flowd refuses the file as made by another version, so going back means
+  restoring the backup.
+
 ## Shared operations
 
 - Every operation opens the file, reads the clock once, closes any day whose midnight has passed,
@@ -63,6 +72,8 @@ How the parts fit together.
   history. If the item has changed since, the change is refused.
 - Starting, resuming or reopening an item pauses the running one in the same save, at the same
   instant.
+- Carrying creates every copy in one save, after checking that each source is incomplete or
+  skipped, is from the 7 days before, has no copy still planned, and that they all fit.
 - Every change ends in one of three outcomes. Refused means nothing was saved. Confirmed means it is
   on disk. Unconfirmed means the save failed in a way that leaves it unknown whether it landed.
 - An unconfirmed change is never retried blindly. flowd looks for it in the saved history first and

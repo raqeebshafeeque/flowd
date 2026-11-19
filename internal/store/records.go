@@ -14,7 +14,7 @@ import (
 
 const (
 	dayColumns   = "id,date,timezone,created_at,updated_at"
-	itemColumns  = "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at"
+	itemColumns  = "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at,carried_from"
 	eventColumns = "seq,item_id,from_status,to_status,occurred_at,recorded_at,reason,before_json,after_json"
 )
 
@@ -60,12 +60,18 @@ func (s *Store) DayEvents(ctx context.Context, dayID domain.ID) (map[domain.ID][
 	return byItem, nil
 }
 
-// Create saves a new item and its creation event. When newDay is not nil the
-// day is created in the same transaction, so a day never exists without the
-// item that caused it.
-func (s *Store) Create(ctx context.Context, newDay *domain.Day, item domain.Item, event domain.Event) error {
-	if event.Before != nil || event.Seq != 0 || !domain.Same(item, event.After) || (newDay != nil && newDay.ID != item.DayID) {
+// Create saves new items and their creation events, all in one
+// transaction, so either every one is saved or none is. They all belong to
+// one day. When newDay is not nil the day is created in the same
+// transaction, so a day never exists without the items that caused it.
+func (s *Store) Create(ctx context.Context, newDay *domain.Day, items ...Change) error {
+	if len(items) == 0 {
 		return ErrInvalidSave
+	}
+	for _, c := range items {
+		if c.Event.Before != nil || c.Event.Seq != 0 || !domain.Same(c.Item, c.Event.After) || c.Item.DayID != items[0].Item.DayID || (newDay != nil && newDay.ID != c.Item.DayID) {
+			return ErrInvalidSave
+		}
 	}
 	return s.transact(ctx, func(tx *sql.Tx) error {
 		if newDay != nil {
@@ -73,10 +79,15 @@ func (s *Store) Create(ctx context.Context, newDay *domain.Day, item domain.Item
 				return err
 			}
 		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+") VALUES(?,?,?,?,?,?,?,?,?,?,?)", itemValues(item)...); err != nil {
-			return err
+		for _, c := range items {
+			if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+") VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", append(itemValues(c.Item), carriedFrom(c.Item))...); err != nil {
+				return err
+			}
+			if err := record(ctx, tx, c.Item.DayID, c.Event); err != nil {
+				return err
+			}
 		}
-		return record(ctx, tx, item.DayID, event)
+		return nil
 	})
 }
 
@@ -218,8 +229,8 @@ func readItems(ctx context.Context, q querier, dayID domain.ID) ([]domain.Item, 
 func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 	var it domain.Item
 	var created string
-	var started, finished, closed, updated sql.NullString
-	if err := row.Scan(&it.ID, &it.DayID, &it.Title, &it.Status, &it.DurationMinutes, &started, &finished, &closed, &it.Archived, &created, &updated); err != nil {
+	var started, finished, closed, updated, carried sql.NullString
+	if err := row.Scan(&it.ID, &it.DayID, &it.Title, &it.Status, &it.DurationMinutes, &started, &finished, &closed, &it.Archived, &created, &updated, &carried); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.Item{}, ErrNotFound
 		}
@@ -228,6 +239,10 @@ func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 	// A title saved by an older version may hold hidden characters. It is
 	// shown with visible <U+XXXX> placeholders, never as it was.
 	it.Title = domain.SanitizeText(it.Title)
+	if carried.Valid {
+		from := domain.ID(carried.String)
+		it.CarriedFrom = &from
+	}
 	var err error
 	if it.CreatedAt, err = parseInstant(created); err != nil {
 		return domain.Item{}, err
@@ -276,6 +291,15 @@ func readEvents(ctx context.Context, q querier, where string, arg any) ([]domain
 		events = append(events, e)
 	}
 	return events, rows.Err()
+}
+
+// carriedFrom is the stored form of where an item was copied from. It is
+// only written when the item is created, because it never changes.
+func carriedFrom(it domain.Item) any {
+	if it.CarriedFrom == nil {
+		return nil
+	}
+	return string(*it.CarriedFrom)
 }
 
 func itemValues(it domain.Item) []any {
@@ -333,4 +357,59 @@ func decode(text string, into *domain.Item) error {
 		}
 	}
 	return nil
+}
+
+// Leftover is an item that can be carried, with the day it is on.
+type Leftover struct {
+	Day  domain.Day
+	Item domain.Item
+}
+
+// Leftovers lists the items on days from first to last, both included,
+// that can be carried: incomplete or skipped, not deleted, and without a
+// copy that is still there. A copy that was deleted frees its item again.
+// Newer days come first.
+func (s *Store) Leftovers(ctx context.Context, first, last string) ([]Leftover, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT d.id, i.id FROM items i JOIN days d ON d.id = i.day_id
+ WHERE d.date >= ? AND d.date <= ? AND i.archived = 0 AND i.status IN ('incomplete', 'skipped')
+ AND NOT EXISTS (SELECT 1 FROM items c WHERE c.carried_from = i.id AND c.archived = 0)
+ ORDER BY d.date DESC`, first, last)
+	if err != nil {
+		return nil, classify(err)
+	}
+	type pair struct{ day, item domain.ID }
+	var found []pair
+	for rows.Next() {
+		var p pair
+		if err := rows.Scan(&p.day, &p.item); err != nil {
+			rows.Close()
+			return nil, classify(err)
+		}
+		found = append(found, p)
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, classify(err)
+	}
+	days := map[domain.ID]domain.Day{}
+	var out []Leftover
+	for _, p := range found {
+		day, ok := days[p.day]
+		if !ok {
+			if day, err = readDay(ctx, s.db, "id", string(p.day)); err != nil {
+				return nil, classify(err)
+			}
+			days[p.day] = day
+		}
+		item, err := s.Item(ctx, p.item)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, Leftover{day, item})
+	}
+	return out, nil
+}
+
+// DayByID returns the saved day with that ID, or ErrNotFound.
+func (s *Store) DayByID(ctx context.Context, id domain.ID) (domain.Day, error) {
+	return readDay(ctx, s.db, "id", string(id))
 }

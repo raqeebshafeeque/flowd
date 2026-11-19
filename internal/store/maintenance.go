@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -16,17 +17,23 @@ import (
 // "flowd.sqlite.bak", including changes still waiting in the WAL file. The new
 // backup replaces the old one only after it is complete and on disk.
 func (s *Store) Backup(ctx context.Context) (string, error) {
-	destination := s.path + ".bak"
+	return backup(ctx, s.db, s.path)
+}
+
+// backup writes a consistent copy of the database at path to path.bak. The
+// old backup is only replaced once the new one is complete and on disk.
+func backup(ctx context.Context, db *sql.DB, path string) (string, error) {
+	destination := path + ".bak"
 	if err := plainFile(destination); err != nil {
 		return "", err
 	}
-	temporary, err := tempFile(filepath.Dir(s.path), ".flowd-backup-*")
+	temporary, err := tempFile(filepath.Dir(path), ".flowd-backup-*")
 	if err != nil {
 		return "", err
 	}
 	defer os.Remove(temporary)
-	if _, err := s.db.ExecContext(ctx, "VACUUM INTO ?", temporary); err != nil {
-		return "", fmt.Errorf("back up %q: %w", s.path, classify(err))
+	if _, err := db.ExecContext(ctx, "VACUUM INTO ?", temporary); err != nil {
+		return "", fmt.Errorf("back up %q: %w", path, classify(err))
 	}
 	if err := os.Chmod(temporary, 0o600); err != nil {
 		return "", err
@@ -87,7 +94,7 @@ func checkFile(ctx context.Context, path string) error {
 	if result != "ok" {
 		return fmt.Errorf("%w: %s", ErrCorrupt, result)
 	}
-	if err := checkSchema(ctx, db); err != nil {
+	if err := checkSchema(ctx, db, true); err != nil {
 		return err
 	}
 	rows, err := db.QueryContext(ctx, "PRAGMA foreign_key_check")

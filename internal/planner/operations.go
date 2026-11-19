@@ -22,6 +22,7 @@ const (
 	Skip   Operation = "skip"
 	Unskip Operation = "unskip"
 	Reopen Operation = "reopen"
+	Carry  Operation = "carry"
 )
 
 // Intent is one explicit request against one day.
@@ -40,6 +41,9 @@ type Intent struct {
 	// changes whichever is not nil.
 	Title    *string
 	Duration *string
+
+	// Sources are the items Carry copies onto the selected day, in order.
+	Sources []domain.ID
 }
 
 // ErrPastDay means a past date was asked to change.
@@ -69,6 +73,8 @@ func (s *session) do(ctx context.Context, intent Intent) (Result, error) {
 		return s.remove(ctx, intent)
 	case Start, Pause, Resume, Finish, Skip, Unskip, Reopen:
 		return s.track(ctx, intent)
+	case Carry:
+		return s.carry(ctx, intent)
 	}
 	return Result{}, InputError(nil, "Unknown operation "+string(intent.Operation), "")
 }
@@ -120,7 +126,7 @@ func (s *session) add(ctx context.Context, intent Intent) (Result, error) {
 	}
 	event := domain.Record(nil, item, s.now, s.now, domain.ReasonUser)
 	s.day = day
-	return s.persist(ctx, item, event, nil, func() error { return s.db.Create(ctx, newDay, item, event) })
+	return s.persist(ctx, item, event, nil, func() error { return s.db.Create(ctx, newDay, store.Change{Item: item, Event: event}) })
 }
 
 func (s *session) edit(ctx context.Context, intent Intent) (Result, error) {

@@ -30,7 +30,7 @@ func createTestItem(t *testing.T, s *Store) (domain.Day, domain.Item) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Create(ctx, &day, item, domain.Record(nil, item, item.CreatedAt, item.CreatedAt, domain.ReasonUser)); err != nil {
+	if err := s.Create(ctx, &day, Change{Item: item, Event: domain.Record(nil, item, item.CreatedAt, item.CreatedAt, domain.ReasonUser)}); err != nil {
 		t.Fatal(err)
 	}
 	return day, item
@@ -154,7 +154,7 @@ func TestTwoRunningItemsAreRefused(t *testing.T) {
 	s := openTest(t)
 	day, a := createTestItem(t, s)
 	b, _ := domain.NewItem(day.ID, "Code", 30, clock("08:30:00"))
-	if err := s.Create(ctx, nil, b, domain.Record(nil, b, b.CreatedAt, b.CreatedAt, domain.ReasonUser)); err != nil {
+	if err := s.Create(ctx, nil, Change{Item: b, Event: domain.Record(nil, b, b.CreatedAt, b.CreatedAt, domain.ReasonUser)}); err != nil {
 		t.Fatal(err)
 	}
 	act(t, s, day, a, domain.Start, clock("09:00:00"))
@@ -169,7 +169,7 @@ func TestClockGoingBackwardsIsRefused(t *testing.T) {
 	s := openTest(t)
 	day, a := createTestItem(t, s)
 	b, _ := domain.NewItem(day.ID, "Code", 30, clock("08:30:00"))
-	_ = s.Create(ctx, nil, b, domain.Record(nil, b, b.CreatedAt, b.CreatedAt, domain.ReasonUser))
+	_ = s.Create(ctx, nil, Change{Item: b, Event: domain.Record(nil, b, b.CreatedAt, b.CreatedAt, domain.ReasonUser)})
 	act(t, s, day, a, domain.Start, clock("10:00:00"))
 	before := b.Clone()
 	_ = b.Apply(domain.Skip, clock("09:00:00"), day)

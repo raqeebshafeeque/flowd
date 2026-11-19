@@ -11,9 +11,15 @@ import (
 // press stands in for the terminal: it records what the picker offers and
 // presses the session's keys in it.
 func (s *session) press(m tea.Model) (tea.Model, error) {
-	p := m.(picker)
-	for _, item := range p.items {
-		s.offered = append(s.offered, item.Title)
+	switch p := m.(type) {
+	case picker:
+		for _, item := range p.items {
+			s.offered = append(s.offered, item.Title)
+		}
+	case carryPicker:
+		for _, item := range p.items {
+			s.offered = append(s.offered, item.Item.Title)
+		}
 	}
 	for _, k := range s.keys {
 		var msg tea.KeyPressMsg
@@ -26,6 +32,8 @@ func (s *session) press(m tea.Model) (tea.Model, error) {
 			msg = tea.KeyPressMsg{Code: tea.KeyDown}
 		case "up":
 			msg = tea.KeyPressMsg{Code: tea.KeyUp}
+		case "space":
+			msg = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
 		default:
 			msg = tea.KeyPressMsg{Code: rune(k[0]), Text: k}
 		}

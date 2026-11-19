@@ -11,7 +11,7 @@ func TestSettleDueClosesEndedDaysOnce(t *testing.T) {
 	s := openTest(t)
 	day, running := createTestItem(t, s)
 	done, _ := domain.NewItem(day.ID, "Done", 30, clock("08:10:00"))
-	_ = s.Create(ctx, nil, done, domain.Record(nil, done, done.CreatedAt, done.CreatedAt, domain.ReasonUser))
+	_ = s.Create(ctx, nil, Change{Item: done, Event: domain.Record(nil, done, done.CreatedAt, done.CreatedAt, domain.ReasonUser)})
 	done = act(t, s, day, done, domain.Start, clock("09:00:00"))
 	done = act(t, s, day, done, domain.Finish, clock("09:30:00"))
 	running = act(t, s, day, running, domain.Start, clock("10:00:00"))
@@ -54,7 +54,7 @@ func TestSettleDueRespectsEachDaysTimezone(t *testing.T) {
 		t.Fatal(err)
 	}
 	item, _ := domain.NewItem(day.ID, "Study", 30, clock("01:00:00"))
-	if err := s.Create(ctx, &day, item, domain.Record(nil, item, item.CreatedAt, item.CreatedAt, domain.ReasonUser)); err != nil {
+	if err := s.Create(ctx, &day, Change{Item: item, Event: domain.Record(nil, item, item.CreatedAt, item.CreatedAt, domain.ReasonUser)}); err != nil {
 		t.Fatal(err)
 	}
 	// Midnight in India is 18:30 UTC.

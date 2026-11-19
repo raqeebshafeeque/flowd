@@ -70,6 +70,35 @@ type Item struct {
 	Archived        bool       `json:"archived"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       *time.Time `json:"updated_at"`
+	// CarriedFrom is the item on an earlier day this one was copied from,
+	// or nil. It is set when the item is created and never changes.
+	CarriedFrom *ID `json:"carried_from"`
+}
+
+// CarryDays is how far back unfinished work can be carried from: the
+// seven days before the day it is carried onto.
+const CarryDays = 7
+
+// Carryable tells whether the item can be copied onto a later day: it was
+// left incomplete or skipped, and it was not deleted.
+func (it Item) Carryable() bool {
+	return !it.Archived && (it.Status == Incomplete || it.Status == Skipped)
+}
+
+// CarryTo copies a carryable item onto another day as a fresh todo item with
+// the same title and duration, remembering where it came from. The original
+// is not touched.
+func (it Item) CarryTo(dayID ID, now time.Time) (Item, error) {
+	if !it.Carryable() {
+		return Item{}, fmt.Errorf("%w: only incomplete or skipped items can be carried, this one is %s", ErrIllegalTransition, strings.ReplaceAll(string(it.Status), "_", " "))
+	}
+	copied, err := NewItem(dayID, it.Title, it.DurationMinutes, now)
+	if err != nil {
+		return Item{}, err
+	}
+	from := it.ID
+	copied.CarriedFrom = &from
+	return copied, nil
 }
 
 // ValidateTitle checks a new or changed title: one line of 1 to 120
@@ -120,6 +149,10 @@ func (it Item) Clone() Item {
 		return &v
 	}
 	it.CreatedAt = it.CreatedAt.UTC()
+	if it.CarriedFrom != nil {
+		from := *it.CarriedFrom
+		it.CarriedFrom = &from
+	}
 	it.StartedAt = copyTime(it.StartedAt)
 	it.FinishedAt = copyTime(it.FinishedAt)
 	it.ClosedAt = copyTime(it.ClosedAt)

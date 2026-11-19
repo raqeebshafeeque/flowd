@@ -29,6 +29,7 @@ var helpSections = []struct {
 		{"n", "Add an item"},
 		{"e", "Edit the selected item"},
 		{"d", "Delete the selected item, after asking"},
+		{"C", "Carry incomplete or skipped items from the last 7 days"},
 	}},
 	{"In a form", [][2]string{
 		{"tab / enter", "Move to the other field. Enter never saves"},

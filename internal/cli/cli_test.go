@@ -154,7 +154,7 @@ func TestJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(s.ok("--json")), &day); err != nil {
 		t.Fatal(err)
 	}
-	if day["schema_version"] != float64(2) || day["running"] == nil || len(day["items"].([]any)) != 1 {
+	if day["schema_version"] != float64(3) || day["running"] == nil || len(day["items"].([]any)) != 1 {
 		t.Fatalf("unexpected day: %v", day)
 	}
 	var events []map[string]any

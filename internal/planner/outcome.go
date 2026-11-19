@@ -25,11 +25,13 @@ const (
 // Result describes one change. After a confirmed save it carries the saved
 // item, its fresh history and revision, and its metrics at the same instant.
 type Result struct {
-	Outcome    Outcome
-	At         time.Time
-	Day        domain.Day
-	Item       domain.Item
-	Metrics    domain.Metrics
+	Outcome Outcome
+	At      time.Time
+	Day     domain.Day
+	Item    domain.Item
+	Metrics domain.Metrics
+	// Carried are every item a carry created, in order. Item is the first.
+	Carried    []domain.Item
 	AutoPaused []domain.ID
 	History    map[domain.ID][]domain.Event
 	Revisions  map[domain.ID]Revision
@@ -66,7 +68,7 @@ func (s *session) persist(ctx context.Context, item domain.Item, event domain.Ev
 
 // refusal reports whether a failed write certainly changed nothing.
 func refusal(err error) bool {
-	for _, known := range []error{store.ErrStale, store.ErrInvalidSave, store.ErrNotFound, store.ErrLocked, domain.ErrIllegalTransition, domain.ErrInvalidEvidence, domain.ErrAlreadyRunning, domain.ErrDayClosed, domain.ErrInvalidTitle, domain.ErrInvalidDuration} {
+	for _, known := range []error{ErrNotCarryable, store.ErrStale, store.ErrInvalidSave, store.ErrNotFound, store.ErrLocked, domain.ErrIllegalTransition, domain.ErrInvalidEvidence, domain.ErrAlreadyRunning, domain.ErrDayClosed, domain.ErrInvalidTitle, domain.ErrInvalidDuration} {
 		if errors.Is(err, known) {
 			return true
 		}
