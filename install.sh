@@ -71,6 +71,21 @@ show_success() {
         *) printf "  PATH    Add %s to your shell's PATH.\n" "$bin_dir" ;;
     esac
     printf '%s\n' '  Next    Reload your AI harness to load the flowd skill.'
+    show_completion
+}
+
+# show_completion prints the one command that sets up tab completion for
+# the shell in use. The installer never edits shell files itself.
+show_completion() {
+    case ${SHELL##*/} in
+        fish) printf '%s\n' '  Tab     For tab completion, run once:' \
+            '            mkdir -p ~/.config/fish/completions && flowd completion fish > ~/.config/fish/completions/flowd.fish' ;;
+        zsh) printf '%s\n' '  Tab     For tab completion, run once:' \
+            "            echo 'source <(flowd completion zsh)' >> ~/.zshrc" ;;
+        bash) printf '%s\n' '  Tab     For tab completion, run once:' \
+            "            echo 'source <(flowd completion bash)' >> ~/.bashrc" ;;
+        *) printf '%s\n' '  Tab     For tab completion, see flowd completion bash, fish or zsh.' ;;
+    esac
 }
 
 fail() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 1; }

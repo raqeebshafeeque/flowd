@@ -114,6 +114,13 @@ titles that hold hidden characters, which are shown as placeholders like `<U+202
 `{"status": "ok", "unsafe_titles": [ID, ...]}`. `flowd doctor --repair` replaces the database with its backup and moves the
 current files into a recovery folder. Only run it when the user asks.
 
+### completion
+
+`flowd completion bash|fish|zsh` prints the tab completion script for a shell, for a person to load.
+Agents never need it. A command that needs an ID and gets none opens an arrow key picker at a
+terminal, but an agent is never at one, so it must always pass the full ID. Without a terminal, or
+with `--json`, a missing ID is refused with `ERR_USAGE`.
+
 ## Exit status
 
 `0` success, `1` a refused action or a problem with the database, `2` bad input, `130` stopped.

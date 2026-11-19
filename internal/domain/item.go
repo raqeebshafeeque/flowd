@@ -127,6 +127,17 @@ func (it Item) Clone() Item {
 	return it
 }
 
+// Can tells whether the action fits the item as it is now. It is what tab
+// completion, the picker and the workspace footer offer, so they never
+// suggest something that would be refused for the item's status.
+func (it Item) Can(a Action) bool {
+	if it.Archived || it.Status == Incomplete {
+		return false
+	}
+	_, err := it.target(a)
+	return err == nil
+}
+
 // target is the status an action leads to from the item's current state.
 func (it Item) target(a Action) (Status, error) {
 	refuse := func() (Status, error) {

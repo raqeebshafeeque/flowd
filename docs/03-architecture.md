@@ -133,6 +133,18 @@ How the parts fit together.
   status line refresh would look like a change and force a full scan.
 - Work is worked out with the same domain rules as everywhere else, so it matches `flowd list`.
 
+## Tab completion and the picker
+
+- The shell scripts are a few lines each. They pass the words typed so far to a hidden
+  `flowd __complete` command, and flowd works out the candidates in Go, so every shell offers the
+  same thing. Each candidate is one line, the value and a tab and its meaning.
+- Item IDs and dates are read with the same lock free, read only path as the status line, so a Tab
+  never makes a real command wait, and never writes or creates anything.
+- Which items a command fits is decided once, by the item's own rules in the domain, and shared by
+  completion, the picker and the checks before a change.
+- The picker is a small inline view on the terminal. It reads the day like any other command, and
+  the chosen item goes through the normal checks, so it can never do more than typing its ID would.
+
 ## Agents
 
 - Agents use the same command line as people. There is no separate interface for them.

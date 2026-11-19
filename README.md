@@ -22,6 +22,7 @@
 <p align="center">
   <a href="#install">Install</a> &nbsp;&nbsp;
   <a href="#quick-start">Quick start</a> &nbsp;&nbsp;
+  <a href="#tab-completion">Tab completion</a> &nbsp;&nbsp;
   <a href="#the-workspace">The workspace</a> &nbsp;&nbsp;
   <a href="#in-your-status-bar">Status bar</a> &nbsp;&nbsp;
   <a href="#with-an-ai-agent">AI agents</a> &nbsp;&nbsp;
@@ -101,13 +102,16 @@ sh install.sh --require-attestation
 ## Quick start
 
 ```sh
-flowd add 1h "Study"        # plan an item, which prints its ID
+flowd add 1h "Study"        # plan an item
 flowd add 2h "Code review"
-flowd list                  # see the day, with every item's ID
-flowd start <ID>            # start an item by its ID
-flowd finish <ID>           # done with it for today
+flowd start                 # pick what to start with the arrow keys
+flowd finish                # pick what you are done with for today
+flowd list                  # see the day
 flowd review                # how the day really went
 ```
+
+Leave out the ID and flowd lets you pick the item with the arrow keys, offering only the items that
+command fits. Scripts pass the full ID instead, like `flowd start it_01M7...`.
 
 A few things to know:
 
@@ -119,6 +123,25 @@ A few things to know:
 
 Add `--json` to any command for output scripts can read, and `--date 2026-11-20` to work on
 another day. `flowd --help` lists everything.
+
+<br>
+
+## Tab completion
+
+Press Tab to complete commands, options, dates and item IDs, with each item's title shown next to
+its ID. `flowd start <Tab>` only offers what can be started. The installer prints the line for your
+shell. Run it once:
+
+```sh
+# fish
+mkdir -p ~/.config/fish/completions && flowd completion fish > ~/.config/fish/completions/flowd.fish
+
+# zsh
+echo 'source <(flowd completion zsh)' >> ~/.zshrc
+
+# bash
+echo 'source <(flowd completion bash)' >> ~/.bashrc
+```
 
 <br>
 

@@ -23,6 +23,16 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   full ID, which `flowd list` shows and every change prints. A position in the list is never
   accepted, because the order changes when items start, and a command must never act on an item
   that moved.
+- At a terminal, a command that needs an item can be run without the ID. It then lists the items
+  that command fits, like only the todo items for `start`, and the person picks one with the arrow
+  keys or `j` and `k`, Enter to choose and Esc to cancel. Cancelling changes nothing. Without a
+  terminal, or with `--json`, a missing ID is refused as before, so nothing ever waits for an
+  answer.
+- Tab completion for fish, zsh and bash completes commands, options, dates and item IDs, showing
+  each item's title next to its ID where the shell can. It offers only the items the command fits.
+  `flowd completion <SHELL>` prints the script, and the installer prints the one line that sets it
+  up, without editing shell files itself. Completion runs on every Tab, so like the status line it
+  takes no lock, never writes and stays quiet on any problem.
 - The command line shows items in a table drawn like the workspace, with the ID, the title, the
   Duration and the status, under the date it is about, like `Thu 19 Nov 2026`. `flowd list` shows
   every item of the day. A change shows only the item it changed, even when starting it paused

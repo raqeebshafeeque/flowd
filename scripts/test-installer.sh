@@ -59,3 +59,14 @@ expect no-gh-checksum-only "$signed_out" installed
 grep -q 'Checksum verified' "$work/no-gh-checksum-only.out"
 expect no-gh-but-required "$signed_out" refused --require-attestation
 expect verified-and-required "$verified" installed --require-attestation
+
+# The installer prints how to set up tab completion for the shell in use,
+# and never edits shell files itself.
+user_shell=${SHELL:-}
+for shell in fish zsh bash; do
+    SHELL=/bin/$shell
+    export SHELL
+    expect "completion-hint-$shell" "$verified" installed
+    grep -q "flowd completion $shell" "$work/completion-hint-$shell.out"
+done
+SHELL=$user_shell
