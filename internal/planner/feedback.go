@@ -66,7 +66,7 @@ var kinds = []struct {
 	{ErrInput, "ERR_USAGE", 2, "That command is not valid", "See flowd --help"},
 	{ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},
 	{store.ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},
-	{store.ErrNotFound, "ERR_NOT_FOUND", 1, "No such item on this day", "Check the item number or ID with flowd list"},
+	{store.ErrNotFound, "ERR_NOT_FOUND", 1, "No such item on this day", "Check the ID with flowd list"},
 	{domain.ErrDayClosed, "ERR_DAY_CLOSED", 1, "That day is not open", "Only today's items can be started, paused, finished or skipped"},
 	{domain.ErrAlreadyRunning, "ERR_ILLEGAL_TRANSITION", 1, "Another item is already running", ""},
 	{domain.ErrIllegalTransition, "ERR_ILLEGAL_TRANSITION", 1, "That item cannot do that now", ""},

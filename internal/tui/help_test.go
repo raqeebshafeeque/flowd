@@ -45,10 +45,13 @@ func TestHelpKeepsTheLastErrorAfterThePopupGoes(t *testing.T) {
 	}
 	w.press(key("?"))
 	text := plain(w)
-	for _, want := range []string{"Last error", "That day is not open", "Only today's items can be started", "Code ERR_DAY_CLOSED"} {
+	for _, want := range []string{"Last error", "That day is not open", "Only today's items can be started"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
+	}
+	if strings.Contains(text, "ERR_") {
+		t.Error("codes are for scripts, not for people")
 	}
 }
 

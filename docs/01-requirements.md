@@ -57,7 +57,11 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 
 - Every command can print JSON with `--json`, so scripts and agents never have to parse text.
 - Errors have stable codes and exit codes. Bad input exits with 2 and a refused action exits with 1.
-  An error is printed to stderr as its code, one sentence and a hint.
+- A person sees an error as one sentence and a hint, like `Error: Only 2h30m left on this day.`
+  The code is only for scripts and agents: with `--json` the error is printed as JSON with its code,
+  its message and its hint.
+- Options can go before or after the command, like `flowd list --date 2026-11-18`. Each one can be
+  given only once.
 - If a save fails in a way that leaves it unknown whether it landed, flowd says so plainly instead
   of reporting success or failure.
 - A refused or failed action never prints output that looks like success.
@@ -100,7 +104,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   and no other key answers. A long title is shortened so the answers always show. Past days cannot
   be changed this way either.
 - `?` opens Help, listing every key. The full wording of the last error stays there after its
-  popup has gone, with its code. Inside a form, `?` is just text.
+  popup has gone. Inside a form, `?` is just text.
 - Success is quiet: the list simply shows the new state. Errors and refusals appear in a small box
   above the footer for seven seconds.
 

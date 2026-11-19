@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -11,15 +12,39 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
-// Report prints an error to stderr and returns its exit status.
+// Report prints an error for a person and returns its exit status. People
+// get a sentence and a hint. The code is for scripts and agents, which ask
+// for it with --json.
 func Report(errOut io.Writer, err error) int {
 	f := planner.Describe(err)
-	fmt.Fprintln(errOut, f.Code)
-	fmt.Fprintln(errOut, f.Summary)
+	fmt.Fprintln(errOut, "Error: "+sentenceOf(f.Summary))
 	if f.Hint != "" {
-		fmt.Fprintln(errOut, f.Hint)
+		fmt.Fprintln(errOut, "       "+sentenceOf(f.Hint))
 	}
 	return f.Exit
+}
+
+// reportJSON prints an error as JSON, with its code, for scripts and agents.
+func reportJSON(errOut io.Writer, err error) int {
+	f := planner.Describe(err)
+	type problem struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Hint    string `json:"hint,omitempty"`
+	}
+	writeJSON(errOut, struct {
+		Error problem `json:"error"`
+	}{problem{f.Code, f.Summary, f.Hint}})
+	return f.Exit
+}
+
+// sentenceOf ends text with a full stop unless it already ends a sentence
+// or ends in a quoted example.
+func sentenceOf(text string) string {
+	if text == "" || strings.ContainsAny(text[len(text)-1:], ".!?\"") {
+		return text
+	}
+	return text + "."
 }
 
 func writeJSON(out io.Writer, value any) error {

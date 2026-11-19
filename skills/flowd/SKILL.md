@@ -18,8 +18,8 @@ See the [command reference](references/commands.md) for every command and its JS
 ## Before changing anything
 
 1. Check that `flowd --version` works. If it does not, tell the user flowd is not installed and stop.
-2. Read the day with `flowd --json list`. Put global options such as `--date` and `--db` before the
-   command.
+2. Read the day with `flowd --json list`. Add `--json` to every command, so results and errors
+   come back as JSON.
 3. Work out what the user means from that fresh JSON. Commands only accept full item IDs, taken
    from that JSON.
 4. Ask instead of guessing when a title matches more than one item, a Duration is missing, or a
@@ -52,7 +52,8 @@ Do not try to work around these. Explain them to the user instead.
 
 ## When something goes wrong
 
-- Errors print a code such as `ERR_LOCKED` on the first line of stderr, a sentence and a hint.
+- With `--json`, an error is JSON on stderr with a `code` such as `ERR_LOCKED`, a `message` and a
+  `hint`. Tell the user the message in your own words.
 - `ERR_LOCKED` means another flowd is busy. Waiting and trying once more is fine.
 - If flowd says it is unknown whether a change was saved, read the day before doing anything else.
   Never assume it failed.

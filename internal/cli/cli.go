@@ -40,9 +40,26 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer, env Env) int
 		err = run(ctx, o, out, env)
 	}
 	if err != nil {
+		if o.json || wantsJSON(args) {
+			return reportJSON(errOut, err)
+		}
 		return Report(errOut, err)
 	}
 	return 0
+}
+
+// wantsJSON tells whether --json was asked for, even when the rest of the
+// command line could not be read.
+func wantsJSON(args []string) bool {
+	for _, arg := range args {
+		switch arg {
+		case "--":
+			return false
+		case "--json", "-json", "--json=true", "-json=true":
+			return true
+		}
+	}
+	return false
 }
 
 func run(ctx context.Context, o options, out io.Writer, env Env) error {
