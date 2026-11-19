@@ -76,8 +76,8 @@ func targetDate(o options, env Env) string {
 
 // carryPicker lists what can be carried, with a box to tick for each. Up
 // and down, or j and k, move, space ticks, a ticks or clears them all,
-// Enter carries what is ticked, or the highlighted item when nothing is,
-// and Esc, q or Ctrl+C cancel. It leaves nothing behind when it closes.
+// Ctrl+S carries what is ticked, like every save, and Esc, q or Ctrl+C
+// cancel. It leaves nothing behind when it closes.
 type carryPicker struct {
 	target  string
 	items   []planner.Leftover
@@ -105,7 +105,10 @@ func (p carryPicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.picked = toggled(p.picked, p.cursor)
 		case "a":
 			p.picked = allOrNone(p.picked)
-		case "enter":
+		case "ctrl+s":
+			if len(p.chosenTicks()) == 0 {
+				return p, nil // nothing ticked, nothing to save
+			}
 			p.chosen, p.closing = true, true
 			return p, tea.Quit
 		case "esc", "q", "ctrl+c":
@@ -136,20 +139,21 @@ func allOrNone(picked []bool) []bool {
 	return out
 }
 
-// chosenIDs is what Enter carries: the ticked items, or the highlighted one
-// when nothing is ticked. A cancelled picker carries nothing.
+// chosenIDs is what Ctrl+S carries: the ticked items. A cancelled picker
+// carries nothing.
 func (p carryPicker) chosenIDs() []domain.ID {
 	if !p.chosen {
 		return nil
 	}
+	return p.chosenTicks()
+}
+
+func (p carryPicker) chosenTicks() []domain.ID {
 	var ids []domain.ID
 	for i, on := range p.picked {
 		if on {
 			ids = append(ids, p.items[i].Item.ID)
 		}
-	}
-	if len(ids) == 0 {
-		ids = append(ids, p.items[p.cursor].Item.ID)
 	}
 	return ids
 }
@@ -162,7 +166,7 @@ func (p carryPicker) View() tea.View {
 	if width <= 0 {
 		width = 80
 	}
-	return tea.NewView(strings.Join(leftoverRows(p.items, p.picked, p.cursor, width, p.look, "Carry which items to "+heading(p.target)+"?", "space to pick, a for all, enter to carry, esc to cancel"), "\n"))
+	return tea.NewView(strings.Join(leftoverRows(p.items, p.picked, p.cursor, width, p.look, "Carry which items to "+heading(p.target)+"?", "space to pick, a for all, ctrl+s to carry, esc to cancel"), "\n"))
 }
 
 // leftoverRows draws a list of leftovers with tick boxes, the day each is

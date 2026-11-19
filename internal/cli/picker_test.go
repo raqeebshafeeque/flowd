@@ -20,6 +20,10 @@ func (s *session) press(m tea.Model) (tea.Model, error) {
 		for _, item := range p.items {
 			s.offered = append(s.offered, item.Item.Title)
 		}
+	case orderPicker:
+		for _, item := range p.items {
+			s.offered = append(s.offered, item.Title)
+		}
 	}
 	for _, k := range s.keys {
 		var msg tea.KeyPressMsg
@@ -34,6 +38,8 @@ func (s *session) press(m tea.Model) (tea.Model, error) {
 			msg = tea.KeyPressMsg{Code: tea.KeyUp}
 		case "space":
 			msg = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
+		case "ctrl+s":
+			msg = tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
 		default:
 			msg = tea.KeyPressMsg{Code: rune(k[0]), Text: k}
 		}
@@ -96,9 +102,9 @@ func TestThePickerMovesAndWraps(t *testing.T) {
 	if out := s.ok("start"); !contains(out, "│ Second │") {
 		t.Fatalf("up from the top should wrap to the last item: %q", out)
 	}
-	// Second started, so it now comes first in the list.
+	// Starting never moves an item, so First is still the first row.
 	s.keys = []string{"j", "k", "enter"}
-	if out := s.ok("skip"); !contains(out, "│ Second │") || !contains(out, "SKIPPED") {
+	if out := s.ok("skip"); !contains(out, "│ First │") || !contains(out, "SKIPPED") {
 		t.Fatalf("j then k should come back to the first row: %q", out)
 	}
 }

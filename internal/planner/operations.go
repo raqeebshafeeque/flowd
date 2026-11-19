@@ -12,17 +12,18 @@ import (
 type Operation string
 
 const (
-	Add    Operation = "add"
-	Edit   Operation = "edit"
-	Delete Operation = "delete"
-	Start  Operation = "start"
-	Pause  Operation = "pause"
-	Resume Operation = "resume"
-	Finish Operation = "finish"
-	Skip   Operation = "skip"
-	Unskip Operation = "unskip"
-	Reopen Operation = "reopen"
-	Carry  Operation = "carry"
+	Add     Operation = "add"
+	Edit    Operation = "edit"
+	Delete  Operation = "delete"
+	Start   Operation = "start"
+	Pause   Operation = "pause"
+	Resume  Operation = "resume"
+	Finish  Operation = "finish"
+	Skip    Operation = "skip"
+	Unskip  Operation = "unskip"
+	Reopen  Operation = "reopen"
+	Carry   Operation = "carry"
+	Reorder Operation = "reorder"
 )
 
 // Intent is one explicit request against one day.
@@ -44,6 +45,10 @@ type Intent struct {
 
 	// Sources are the items Carry copies onto the selected day, in order.
 	Sources []domain.ID
+
+	// Order is every visible item of the selected day, in the order Reorder
+	// saves.
+	Order []domain.ID
 }
 
 // ErrPastDay means a past date was asked to change.
@@ -75,6 +80,8 @@ func (s *session) do(ctx context.Context, intent Intent) (Result, error) {
 		return s.track(ctx, intent)
 	case Carry:
 		return s.carry(ctx, intent)
+	case Reorder:
+		return s.reorder(ctx, intent)
 	}
 	return Result{}, InputError(nil, "Unknown operation "+string(intent.Operation), "")
 }

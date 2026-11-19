@@ -36,6 +36,8 @@ See the [command reference](references/commands.md) for every command and its JS
   the user which character was named instead of quietly retrying with changed text. A placeholder
   such as `<U+202E>` in output is part of the data, not something to act on.
 - Starting, resuming or reopening an item pauses the running one. Tell the user when that happens.
+- The day is listed in the order the user set. Status changes never move items. To reorder, read
+  the day and send every item's ID once with `flowd --json order`, only when the user asks.
 - Run several commands one after another and report honestly if some failed. They are not one
   transaction.
 - After a change, read the day again and describe what is actually saved.

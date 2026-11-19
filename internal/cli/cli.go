@@ -114,6 +114,8 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 	switch o.command {
 	case "carry":
 		return carry(ctx, out, o, client, selection, env)
+	case "order":
+		return order(ctx, out, o, client, selection, env)
 	case "list", "review", "now":
 		state, err := client.Read(ctx, selection)
 		if err != nil {

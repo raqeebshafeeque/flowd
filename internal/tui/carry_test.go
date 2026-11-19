@@ -30,16 +30,19 @@ func TestThePanelCarriesWhatIsTicked(t *testing.T) {
 	w := leftoverDays(t)
 	w.run(w.press(key("C")))
 	text := plain(w)
-	for _, want := range []string{"Carry to today", "> [ ] Refactor the scheduler", "[ ] Write release notes", "Mon 16 Nov", "Sun 15 Nov", "INCOMPLETE", "SKIPPED", "carry 1 [enter]"} {
+	for _, want := range []string{"Carry to today", "> [ ] Refactor the scheduler", "[ ] Write release notes", "Mon 16 Nov", "Sun 15 Nov", "INCOMPLETE", "SKIPPED", "pick [space]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
 	}
 	w.press(space(), key("j"), key("j"), space())
-	if text := plain(w); !strings.Contains(text, "carry 2 [enter]") || !strings.Contains(text, "[x] Reply to the review") {
+	if text := plain(w); !strings.Contains(text, "carry 2 [ctrl+s]") || !strings.Contains(text, "[x] Reply to the review") {
 		t.Fatalf("got:\n%s", text)
 	}
-	w.run(w.press(key("enter")))
+	if cmd := w.press(key("enter")); cmd != nil || w.m.carrying == nil {
+		t.Fatal("enter should do nothing: only ctrl+s saves")
+	}
+	w.run(w.press(ctrl('s')))
 	if w.m.carrying != nil {
 		t.Fatal("the panel should close after carrying")
 	}
@@ -53,11 +56,11 @@ func TestAllTicksEverythingAndEscCarriesNothing(t *testing.T) {
 	w := leftoverDays(t)
 	w.run(w.press(key("C")))
 	w.press(key("a"))
-	if text := plain(w); !strings.Contains(text, "carry 3 [enter]") {
+	if text := plain(w); !strings.Contains(text, "carry 3 [ctrl+s]") {
 		t.Fatalf("got:\n%s", text)
 	}
 	w.press(key("a"))
-	if text := plain(w); !strings.Contains(text, "carry 1 [enter]") {
+	if text := plain(w); strings.Contains(text, "[ctrl+s]") {
 		t.Fatalf("a again should clear them:\n%s", text)
 	}
 	w.press(key("esc"))

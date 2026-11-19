@@ -43,6 +43,7 @@ var summaries = map[string]string{
 	"doctor":     "Check the database",
 	"completion": "Print the tab completion script for a shell",
 	"carry":      "Copy unfinished items from the last 7 days",
+	"order":      "Put the day's items in the order you want",
 	"skill":      "Install the Agent Skill for your agents",
 }
 

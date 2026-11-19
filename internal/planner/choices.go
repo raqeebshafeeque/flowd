@@ -21,7 +21,7 @@ func Fits(op Operation, item domain.Item) bool {
 }
 
 // Choices lists the visible items of a date, today when date is empty, in
-// the shared order, for tab completion. Like Running it reads without the
+// the day's order, for tab completion. Like Running it reads without the
 // lock and never writes, because it runs on every press of Tab.
 func (c Client) Choices(ctx context.Context, date string) ([]domain.Item, error) {
 	if date == "" {
@@ -31,7 +31,6 @@ func (c Client) Choices(ctx context.Context, date string) ([]domain.Item, error)
 	if err != nil {
 		return nil, err
 	}
-	domain.Sort(items)
 	return items, nil
 }
 

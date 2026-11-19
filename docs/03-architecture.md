@@ -31,6 +31,15 @@ How the parts fit together.
 
 - A change to an item and its event are written in the same transaction.
 - Work and paused time are never stored. They are worked out from the events when they are needed.
+- Each item has a whole number `position`. A day's visible items are always numbered 1, 2, 3 with
+  no gaps, and no two share a number. A new item takes the next number, and a deleted one gives
+  its number up and the rest close the gap.
+- A new order names every visible item of the day once. It is only saved if that is still exactly
+  the day's items, so an order made before an item was added or deleted is refused. Saving it
+  renumbers the day in one transaction, in two passes: every item first takes its new number as a
+  negative, then they all turn positive, so no two ever share a number along the way.
+- The order is not part of any item's history, so a new order records no events and the history
+  check never sees it.
 - Closing a day at midnight happens the next time the file is opened, so it works even if flowd
   was not running. Every operation does this first.
 - Times are stored as UTC text in RFC 3339 format.
@@ -55,7 +64,9 @@ How the parts fit together.
 
 ## Upgrading the file
 
-- The schema has a version. Version 2 added the item a copy was carried from.
+- The schema has a version. Version 2 added the item a copy was carried from, and version 3 each
+  item's place in its day, numbering every day in the order it showed before. An older file goes
+  through every version in between in the same upgrade.
 - When flowd opens an older file to change it, it first writes a backup, the same one
   `flowd backup` makes, and then upgrades the file in one transaction. If anything fails, the file
   stays exactly as it was. Checking a file, `flowd doctor` and the lock free reads never upgrade.

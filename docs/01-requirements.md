@@ -21,8 +21,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - You can plan today and future days. Past days are only for looking back.
 - `flowd` opens today and `flowd 2026-10-12` shows that date. Commands that need an item take its
   full ID, which `flowd list` shows and every change prints. A position in the list is never
-  accepted, because the order changes when items start, and a command must never act on an item
-  that moved.
+  accepted, because the order can be changed, and a command must never act on an item that moved.
 - At a terminal, a command that needs an item can be run without the ID. It then lists the items
   that command fits, like only the todo items for `start`, and the person picks one with the arrow
   keys or `j` and `k`, Enter to choose and Esc to cancel. Cancelling changes nothing. Without a
@@ -56,7 +55,13 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Paused is the time it waited as paused after it started, adding up every pause. Time spent done
   before a reopen, or skipped before an unskip, is not a pause.
 - Ten minutes running, twenty paused and five more running is 15 minutes of work and 20 paused.
-- Items you started come first, in the order you first started them. Items not started yet follow.
+- The day is listed in the order you set, and nothing reorders it by itself. Starting, pausing,
+  finishing or skipping an item never moves it. New and carried items join the end.
+- `o` in the workspace arranges the day: `j` and `k` select an item, `J` and `K` move it, and
+  Ctrl+S saves the whole order at once. Nothing is saved until then, and Esc asks before throwing a
+  new order away. `flowd order <ID>...` saves an order from a script, naming every item of the day
+  once. Any item can move, whatever its status, on today and later days. If the day changed while
+  it was being arranged, nothing is saved and you arrange it again.
 
 ### F4. Close the day at midnight
 
@@ -69,8 +74,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Nothing moves to another day by itself. You choose what to carry.
 - `C` in the workspace, or `flowd carry` at a terminal, lists the incomplete and skipped items from
   the 7 days before the day, with their title, the day they are from, their Duration and status,
-  newest day first. You tick the ones to carry, or all of them with `a`, and Enter carries them.
-  Enter with nothing ticked carries the highlighted one.
+  newest day first. You tick the ones to carry, or all of them with `a`, and Ctrl+S carries them.
 - `flowd carry <ID>...` carries exact items and `flowd carry --all` carries everything listed.
   Scripts and agents have to use one of these, because the list needs a terminal.
 - A carried item is a new todo item on the day, today unless `--date` names a later one, with the
@@ -125,6 +129,8 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - `n` adds an item and `e` edits the selected one, in a form at the bottom with a Title and a
   Duration field. While the form is open every letter is text, never an action. Tab and Enter move
   between the fields, Enter never saves, Ctrl+S saves, and Esc asks before throwing away changes.
+- Anything you put together and then commit saves with Ctrl+S: a form, a new order and the items to
+  carry. Enter only chooses or moves, and never saves.
 - An empty Duration shows the example `e.g. 30m, 1h, 1h30m`. A bad title or Duration is explained
   under its field and what was typed stays. Saving an edit that changed nothing just closes it.
 - `c` opens a month calendar at the bottom. `h` and `l` move a day, `j` and `k` a week, `t` goes to

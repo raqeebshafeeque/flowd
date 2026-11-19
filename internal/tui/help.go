@@ -30,6 +30,7 @@ var helpSections = []struct {
 		{"n", "Add an item"},
 		{"e", "Edit the selected item"},
 		{"d", "Delete the selected item, after asking"},
+		{"o", "Put the day in the order you want, then save with ctrl+s"},
 		{"C", "Carry incomplete or skipped items from the last 7 days"},
 	}},
 	{"In a form", [][2]string{

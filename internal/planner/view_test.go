@@ -19,8 +19,8 @@ func TestViewOrdersMeasuresAndTotals(t *testing.T) {
 	f.must(Start, a.ID)
 	f.at("09:50:00")
 	v := f.read(Selection{}).View
-	if v.Items[0].ID != b.ID || v.Items[1].ID != a.ID {
-		t.Fatal("the item started first must be listed first")
+	if v.Items[0].ID != a.ID || v.Items[1].ID != b.ID {
+		t.Fatal("starting or finishing never moves an item: the list keeps its order")
 	}
 	if v.Running == nil || v.Running.ID != a.ID || v.Running.WorkNS != int64(30*time.Minute) {
 		t.Fatalf("running: %+v", v.Running)

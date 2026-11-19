@@ -367,10 +367,10 @@ func CheckDay(items []Item) error {
 	return nil
 }
 
-// Compare is the one order every list uses. Started items come first, by
-// their first start, then the rest by creation time, with the ID breaking any
-// tie. Status, finishing and editing never change an item's place.
-func Compare(a, b Item) int {
+// compareAsBefore is the order lists had before you could set it yourself:
+// started items first, by their first start, then the rest by creation
+// time, with the ID breaking any tie.
+func compareAsBefore(a, b Item) int {
 	switch {
 	case (a.StartedAt == nil) != (b.StartedAt == nil):
 		if a.StartedAt != nil {
@@ -385,5 +385,7 @@ func Compare(a, b Item) int {
 	return strings.Compare(string(a.ID), string(b.ID))
 }
 
-// Sort puts items in the order defined by Compare.
-func Sort(items []Item) { slices.SortStableFunc(items, Compare) }
+// SortAsBefore puts items in the order lists had before you could set it
+// yourself. It is only used once, when an older file is upgraded, so every
+// day keeps the order it showed.
+func SortAsBefore(items []Item) { slices.SortStableFunc(items, compareAsBefore) }

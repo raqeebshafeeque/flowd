@@ -17,7 +17,8 @@ CREATE TABLE items (
  archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0,1)),
  created_at TEXT NOT NULL,
  updated_at TEXT,
- carried_from TEXT REFERENCES items(id)
+ carried_from TEXT REFERENCES items(id),
+ position INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE item_events (
  seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,5 +35,6 @@ CREATE INDEX items_by_day ON items(day_id, created_at);
 CREATE INDEX unfinished_items ON items(day_id) WHERE archived=0 AND status IN ('todo','in_progress','paused');
 CREATE INDEX events_by_item ON item_events(item_id, seq);
 CREATE INDEX items_by_origin ON items(carried_from) WHERE carried_from IS NOT NULL;
+CREATE UNIQUE INDEX items_in_order ON items(day_id, position) WHERE archived=0;
 CREATE TRIGGER events_never_change BEFORE UPDATE ON item_events BEGIN SELECT RAISE(ABORT,'events cannot be changed'); END;
 CREATE TRIGGER events_never_vanish BEFORE DELETE ON item_events BEGIN SELECT RAISE(ABORT,'events cannot be deleted'); END;
