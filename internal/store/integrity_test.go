@@ -265,3 +265,33 @@ func BenchmarkOpenLargeHistoryWithFullCheck(b *testing.B) {
 		s.Close()
 	}
 }
+
+// A status line reads without the lock and can leave an empty WAL behind.
+// That holds nothing, so it must not count as a change and force a scan.
+func TestAnEmptyWALIsNotAChange(t *testing.T) {
+	s := openTest(t)
+	createTestItem(t, s)
+	path := s.Path()
+	s.Close()
+	before, _, err := fingerprintOf(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signature, _ := StatSignature(path)
+	if err := os.WriteFile(path+"-wal", nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	after, _, _ := fingerprintOf(path)
+	if after != before {
+		t.Fatalf("an empty WAL changed the fingerprint: %+v to %+v", before, after)
+	}
+	if again, _ := StatSignature(path); again != signature {
+		t.Fatal("an empty WAL changed the signature")
+	}
+	if err := os.WriteFile(path+"-wal", []byte("frames"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if changed, _, _ := fingerprintOf(path); changed == before {
+		t.Fatal("a WAL with content must count as a change")
+	}
+}

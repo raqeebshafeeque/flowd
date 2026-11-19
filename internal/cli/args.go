@@ -23,6 +23,8 @@ type options struct {
 	version  bool
 	licenses bool
 	repair   bool
+	short    bool
+	max      int
 	yes      bool
 	title    *string
 	duration *string
@@ -38,7 +40,10 @@ type command struct {
 var commands = map[string]command{
 	"list":   {},
 	"review": {},
-	"now":    {},
+	"now": {flags: func(f *flag.FlagSet, o *options) {
+		f.BoolVar(&o.short, "short", false, "")
+		f.IntVar(&o.max, "max", 30, "")
+	}},
 	"backup": {},
 	"doctor": {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.repair, "repair", false, "") }},
 	"add":    {positional: "DURATION TITLE"},
@@ -180,6 +185,9 @@ func parse(args []string) (options, error) {
 			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
 	}
+	if o.command == "now" && o.max < 1 {
+		return o, planner.InputError(nil, "--max needs a number of at least 1", "For example: flowd now --short --max 30")
+	}
 	if o.command == "edit" && o.title == nil && o.duration == nil {
 		return o, planner.InputError(nil, "Edit needs a new title, a new duration or both", "Use --title, --duration or both")
 	}
@@ -226,7 +234,7 @@ Commands:
   skip <ID>                    Drop an item for today
   unskip <ID>                  Bring back a skipped item
   reopen <ID>                  Keep working on a finished item
-  now                          Show the running item
+  now [--short] [--max <N>]    Show the running item. --short prints one line for a status bar
   review                       Show the day's totals, progress and statuses
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database

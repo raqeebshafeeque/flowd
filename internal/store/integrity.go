@@ -60,9 +60,13 @@ func fingerprintOf(database string) (f fingerprint, ok bool, err error) {
 		return f, false, err
 	}
 	f.Size, f.MtimeNS = info.Size(), info.ModTime().UnixNano()
-	if wal, err := os.Lstat(database + "-wal"); err == nil {
+	// An empty WAL holds nothing, so it counts the same as no WAL. A
+	// read-only reader such as a status line can leave one behind, and that
+	// must not look like a change. Any saved change still shows in the
+	// database itself or in a WAL that is not empty.
+	if wal, err := os.Lstat(database + "-wal"); err == nil && wal.Size() > 0 {
 		f.WalSize, f.WalMtimeNS = wal.Size(), wal.ModTime().UnixNano()
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return f, false, err
 	}
 	if _, err := os.Lstat(database + "-journal"); err == nil {
@@ -151,9 +155,10 @@ func StatSignature(path string) (Signature, error) {
 		return s, err
 	}
 	s.Size, s.MtimeNS = info.Size(), info.ModTime().UnixNano()
-	if wal, err := os.Stat(path + "-wal"); err == nil {
+	// An empty WAL counts as none, as in fingerprintOf.
+	if wal, err := os.Stat(path + "-wal"); err == nil && wal.Size() > 0 {
 		s.WalSize, s.WalMtimeNS = wal.Size(), wal.ModTime().UnixNano()
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return s, err
 	}
 	return s, nil

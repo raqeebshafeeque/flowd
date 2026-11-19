@@ -23,6 +23,7 @@
   <a href="#install">Install</a> &nbsp;&nbsp;
   <a href="#quick-start">Quick start</a> &nbsp;&nbsp;
   <a href="#the-workspace">The workspace</a> &nbsp;&nbsp;
+  <a href="#in-your-status-bar">Status bar</a> &nbsp;&nbsp;
   <a href="#with-an-ai-agent">AI agents</a> &nbsp;&nbsp;
   <a href="#learn-more">Docs</a>
 </p>
@@ -137,6 +138,43 @@ Run `flowd` with no arguments to open it. Everything is one key.
 
 In a form, type the title, press Tab for the duration and save with Ctrl+S. The window needs to
 be at least 80 by 24.
+
+<br>
+
+## In your status bar
+
+See what you are working on without opening anything. `flowd now --short` prints one line, and
+nothing at all when nothing is running.
+
+```
+Deep work on the parser 1h3m/2h
+Deep work on the parser 2h10m/2h +10m
+```
+
+Put it in tmux, your prompt or any bar that can run a command:
+
+```sh
+# tmux, in ~/.tmux.conf
+set -g status-right '#(flowd now --short)  %H:%M'
+```
+
+```toml
+# starship, in ~/.config/starship.toml
+[custom.flowd]
+command = "flowd now --short"
+when = true
+```
+
+```fish
+# fish, in ~/.config/fish/config.fish
+function fish_right_prompt
+    flowd now --short
+end
+```
+
+It is built to be asked every second. It never takes the lock, never writes and never prints an
+error, so it cannot get in the way of your real commands. Long titles are cut to 30 characters,
+and `--max 20` changes that.
 
 <br>
 
