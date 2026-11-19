@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/raqeebshafeeque/flowd/compare/v0.7.1...v0.8.0) (2026-11-19)
+
+
+### Features
+
+* **cli:** add flowd now --short for status bars and prompts ([#45](https://github.com/raqeebshafeeque/flowd/issues/45)) ([828787a](https://github.com/raqeebshafeeque/flowd/commit/828787a07d128dc07ca79779b7b4e80760bdf909))
+
 ## [0.7.1](https://github.com/raqeebshafeeque/flowd/compare/v0.7.0...v0.7.1) (2026-11-19)
 
 
