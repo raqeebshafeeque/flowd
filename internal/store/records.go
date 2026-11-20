@@ -317,9 +317,6 @@ func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 		}
 		return domain.Item{}, err
 	}
-	// A title saved by an older version may hold hidden characters. It is
-	// shown with visible <U+XXXX> placeholders, never as it was.
-	it.Title = domain.SanitizeText(it.Title)
 	if carried.Valid {
 		from := domain.ID(carried.String)
 		it.CarriedFrom = &from
@@ -431,7 +428,6 @@ func decode(text string, into *domain.Item) error {
 	if err := decoder.Decode(into); err != nil {
 		return fmt.Errorf("%w: stored item copy: %w", ErrCorrupt, err)
 	}
-	into.Title = domain.SanitizeText(into.Title)
 	for _, t := range []*time.Time{&into.CreatedAt, into.StartedAt, into.FinishedAt, into.ClosedAt, into.UpdatedAt} {
 		if t != nil && !t.Equal(t.Truncate(time.Second)) {
 			return fmt.Errorf("%w: stored item copy has a fractional time", ErrCorrupt)
@@ -447,12 +443,12 @@ type Leftover struct {
 }
 
 // Leftovers lists the items on days from first to last, both included,
-// that can be carried: incomplete or skipped, not deleted, and without a
+// that can be carried: incomplete, not deleted, and without a
 // copy that is still there. A copy that was deleted frees its item again.
 // Newer days come first.
 func (s *Store) Leftovers(ctx context.Context, first, last string) ([]Leftover, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT d.id, i.id FROM items i JOIN days d ON d.id = i.day_id
- WHERE d.date >= ? AND d.date <= ? AND i.archived = 0 AND i.status IN ('incomplete', 'skipped')
+ WHERE d.date >= ? AND d.date <= ? AND i.archived = 0 AND i.status = 'incomplete'
  AND NOT EXISTS (SELECT 1 FROM items c WHERE c.carried_from = i.id AND c.archived = 0)
  ORDER BY d.date DESC, i.position, i.id`, first, last)
 	if err != nil {

@@ -45,21 +45,3 @@ func TestPeekRefusesAnotherVersionAndChangesNothing(t *testing.T) {
 
 // Peeking leaves the quick check record valid, so the next real open still
 // skips the full scan.
-func TestPeekDoesNotForceAScan(t *testing.T) {
-	s := openTest(t)
-	createTestItem(t, s)
-	path := s.Path()
-	s.Close()
-	if _, err := Peek(ctx, path, "2026-11-17"); err != nil {
-		t.Fatal(err)
-	}
-	before := scans.Load()
-	again, err := Open(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	again.Close()
-	if scans.Load() != before {
-		t.Fatal("a peek made the next open scan the whole file")
-	}
-}

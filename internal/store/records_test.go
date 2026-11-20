@@ -45,7 +45,7 @@ func act(t *testing.T, s *Store, day domain.Day, item domain.Item, a domain.Acti
 		t.Fatal(err)
 	}
 	reason := domain.ReasonUser
-	if a == domain.Reopen {
+	if before.Status == domain.Done {
 		reason = domain.ReasonReopen
 	}
 	if err := s.Save(ctx, Change{item, domain.Record(&before, item, at, at, reason)}); err != nil {
@@ -117,7 +117,7 @@ func TestStaleChangesAreRefused(t *testing.T) {
 	old := item.Clone()
 	act(t, s, day, item, domain.Start, clock("09:00:00"))
 	before := old.Clone()
-	_ = old.Apply(domain.Skip, clock("09:05:00"), day)
+	_ = old.Apply(domain.Start, clock("09:05:00"), day)
 	if err := s.Save(ctx, Change{old, domain.Record(&before, old, clock("09:05:00"), clock("09:05:00"), domain.ReasonUser)}); !errors.Is(err, ErrStale) {
 		t.Fatal("a change based on an old read must be refused", err)
 	}
@@ -173,7 +173,7 @@ func TestClockGoingBackwardsIsRefused(t *testing.T) {
 	_ = s.Create(ctx, nil, Change{Item: b, Event: domain.Record(nil, b, b.CreatedAt, b.CreatedAt, domain.ReasonUser)})
 	act(t, s, day, a, domain.Start, clock("10:00:00"))
 	before := b.Clone()
-	_ = b.Apply(domain.Skip, clock("09:00:00"), day)
+	_ = b.Apply(domain.Start, clock("09:00:00"), day)
 	if err := s.Save(ctx, Change{b, domain.Record(&before, b, clock("09:00:00"), clock("09:00:00"), domain.ReasonUser)}); !errors.Is(err, domain.ErrInvalidEvidence) {
 		t.Fatal("a change earlier than the day's last change must be refused", err)
 	}

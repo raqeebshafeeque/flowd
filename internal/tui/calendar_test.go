@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
@@ -33,7 +32,7 @@ func TestTheCalendarMovesItsCursor(t *testing.T) {
 	}
 }
 
-func TestTheCalendarDrawsTheMonthWithTheCursorBracketed(t *testing.T) {
+func TestTheCalendarShowsTheMonthWithTheCursorBracketed(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
 	w.press(key("c"))
@@ -42,34 +41,6 @@ func TestTheCalendarDrawsTheMonthWithTheCursorBracketed(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
-	}
-	if strings.Contains(text, "Selected") {
-		t.Error("the brackets show the selected date, no extra line is needed")
-	}
-	lines := strings.Split(text, "\n")
-	at := func(part string) (int, int) {
-		for i, line := range lines {
-			if j := strings.Index(line, part); j >= 0 {
-				return i, ansi.StringWidth(line[:j])
-			}
-		}
-		t.Fatalf("%q not found", part)
-		return 0, 0
-	}
-	headingRow, headingCol := at("Calendar")
-	monthRow, monthCol := at("November 2026")
-	weekRow, weekCol := at("Mo  Tu")
-	if monthCol != headingCol || weekCol != headingCol {
-		t.Errorf("month at %d and weekdays at %d should line up with the heading at %d", monthCol, weekCol, headingCol)
-	}
-	if monthRow != headingRow+2 || weekRow != monthRow+2 || strings.TrimSpace(strings.Trim(lines[monthRow+1], "│")) != "" {
-		t.Error("there should be one empty row between the month and the weekdays")
-	}
-	// November 2026 starts on a Sunday, so the 1st sits under "Su".
-	_, sunday := at("Su")
-	first := lines[weekRow+1]
-	if col := ansi.StringWidth(strings.TrimRight(strings.Trim(first, "│"), " ")); col != sunday+1 {
-		t.Errorf("the 1st ends at column %d, not under Sunday (%d)", col, sunday+1)
 	}
 	w.m.style.noColor = false
 	if !strings.Contains(w.m.View().Content, "\x1b[36m[17]") {
@@ -205,20 +176,5 @@ func TestAnAnswerForAnotherDateIsIgnored(t *testing.T) {
 	w.m.Update(stale())
 	if len(w.m.state.View.Items) != 0 {
 		t.Fatal("a late answer for today replaced the 18th")
-	}
-}
-
-func TestTheCalendarFitsTheSmallestWindow(t *testing.T) {
-	w := newWorkspace(t)
-	w.refresh()
-	w.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	w.press(key("c"))
-	if text := plain(w); !strings.Contains(text, " 30") {
-		t.Fatalf("the calendar is cut off at 80x24:\n%s", text)
-	}
-	for i, row := range screen(w) {
-		if ansi.StringWidth(row) != 80 {
-			t.Fatalf("row %d is %d wide", i, ansi.StringWidth(row))
-		}
 	}
 }

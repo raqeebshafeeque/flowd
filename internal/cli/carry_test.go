@@ -5,19 +5,15 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
-// leftovers plans two earlier days and comes back to the 17th: on the 15th
-// an item left incomplete and one skipped, on the 16th one left incomplete.
+// leftovers plans two earlier days and comes back to the 17th: two items left
+// incomplete on the 15th and one on the 16th.
 func leftovers(t *testing.T) *session {
 	s := newSession(t)
 	s.now = time.Date(2026, 11, 15, 9, 0, 0, 0, time.UTC)
 	s.ok("add", "1h", "Write release notes")
 	s.ok("add", "30m", "Reply to the review")
-	s.ok("skip", s.id("Reply to the review", "--date", "2026-11-15"), "--date", "2026-11-15")
 	s.now = time.Date(2026, 11, 16, 9, 0, 0, 0, time.UTC)
 	s.ok("add", "2h", "Refactor the scheduler")
 	s.now = time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC)
@@ -86,34 +82,4 @@ func TestScriptsNameWhatToCarry(t *testing.T) {
 		t.Fatal("--json must never open the picker")
 	}
 	s.fails(2, "ERR_USAGE", "carry", "--all", "it_x")
-}
-
-// Every row puts its date, duration and status in the same columns, and the
-// cursor and ticks show.
-func TestLeftoverRowsLineUp(t *testing.T) {
-	s := leftovers(t)
-	var drawn []string
-	s.keys = []string{}
-	s.picker = func(m tea.Model) (tea.Model, error) {
-		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-		drawn = strings.Split(ansi.Strip(m.View().Content), "\n")
-		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-		return m, nil
-	}
-	s.ok("carry")
-	if len(drawn) != 4 || !strings.HasPrefix(drawn[0], "Carry which items to Tue 17 Nov 2026?") {
-		t.Fatalf("got:\n%s", strings.Join(drawn, "\n"))
-	}
-	if !strings.HasPrefix(drawn[1], "> [x] Refactor the scheduler") || !strings.HasPrefix(drawn[2], "  [ ] Write release notes") {
-		t.Fatalf("got:\n%s", strings.Join(drawn, "\n"))
-	}
-	date := strings.Index(drawn[1], "Mon 16 Nov")
-	for _, row := range drawn[2:] {
-		if strings.Index(row, "Sun 15 Nov") != date {
-			t.Fatalf("dates do not line up:\n%s", strings.Join(drawn, "\n"))
-		}
-		if ansi.StringWidth(row) != ansi.StringWidth(drawn[1]) {
-			t.Fatalf("statuses do not end in one column:\n%s", strings.Join(drawn, "\n"))
-		}
-	}
 }

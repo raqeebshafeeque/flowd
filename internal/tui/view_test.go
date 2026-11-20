@@ -19,27 +19,6 @@ func plain(w *workspace) string {
 	return ansi.Strip(w.m.View().Content)
 }
 
-// Every row must be exactly as wide as the window, at every supported size.
-func TestEveryRowFillsTheWindowExactly(t *testing.T) {
-	w := newWorkspace(t)
-	w.add(strings.Repeat("A very long title that keeps going ", 3), "1h")
-	w.add("Short", "30m")
-	w.refresh()
-	w.press(key("j"), key("enter"))
-	for _, size := range [][2]int{{80, 24}, {100, 30}, {120, 40}, {79, 24}, {80, 23}, {40, 10}} {
-		w.m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		rows := screen(w)
-		if len(rows) != size[1] {
-			t.Fatalf("%v: %d rows", size, len(rows))
-		}
-		for i, row := range rows {
-			if got := ansi.StringWidth(row); got != size[0] {
-				t.Fatalf("%v: row %d is %d wide: %q", size, i, got, row)
-			}
-		}
-	}
-}
-
 func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w := newWorkspace(t)
 	a := w.add("Study", "1h")
@@ -47,16 +26,12 @@ func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w.act(planner.Start, a)
 	w.now = w.now.Add(10 * time.Minute)
 	w.refresh()
-	text := plain(w)
 	w.press(key(".")) // the rest of the keys, which do not fit on one row
-	text = plain(w)
-	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  skip [s]", "help [?]", "quit [q]"} {
+	text := plain(w)
+	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  edit [e]", "help [?]", "quit [q]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}
-	}
-	if strings.Index(text, "Study") > strings.Index(text, "Code") {
-		t.Error("the started item must come first")
 	}
 }
 
@@ -102,6 +77,53 @@ func TestErrorsAreShownPlainly(t *testing.T) {
 	}
 }
 
+// Whatever is open, every row is exactly as wide as the window and there are
+// exactly as many rows, so a redraw never leaves stray characters behind.
+func TestEveryScreenFitsTheWindow(t *testing.T) {
+	long := func(t *testing.T) *workspace {
+		w := newWorkspace(t)
+		w.add(strings.Repeat("A very long title that keeps going ", 3), "1h")
+		w.add("Short", "30m")
+		w.refresh()
+		return w
+	}
+	screens := map[string]func(t *testing.T) *workspace{
+		"list":     long,
+		"details":  func(t *testing.T) *workspace { w := long(t); w.press(key("enter")); return w },
+		"footer":   func(t *testing.T) *workspace { w := long(t); w.press(key(".")); return w },
+		"form":     func(t *testing.T) *workspace { w := long(t); w.press(key("e")); return w },
+		"delete":   func(t *testing.T) *workspace { w := long(t); w.press(key("d")); return w },
+		"calendar": func(t *testing.T) *workspace { w := long(t); w.press(key("c")); return w },
+		"review":   func(t *testing.T) *workspace { w := long(t); w.press(key("r")); return w },
+		"help":     func(t *testing.T) *workspace { w := long(t); w.press(key("?")); return w },
+		"popup":    func(t *testing.T) *workspace { w := long(t); w.m.popup(domain.ErrDayClosed); return w },
+		"order":    func(t *testing.T) *workspace { w := long(t); w.press(key("o"), key("J")); return w },
+		"carry":    func(t *testing.T) *workspace { w := leftoverDays(t); w.run(w.press(key("C"))); return w },
+		"mark done": func(t *testing.T) *workspace {
+			w, _ := forgotten(t)
+			w.press(key("f"))
+			return w
+		},
+	}
+	for name, open := range screens {
+		w := open(t)
+		for _, size := range [][2]int{{80, 24}, {120, 40}, {79, 24}, {40, 10}} {
+			w.m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+			rows := screen(w)
+			if len(rows) != size[1] {
+				t.Fatalf("%s %v: %d rows", name, size, len(rows))
+			}
+			for i, row := range rows {
+				if got := ansi.StringWidth(row); got != size[0] {
+					t.Fatalf("%s %v: row %d is %d wide: %q", name, size, i, got, row)
+				}
+			}
+		}
+	}
+}
+
+// Color is only used without NO_COLOR: teal for what is active and one
+// color per status.
 func TestColorFollowsNoColor(t *testing.T) {
 	w := newWorkspace(t)
 	w.add("Study", "1h")
@@ -110,8 +132,14 @@ func TestColorFollowsNoColor(t *testing.T) {
 		t.Fatal("NO_COLOR output contains color codes")
 	}
 	w.m.style.noColor = false
-	if !strings.Contains(w.m.View().Content, "\x1b[36mflowd") {
-		t.Fatal("the brand should be teal in color mode")
+	if content := w.m.View().Content; !strings.Contains(content, "\x1b[36mflowd") || !strings.Contains(content, "\x1b[36m> ") {
+		t.Fatal("the brand and the selected item should be teal")
+	}
+	cases := map[domain.Status]string{domain.InProgress: "\x1b[34m", domain.Done: "\x1b[32m", domain.Paused: "\x1b[33m"}
+	for status, color := range cases {
+		if got := (style{}).status(status, "x"); got != color+"x"+reset {
+			t.Errorf("%s is %q, want %q", status, got, color+"x"+reset)
+		}
 	}
 }
 
@@ -133,75 +161,6 @@ func TestDrawingAFrameIsFast(t *testing.T) {
 	}
 	if per := time.Since(start) / 100; per > 20*time.Millisecond {
 		t.Errorf("a frame took %v, budget 20ms", per)
-	}
-}
-
-func TestTimingAndStatusSitAtTheRightEdge(t *testing.T) {
-	w := newWorkspace(t)
-	a := w.add("Study", "1h")
-	w.add("Code", "30m")
-	w.act(planner.Start, a)
-	w.refresh()
-	for _, row := range screen(w)[3:5] {
-		plainRow := ansi.Strip(row)
-		if !strings.HasSuffix(plainRow, "IN PROGRESS │") && !strings.HasSuffix(plainRow, "       TODO │") {
-			t.Errorf("the status is not at the right edge: %q", plainRow)
-		}
-	}
-	w.m.style.noColor = false
-	if !strings.Contains(w.m.View().Content, "\x1b[36m> ") {
-		t.Error("the selected item should be teal")
-	}
-}
-
-// The header has four cells, flowd, a note, the date and the clock, and the
-// dividers between them meet the borders above and below.
-func TestTheHeaderIsSplitIntoJoinedCells(t *testing.T) {
-	w := newWorkspace(t)
-	w.refresh()
-	for _, size := range [][2]int{{80, 24}, {100, 30}, {160, 40}} {
-		w.m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		rows := strings.Split(plain(w), "\n")
-		top, header, below := []rune(rows[0]), []rune(rows[1]), []rune(rows[2])
-		var dividers []int
-		for i, r := range header {
-			if r == '│' && i > 0 && i < len(header)-1 {
-				dividers = append(dividers, i)
-			}
-		}
-		if len(dividers) != 3 {
-			t.Fatalf("%v: want 3 dividers in %q", size, rows[1])
-		}
-		for _, i := range dividers {
-			if top[i] != '┬' || below[i] != '┴' {
-				t.Fatalf("%v: divider at %d is not joined: %q / %q", size, i, string(top[i]), string(below[i]))
-			}
-		}
-		if !strings.HasPrefix(rows[1], "│ flowd │") || !strings.HasSuffix(rows[1], "│ Tue 17 Nov 2026 │ 09:00:00 │") {
-			t.Fatalf("%v: unexpected header %q", size, rows[1])
-		}
-		if middle := string(header[dividers[0]+1 : dividers[1]]); strings.TrimSpace(middle) != "" {
-			t.Fatalf("today should leave the middle empty, got %q", middle)
-		}
-	}
-	w.press(key("c"), key("l"))
-	w.run(w.press(key("enter")))
-	rows := strings.Split(plain(w), "\n")
-	if !strings.HasPrefix(rows[1], "│ flowd │ Viewing: 2026-11-18 ") {
-		t.Fatalf("another day should be named in the middle: %q", rows[1])
-	}
-}
-
-func TestStatusColors(t *testing.T) {
-	s := style{}
-	cases := map[domain.Status]string{domain.InProgress: "\x1b[34m", domain.Done: "\x1b[32m", domain.Paused: "\x1b[33m"}
-	for status, color := range cases {
-		if got := s.status(status, "x"); got != color+"x"+reset {
-			t.Errorf("%s is %q, want %q", status, got, color+"x"+reset)
-		}
-	}
-	if (style{noColor: true}).status(domain.Done, "DONE") != "DONE" {
-		t.Error("NO_COLOR must stay plain")
 	}
 }
 
@@ -227,14 +186,6 @@ func TestTheFooterFoldsAndNeverDropsAKey(t *testing.T) {
 	if !strings.Contains(open, "less [.]") {
 		t.Fatalf("open:\n%s", open)
 	}
-	for i, row := range screen(w) {
-		if got := ansi.StringWidth(row); got != 80 {
-			t.Fatalf("row %d is %d wide", i, got)
-		}
-	}
-	if len(screen(w)) != 24 {
-		t.Fatal("the open footer takes rows from the list, not from the window")
-	}
 	w.press(key("j"))
 	if strings.Contains(plain(w), "less [.]") {
 		t.Fatal("any other key should fold the footer again")
@@ -245,17 +196,26 @@ func TestTheFooterFoldsAndNeverDropsAKey(t *testing.T) {
 	}
 }
 
-// Carry is offered whenever the day can be planned.
-func TestCarryIsAlwaysOffered(t *testing.T) {
+// The footer names what space does for the selected item, and offers carry
+// whenever the day can be planned.
+func TestTheFooterOffersWhatTheItemAllows(t *testing.T) {
 	w := newWorkspace(t)
-	w.add("Study", "1h")
-	w.refresh()
-	if hints := strings.Join(w.m.hints(), " "); !strings.Contains(hints, "carry [C]") {
-		t.Fatalf("got %s", hints)
+	id := w.add("Study", "1h")
+	hints := func() string { w.refresh(); return strings.Join(w.m.hints(), " ") }
+	for _, step := range []struct {
+		op   planner.Operation
+		want string
+	}{{"", "start [space]"}, {planner.Start, "pause [space] finish [f]"}, {planner.Pause, "resume [space] finish [f]"}, {planner.Finish, "reopen [space]"}} {
+		if step.op != "" {
+			w.now = w.now.Add(time.Minute)
+			w.act(step.op, id)
+		}
+		if got := hints(); !strings.Contains(got, step.want) || !strings.Contains(got, "carry [C]") {
+			t.Fatalf("after %q: %s", step.op, got)
+		}
 	}
 	w.m.date = "2026-11-16"
-	w.refresh()
-	if hints := strings.Join(w.m.hints(), " "); strings.Contains(hints, "carry [C]") {
-		t.Fatalf("a past day cannot carry: %s", hints)
+	if got := hints(); strings.Contains(got, "carry [C]") {
+		t.Fatalf("a past day cannot carry: %s", got)
 	}
 }

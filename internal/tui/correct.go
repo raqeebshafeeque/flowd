@@ -10,8 +10,8 @@ import (
 )
 
 // On a past day, f puts right a forgotten finish: it asks first, and only y
-// marks the selected item done. It works on items left incomplete or
-// skipped in the last seven days. Its work stays what was tracked.
+// marks the selected item done. It works on items left incomplete in the
+// last seven days. Its work stays what was tracked.
 
 // correctable says whether the selected item can be marked done later.
 func (m *model) correctable() bool {
@@ -21,8 +21,8 @@ func (m *model) correctable() bool {
 	}
 	day, today := m.viewing(), m.today()
 	t, _ := time.Parse("2006-01-02", today)
-	earliest := t.AddDate(0, 0, -domain.CorrectDays).Format("2006-01-02")
-	return day < today && day >= earliest && m.state.View.Items[i].Correctable()
+	earliest := t.AddDate(0, 0, -domain.RecentDays).Format("2006-01-02")
+	return day < today && day >= earliest && planner.Fits(planner.MarkDone, m.state.View.Items[i].Item)
 }
 
 // correctKey answers the question. Only y marks the item done.
@@ -44,13 +44,12 @@ func (m *model) correctKey(key string) tea.Cmd {
 // correctQuestion asks before marking an item done later, with the title
 // shortened so the answers always show.
 func (m *model) correctQuestion(width int) string {
-	title, was := "", "incomplete"
+	title := ""
 	if i := m.index(); i >= 0 {
-		item := m.state.View.Items[i]
-		title, was = item.Title, planner.Words(item.Status)
+		title = m.state.View.Items[i].Title
 	}
 	answers := "  yes [y]  no [n]"
-	rest := "\" done? It was left " + was + "."
+	rest := "\" done? It was left incomplete."
 	room := width - ansi.StringWidth(answers) - ansi.StringWidth(" Mark \""+rest)
 	return fit(" Mark \""+ansi.Truncate(title, max(1, room), "…")+rest+answers, width)
 }

@@ -10,7 +10,7 @@ import (
 )
 
 // calendar is the month view used to pick another day. It only moves a
-// cursor; nothing is read until a day is chosen, and choosing a day never
+// cursor. Nothing is read until a day is chosen, and choosing a day never
 // creates it.
 type calendar struct {
 	cursor time.Time // midnight UTC of the date under the cursor

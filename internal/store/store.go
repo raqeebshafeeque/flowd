@@ -29,10 +29,9 @@ var (
 
 // Store owns one open database file until Close.
 type Store struct {
-	db        *sql.DB
-	path      string
-	lock      *os.File
-	scannedAt time.Time // when the file last passed a full scan
+	db   *sql.DB
+	path string
+	lock *os.File
 }
 
 // DefaultPath is $XDG_DATA_HOME/flowd/flowd.sqlite, or
@@ -52,11 +51,7 @@ func DefaultPath() (string, error) {
 // Open takes ownership of the database at path, creating it if it does not
 // exist. An existing file is checked for damage and for the right schema
 // before anything is written to it.
-func Open(ctx context.Context, path string, options ...OpenOption) (_ *Store, err error) {
-	var opts openOptions
-	for _, apply := range options {
-		apply(&opts)
-	}
+func Open(ctx context.Context, path string) (_ *Store, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -73,11 +68,7 @@ func Open(ctx context.Context, path string, options ...OpenOption) (_ *Store, er
 			err = errors.Join(err, lock.Close())
 		}
 	}()
-	if _, err := os.Stat(absolute + repairSuffix); err == nil {
-		return nil, fmt.Errorf("open %q: %w", absolute, ErrIncompleteRepair)
-	}
-	scannedAt, err := inspectExisting(ctx, absolute, opts.fullCheck)
-	if err != nil {
+	if err := inspectExisting(ctx, absolute); err != nil {
 		return nil, fmt.Errorf("open %q: %w", absolute, err)
 	}
 	db, err := connect(ctx, absolute, false)
@@ -90,21 +81,18 @@ func Open(ctx context.Context, path string, options ...OpenOption) (_ *Store, er
 	if err := initialize(ctx, db); err != nil {
 		return nil, errors.Join(fmt.Errorf("open %q: %w", absolute, err), db.Close())
 	}
-	return &Store{db: db, path: absolute, lock: lock, scannedAt: scannedAt}, nil
+	// Versions before 0.11 kept a quick check record next to the file. It is
+	// no longer read, so it is cleared away.
+	_ = os.Remove(absolute + ".check")
+	return &Store{db: db, path: absolute, lock: lock}, nil
 }
 
 // Path is the absolute path of the database file.
 func (s *Store) Path() string { return s.path }
 
-// Close releases the database and its lock. After a clean close the file
-// holds only what flowd wrote, so its fingerprint is recorded and the next
-// open can skip the full scan.
+// Close releases the database and its lock.
 func (s *Store) Close() error {
-	err := s.db.Close()
-	if err == nil {
-		s.refreshRecord()
-	}
-	return errors.Join(err, s.lock.Close())
+	return errors.Join(s.db.Close(), s.lock.Close())
 }
 
 // resolvePath makes the parent directory if needed and refuses anything but a
@@ -169,49 +157,32 @@ func lockFile(path string) (*os.File, error) {
 }
 
 // inspectExisting checks a file that is already there, read only, before it
-// is opened for writing. An empty or damaged file is refused, never replaced.
-// It returns when the file last passed a full scan: now when this open ran
-// one, or the time in the record when the record allowed skipping it.
-func inspectExisting(ctx context.Context, path string, fullCheck bool) (time.Time, error) {
-	now := time.Now()
+// is opened for writing: it must not be empty, must be private to you, must
+// pass SQLite's quick check for damage and must have a schema this build
+// reads or can upgrade. A file that fails is refused, never replaced.
+func inspectExisting(ctx context.Context, path string) error {
 	info, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return now, nil // a new file has nothing to scan
+		return nil
 	}
 	if err != nil {
-		return time.Time{}, err
+		return err
 	}
 	if info.Size() == 0 {
-		return time.Time{}, fmt.Errorf("%w: the file is empty", ErrCorrupt)
+		return fmt.Errorf("%w: the file is empty", ErrCorrupt)
 	}
 	if info.Mode().Perm()&0o077 != 0 {
-		return time.Time{}, fmt.Errorf("%w: mode is %04o, expected 0600", ErrPermissions, info.Mode().Perm())
+		return fmt.Errorf("%w: mode is %04o, expected 0600", ErrPermissions, info.Mode().Perm())
 	}
-	f, headerOK, err := fingerprintOf(path)
-	if err != nil {
-		return time.Time{}, err
-	}
-	// A broken header always scans, so SQLite itself explains the damage.
-	scan := scanDue(path, f, now, fullCheck || !headerOK)
 	db, err := connect(ctx, path, true)
 	if err != nil {
-		return time.Time{}, err
+		return err
 	}
-	if scan {
-		scans.Add(1)
-		err = checkIntegrity(ctx, db)
-	}
+	err = checkIntegrity(ctx, db)
 	if err == nil {
 		err = checkSchema(ctx, db, true)
 	}
-	if err = errors.Join(err, db.Close()); err != nil {
-		return time.Time{}, err
-	}
-	if !scan {
-		r, _ := readRecord(path)
-		return r.ScannedAt, nil
-	}
-	return now, nil
+	return errors.Join(err, db.Close())
 }
 
 // connect opens one connection. Writable connections use WAL and wait for

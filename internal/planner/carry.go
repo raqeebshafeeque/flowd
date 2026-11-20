@@ -10,8 +10,8 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
 
-// ErrNotCarryable means an item cannot be carried: it is not incomplete or
-// skipped, it already has a copy, or its day is outside the window.
+// ErrNotCarryable means an item cannot be carried: it is not incomplete, it
+// already has a copy, or its day is outside the window.
 var ErrNotCarryable = errors.New("the item cannot be carried")
 
 // Leftover is an item that can be carried, and the date it is on.
@@ -25,7 +25,7 @@ type Leftover struct {
 // are finished.
 func (s *session) window(date string) (first, last string) {
 	d, _ := time.Parse("2006-01-02", date)
-	first = d.AddDate(0, 0, -domain.CarryDays).Format("2006-01-02")
+	first = d.AddDate(0, 0, -domain.RecentDays).Format("2006-01-02")
 	last = d.AddDate(0, 0, -1).Format("2006-01-02")
 	if yesterday := s.now.In(s.zone).AddDate(0, 0, -1).Format("2006-01-02"); last > yesterday {
 		last = yesterday
@@ -49,8 +49,7 @@ func (s *session) leftovers(ctx context.Context) ([]Leftover, error) {
 }
 
 // Leftovers lists the items that can be carried onto the selected day:
-// incomplete or skipped items from the seven days before it that have no
-// copy yet.
+// incomplete items from the seven days before it that have no copy yet.
 func (c Client) Leftovers(ctx context.Context, selection Selection) (items []Leftover, err error) {
 	s, err := c.open(ctx, selection)
 	if err != nil {
@@ -128,7 +127,7 @@ func (s *session) carry(ctx context.Context, intent Intent) (Result, error) {
 		changes = append(changes, store.Change{Item: copied, Event: domain.Record(nil, copied, s.now, s.now, domain.ReasonUser)})
 	}
 	s.day = day
-	result, err := s.persist(ctx, copies[0], changes[0].Event, nil, func() error { return s.db.Create(ctx, newDay, changes...) })
+	result, err := s.persist(ctx, copies[0], nil, func() error { return s.db.Create(ctx, newDay, changes...) })
 	if result.Outcome == Confirmed {
 		for i, c := range copies {
 			if saved, err := s.db.Item(ctx, c.ID); err == nil {
@@ -150,8 +149,8 @@ func (s *session) whyNot(ctx context.Context, id domain.ID) error {
 		return err
 	}
 	switch {
-	case !item.Carryable():
-		return Refusal(errors.Join(ErrNotCarryable, domain.ErrIllegalTransition), "Only incomplete or skipped items can be carried", "Start or finish it on its own day instead")
+	case !item.Leftover():
+		return Refusal(errors.Join(ErrNotCarryable, domain.ErrIllegalTransition), "Only incomplete items can be carried", "Plan it again with flowd add")
 	}
 	// It is carryable but was not offered, so either its day is outside the
 	// window or it has a copy already.
@@ -161,7 +160,7 @@ func (s *session) whyNot(ctx context.Context, id domain.ID) error {
 		return err
 	}
 	if owner.Date < first || owner.Date > last {
-		return Refusal(ErrNotCarryable, fmt.Sprintf("Only items from the %d days before %s can be carried", domain.CarryDays, s.day.Date), "Plan it again with flowd add")
+		return Refusal(ErrNotCarryable, fmt.Sprintf("Only items from the %d days before %s can be carried", domain.RecentDays, s.day.Date), "Plan it again with flowd add")
 	}
 	return Refusal(ErrNotCarryable, "That item was carried already", "Its copy is still planned. Delete the copy to carry it again")
 }

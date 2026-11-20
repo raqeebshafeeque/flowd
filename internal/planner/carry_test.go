@@ -11,8 +11,8 @@ import (
 // on moves the fixture's clock to 09:00 on a day of November 2026.
 func (f *fixture) on(day int) { f.now = time.Date(2026, 11, day, 9, 0, 0, 0, time.UTC) }
 
-// leftoverWeek plans earlier days and comes back to the 17th: an item left
-// incomplete and one skipped on the 15th, one left incomplete on the 16th,
+// leftoverWeek plans earlier days and comes back to the 17th: two items left
+// incomplete on the 15th, one left incomplete on the 16th,
 // one finished on the 16th and one left too long ago, on the 9th.
 func leftoverWeek(t *testing.T) (f *fixture, a, b, c, old domain.ID) {
 	f = newFixture(t)
@@ -21,7 +21,6 @@ func leftoverWeek(t *testing.T) (f *fixture, a, b, c, old domain.ID) {
 	f.on(15)
 	a = f.add("Write release notes", "1h").Item.ID
 	b = f.add("Reply to the review", "30m").Item.ID
-	f.must(Skip, b)
 	f.on(16)
 	c = f.add("Refactor the scheduler", "2h").Item.ID
 	done := f.add("Inbox", "20m").Item.ID
@@ -43,7 +42,7 @@ func titles(items []Leftover) []string {
 	return out
 }
 
-func TestOnlyIncompleteAndSkippedItemsFromTheLastWeekAreOffered(t *testing.T) {
+func TestOnlyIncompleteItemsFromTheLastWeekAreOffered(t *testing.T) {
 	f, _, _, _, _ := leftoverWeek(t)
 	got, err := f.client.Leftovers(ctx, Selection{})
 	if err != nil {
@@ -122,7 +121,7 @@ func TestOnlyTheLastSevenDaysCanBeCarriedFrom(t *testing.T) {
 	}
 }
 
-func TestOnlyIncompleteOrSkippedItemsCanBeCarried(t *testing.T) {
+func TestOnlyIncompleteItemsCanBeCarried(t *testing.T) {
 	f, _, _, _, _ := leftoverWeek(t)
 	done := f.read(Selection{Date: "2026-11-16"}).View.Items
 	var inbox domain.ID
@@ -168,20 +167,5 @@ func TestCarryingOntoALaterDay(t *testing.T) {
 	}
 	if items := f.read(Selection{Date: "2026-11-20"}).View.Items; len(items) != 1 || items[0].Title != "Write release notes" {
 		t.Fatalf("got %+v", items)
-	}
-}
-
-// A carry whose save might not have landed is found again by its copies.
-func TestAnUnconfirmedCarryIsFoundAgain(t *testing.T) {
-	f, a, b, _, _ := leftoverWeek(t)
-	r, err := f.carry("", a, b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending := r
-	pending.Outcome = Unconfirmed
-	got, err := f.client.Reconcile(ctx, pending)
-	if err != nil || got.Outcome != Confirmed || len(got.Carried) != 2 {
-		t.Fatalf("got %+v, %v", got, err)
 	}
 }

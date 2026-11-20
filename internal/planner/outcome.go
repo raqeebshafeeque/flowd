@@ -18,7 +18,7 @@ const (
 	// Confirmed means the change is on disk.
 	Confirmed Outcome = "confirmed"
 	// Unconfirmed means the save failed in a way that leaves it unknown
-	// whether it reached the disk. Do not retry it blindly: Reconcile first.
+	// whether it reached the disk. Look at the day before trying again.
 	Unconfirmed Outcome = "unconfirmed"
 )
 
@@ -37,27 +37,12 @@ type Result struct {
 	AutoPaused []domain.ID
 	History    map[domain.ID][]domain.Event
 	Revisions  map[domain.ID]Revision
-
-	// Intended and BeforeSeq let Reconcile recognise this change in the
-	// saved history later.
-	Intended  domain.Item
-	Reason    domain.Reason
-	BeforeSeq int64
 }
 
 // persist runs one write and turns its outcome into a Result. A confirmed
 // write stays confirmed even if reading it back afterwards fails.
-func (s *session) persist(ctx context.Context, item domain.Item, event domain.Event, paused []domain.ID, write func() error) (Result, error) {
-	result := Result{Outcome: Refused, At: s.now, Day: s.day, Item: item, AutoPaused: paused, Intended: item.Clone(), Reason: event.Reason}
-	if event.Before != nil {
-		events, err := s.db.Events(ctx, item.ID)
-		if err != nil {
-			return result, err
-		}
-		if len(events) > 0 {
-			result.BeforeSeq = events[len(events)-1].Seq
-		}
-	}
+func (s *session) persist(ctx context.Context, item domain.Item, paused []domain.ID, write func() error) (Result, error) {
+	result := Result{Outcome: Refused, At: s.now, Day: s.day, Item: item, AutoPaused: paused}
 	if err := write(); err != nil {
 		if !refusal(err) {
 			result.Outcome = Unconfirmed
@@ -105,45 +90,6 @@ func (s *session) reload(ctx context.Context, result *Result) error {
 	return err
 }
 
-// ErrStillUnknown means the saved history neither shows the change nor rules
-// it out. Look at the item before trying again.
+// ErrStillUnknown means a save failed in a way that leaves it unknown
+// whether it landed. Look at the day before trying again.
 var ErrStillUnknown = errors.New("it is still unknown whether the change was saved")
-
-// Reconcile looks for an unconfirmed change in the saved history and returns
-// it as confirmed or refused. A later automatic change, such as the day
-// closing at midnight, does not hide that the original change happened.
-func (c Client) Reconcile(ctx context.Context, pending Result) (result Result, err error) {
-	s, err := c.open(ctx, Selection{Date: pending.Day.Date, Timezone: pending.Day.Timezone})
-	if err != nil {
-		return pending, err
-	}
-	defer func() { err = errors.Join(err, s.db.Close()) }()
-	result = pending
-	if pending.Order != nil {
-		return s.reconcileOrder(ctx, result)
-	}
-	item, err := s.db.Item(ctx, pending.Intended.ID)
-	if errors.Is(err, store.ErrNotFound) {
-		result.Outcome = Refused
-		return result, nil
-	}
-	if err != nil {
-		return result, err
-	}
-	events, err := s.db.Events(ctx, item.ID)
-	if err != nil {
-		return result, err
-	}
-	for _, e := range events {
-		if e.Seq > pending.BeforeSeq && e.OccurredAt.Equal(pending.At) && e.Reason == pending.Reason && domain.Same(e.After, pending.Intended) {
-			result.Outcome = Confirmed
-			result.Item = item
-			return result, s.reload(ctx, &result)
-		}
-	}
-	if len(events) > 0 && events[len(events)-1].Seq == pending.BeforeSeq {
-		result.Outcome = Refused
-		return result, nil
-	}
-	return result, ErrStillUnknown
-}

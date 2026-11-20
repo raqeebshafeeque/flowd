@@ -38,27 +38,15 @@ func (w *workspace) status(id domain.ID) domain.Status {
 
 func space() tea.KeyPressMsg { return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "} }
 
-func TestSpaceStartsPausesAndResumes(t *testing.T) {
-	w := newWorkspace(t)
-	id := w.add("Study", "1h")
-	w.refresh()
-	for _, want := range []domain.Status{domain.InProgress, domain.Paused, domain.InProgress} {
-		w.now = w.now.Add(time.Minute)
-		w.run(w.press(space()))
-		if got := w.status(id); got != want {
-			t.Fatalf("got %s, want %s", got, want)
-		}
-	}
-}
-
-func TestLetterKeysFinishSkipUnskipAndReopen(t *testing.T) {
+// Space starts, pauses, resumes and reopens, and f finishes.
+func TestSpaceAndFTrackTheSelectedItem(t *testing.T) {
 	w := newWorkspace(t)
 	id := w.add("Study", "1h")
 	w.refresh()
 	steps := []struct {
 		key  tea.KeyPressMsg
 		want domain.Status
-	}{{key("s"), domain.Skipped}, {key("u"), domain.Todo}, {space(), domain.InProgress}, {key("f"), domain.Done}, {key("R"), domain.InProgress}}
+	}{{space(), domain.InProgress}, {space(), domain.Paused}, {space(), domain.InProgress}, {key("f"), domain.Done}, {space(), domain.InProgress}}
 	for _, s := range steps {
 		w.now = w.now.Add(time.Minute)
 		w.run(w.press(s.key))
@@ -107,7 +95,7 @@ func TestNoSecondChangeWhileOneIsSaving(t *testing.T) {
 	if first == nil || !w.m.pending {
 		t.Fatal("space should start saving")
 	}
-	if w.press(key("s")) != nil {
+	if w.press(key("f")) != nil {
 		t.Fatal("a second change was sent while the first was saving")
 	}
 	w.run(first)
@@ -116,7 +104,9 @@ func TestNoSecondChangeWhileOneIsSaving(t *testing.T) {
 	}
 }
 
-func TestAnUnconfirmedChangeIsCheckedBeforeAnythingElse(t *testing.T) {
+// When a save may or may not have landed, the workspace says so and the next
+// read shows what is really saved.
+func TestAnUnconfirmedChangeIsShownAndSettledByTheNextRead(t *testing.T) {
 	w := newWorkspace(t)
 	id := w.add("Study", "1h")
 	w.refresh()
@@ -128,15 +118,13 @@ func TestAnUnconfirmedChangeIsCheckedBeforeAnythingElse(t *testing.T) {
 	}
 	r.Outcome = planner.Unconfirmed
 	cmd := w.m.finished(actionMsg{result: r, err: errors.New("disk vanished")})
-	if w.m.unresolved == nil || w.m.visibleNotice() == nil {
-		t.Fatal("an unknown outcome must be shown and remembered")
-	}
-	if w.press(key("s")) != nil {
-		t.Fatal("no other change may start while the outcome is unknown")
+	if w.m.visibleNotice() == nil {
+		t.Fatal("an unknown outcome must be shown")
 	}
 	w.run(cmd)
-	if w.m.unresolved != nil || w.status(id) != domain.InProgress {
-		t.Fatalf("reconcile should prove the start happened: %v %s", w.m.unresolved, w.status(id))
+	w.refresh()
+	if w.status(id) != domain.InProgress {
+		t.Fatalf("the next read should show the start: %s", w.status(id))
 	}
 }
 

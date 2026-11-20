@@ -17,14 +17,12 @@ type options struct {
 	args     []string
 	db       string
 	date     string
-	zone     string
 	json     bool
 	help     bool
 	version  bool
 	licenses bool
 	repair   bool
 	short    bool
-	max      int
 	agents   map[string]bool // for skill: which agents to install it for
 	all      bool            // for carry: every leftover
 	// operation overrides what the command does, when it means something
@@ -45,11 +43,9 @@ type command struct {
 var commands = map[string]command{
 	"list":   {},
 	"review": {},
-	"now": {flags: func(f *flag.FlagSet, o *options) {
-		f.BoolVar(&o.short, "short", false, "")
-		f.IntVar(&o.max, "max", 30, "")
-	}},
+	"now":    {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.short, "short", false, "") }},
 	"backup": {},
+	"reset":  {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
 	"doctor": {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.repair, "repair", false, "") }},
 	"add":    {positional: "DURATION TITLE"},
 	"edit": {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) {
@@ -59,12 +55,7 @@ var commands = map[string]command{
 	"delete":     {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
 	"start":      {positional: "ITEM"},
 	"pause":      {positional: "ITEM"},
-	"resume":     {positional: "ITEM"},
 	"finish":     {positional: "ITEM"},
-	"skip":       {positional: "ITEM"},
-	"unskip":     {positional: "ITEM"},
-	"reopen":     {positional: "ITEM"},
-	"events":     {positional: "ITEM"},
 	"completion": {positional: "SHELL"},
 	"order":      {positional: "IDS"},
 	"carry": {positional: "IDS", flags: func(f *flag.FlagSet, o *options) {
@@ -119,7 +110,6 @@ func globals(f *flag.FlagSet, o *options, seen map[string]int) {
 	}
 	value("db", &o.db)
 	value("date", &o.date)
-	value("timezone", &o.zone)
 	f.BoolVar(&o.json, "json", o.json, "")
 	f.BoolVar(&o.help, "help", o.help, "")
 	f.BoolVar(&o.help, "h", o.help, "")
@@ -146,9 +136,8 @@ func parseAll(f *flag.FlagSet, args []string) ([]string, error) {
 	}
 }
 
-// parse reads the command line. Options can appear anywhere. The first
-// argument that is not an option is the command, and a bare date such as
-// 2026-11-17 means list for that date.
+// parse reads the command line. Options can appear anywhere, and the first
+// argument that is not an option is the command.
 func parse(args []string) (options, error) {
 	var o options
 	seen := map[string]int{}
@@ -165,10 +154,6 @@ func parse(args []string) (options, error) {
 	if len(rest) > 0 {
 		o.command, rest = rest[0], rest[1:]
 	}
-	if _, err := time.Parse("2006-01-02", o.command); err == nil {
-		seen["date"]++
-		o.date, o.command = o.command, "list"
-	}
 	spec, ok := commands[o.command]
 	if !ok && !(o.help || o.version || o.licenses) {
 		return o, usage("There is no command called " + o.command)
@@ -182,7 +167,7 @@ func parse(args []string) (options, error) {
 	if o.args, err = parseAll(local, rest); err != nil {
 		return o, optionError(err)
 	}
-	for _, name := range []string{"db", "date", "timezone"} {
+	for _, name := range []string{"db", "date"} {
 		if seen[name] > 1 {
 			return o, usage("Give the " + name + " only once")
 		}
@@ -222,9 +207,6 @@ func parse(args []string) (options, error) {
 	if o.command == "skill" && len(o.agents) == 0 {
 		return o, planner.InputError(nil, "Choose which agents get the skill", "Use --claude, --codex or both")
 	}
-	if o.command == "now" && o.max < 1 {
-		return o, planner.InputError(nil, "--max needs a number of at least 1", "For example: flowd now --short --max 30")
-	}
 	if o.command == "edit" && o.title == nil && o.duration == nil {
 		return o, planner.InputError(nil, "Edit needs a new title, a new duration or both", "Use --title, --duration or both")
 	}
@@ -257,7 +239,6 @@ const help = `flowd plans your day as a list of efforts and records the work you
 
 Usage:
   flowd [command] [options]
-  flowd <YYYY-MM-DD> [options]    Show that date
 
 Plan the day:
   list                         Show the day (the default)
@@ -265,35 +246,30 @@ Plan the day:
   edit [--title <TITLE>] [--duration <DURATION>] <ID>
   delete [--yes] <ID>          Delete an item, after asking. --yes skips the question
   order [<ID>...]              Put the day in this order, or arrange it at a terminal
-  carry [<ID>...] [--all]      Copy incomplete or skipped items from the last 7 days onto the day
+  carry [<ID>...] [--all]      Copy incomplete items from the last 7 days onto the day
 
 Track the work:
-  start <ID>                   Start an item, pausing whatever was running
+  start <ID>                   Start, resume or reopen an item, pausing whatever was running
   pause <ID>                   Pause the running item
-  resume <ID>                  Continue a paused item
   finish <ID>                  Mark an item done. On a past day, put a forgotten finish right
-  skip <ID>                    Drop an item for today
-  unskip <ID>                  Bring back a skipped item
-  reopen <ID>                  Keep working on a finished item
-  now [--short] [--max <N>]    Show the running item. --short prints one line for a status bar
+  now [--short]                Show the running item. --short prints one line for a status bar
   review                       Show the day's totals, progress and statuses
 
 Set up and look after:
   completion <SHELL>           Print tab completion for bash, fish or zsh
   skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
-  events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
+  reset [--yes]                Start over with an empty planner, keeping the old files aside
 
 <ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G. Leave it
 out at a terminal to pick the item with the arrow keys, or press Tab with completion set up.
-<DURATION> is whole minutes or hours: 30, 30m, 2h or 1h30m.
+<DURATION> is whole minutes or hours up to a day: 30, 30m, 2h or 1h30m.
 Options can go before or after the command. Put -- before a title that starts with a dash.
 
 Options for every command:
-  --db <PATH>                  Use this database instead of the default one
   --date <YYYY-MM-DD>          Use this date instead of today
-  --timezone <ZONE>            Timezone for a new day, like Asia/Kolkata
+  --db <PATH>                  Use this database instead of the default one
   --json                       Print JSON for scripts and agents
   --version                    Print the version
   --licenses                   Print the licenses of the code flowd is built with

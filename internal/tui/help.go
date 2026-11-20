@@ -20,18 +20,15 @@ var helpSections = []struct {
 		{"q", "Quit (Ctrl+C always quits)"},
 	}},
 	{"Recording work (today only)", [][2]string{
-		{"space", "Start, pause or resume the selected item"},
+		{"space", "Start, pause, resume or reopen the selected item"},
 		{"f", "Finish it for today"},
-		{"s", "Skip it for today"},
-		{"u", "Bring back a skipped item"},
-		{"R", "Reopen a finished item"},
 	}},
 	{"Planning (today and later)", [][2]string{
 		{"n", "Add an item"},
 		{"e", "Edit the selected item"},
 		{"d", "Delete the selected item, after asking"},
 		{"o", "Put the day in the order you want, then save with ctrl+s"},
-		{"C", "Carry incomplete or skipped items from the last 7 days"},
+		{"C", "Carry incomplete items from the last 7 days"},
 	}},
 	{"On a past day", [][2]string{
 		{"f", "Mark an item done that you forgot to finish, in the last 7 days"},

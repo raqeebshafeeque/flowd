@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
@@ -100,18 +99,5 @@ func TestOnlyAPlannableDayWithTwoItemsCanBeReordered(t *testing.T) {
 	w.press(key("o"))
 	if w.m.ordering != nil {
 		t.Fatal("a past day cannot be reordered")
-	}
-}
-
-func TestReorderingFillsTheWindow(t *testing.T) {
-	w := threeItems(t)
-	w.press(key("o"), key("J"), key("esc"))
-	for _, size := range [][2]int{{80, 24}, {120, 40}} {
-		w.m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
-		for i, row := range screen(w) {
-			if got := ansi.StringWidth(row); got != size[0] {
-				t.Fatalf("%v: row %d is %d wide", size, i, got)
-			}
-		}
 	}
 }

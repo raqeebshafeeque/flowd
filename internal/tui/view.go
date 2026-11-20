@@ -259,8 +259,6 @@ func (m *model) instant(t *time.Time) string {
 func (m *model) footer(width int) []string {
 	one := func(row string) []string { return []string{fit(row, width)} }
 	switch {
-	case m.unresolved != nil:
-		return one(" Checking whether the last change was saved…")
 	case m.form != nil:
 		return one(m.formFooter())
 	case m.deleting != "":
@@ -289,8 +287,9 @@ func (m *model) hints() []string {
 	var hints []string
 	if i := m.index(); i >= 0 {
 		if m.trackable() {
-			for _, op := range allowed(m.state.View.Items[i]) {
-				hints = append(hints, string(op)+" ["+actionKey(op)+"]")
+			item := m.state.View.Items[i]
+			for _, op := range allowed(item) {
+				hints = append(hints, actionName(op, item.Status)+" ["+actionKey(op)+"]")
 			}
 		}
 		if m.correctable() {
@@ -396,18 +395,22 @@ func wrap(text string, width int) []string {
 
 // actionKey is the key shown for an action in the footer.
 func actionKey(op planner.Operation) string {
-	switch op {
-	case planner.Start, planner.Pause, planner.Resume:
-		return "space"
-	case planner.Reopen:
-		return "R"
+	if op == planner.Finish {
+		return "f"
 	}
-	for key, action := range trackKeys {
-		if action == op {
-			return key
-		}
+	return "space"
+}
+
+// actionName is what the footer calls an action: starting a paused item
+// resumes it, and starting a done one reopens it.
+func actionName(op planner.Operation, status domain.Status) string {
+	switch {
+	case op == planner.Start && status == domain.Paused:
+		return "resume"
+	case op == planner.Start && status == domain.Done:
+		return "reopen"
 	}
-	return ""
+	return string(op)
 }
 
 // deleteQuestion asks about the item in one footer row. A long title is

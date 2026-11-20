@@ -17,11 +17,7 @@ const (
 	Delete   Operation = "delete"
 	Start    Operation = "start"
 	Pause    Operation = "pause"
-	Resume   Operation = "resume"
 	Finish   Operation = "finish"
-	Skip     Operation = "skip"
-	Unskip   Operation = "unskip"
-	Reopen   Operation = "reopen"
 	Carry    Operation = "carry"
 	Reorder  Operation = "reorder"
 	MarkDone Operation = "mark_done"
@@ -33,11 +29,9 @@ type Intent struct {
 	Selection Selection
 
 	// ItemID and Revision name the item a change is based on. Add ignores
-	// them; IntendedID may give the new item its ID in advance, so an
-	// unconfirmed add can be found again by Reconcile.
-	ItemID     domain.ID
-	Revision   Revision
-	IntendedID domain.ID
+	// them.
+	ItemID   domain.ID
+	Revision Revision
 
 	// Title and Duration are the text a person typed. Add needs both. Edit
 	// changes whichever is not nil.
@@ -77,7 +71,7 @@ func (s *session) do(ctx context.Context, intent Intent) (Result, error) {
 		return s.edit(ctx, intent)
 	case Delete:
 		return s.remove(ctx, intent)
-	case Start, Pause, Resume, Finish, Skip, Unskip, Reopen:
+	case Start, Pause, Finish:
 		return s.track(ctx, intent)
 	case Carry:
 		return s.carry(ctx, intent)
@@ -90,8 +84,7 @@ func (s *session) do(ctx context.Context, intent Intent) (Result, error) {
 }
 
 // requirePlanning refuses changes to the plan of a past or closed day. What
-// counts as today comes from this computer's timezone, so choosing another
-// timezone cannot reopen the past.
+// counts as today comes from this computer's timezone.
 func (s *session) requirePlanning() error {
 	today := s.now.In(s.zone).Format("2006-01-02")
 	if s.day.Date < today {
@@ -131,12 +124,9 @@ func (s *session) add(ctx context.Context, intent Intent) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	if intent.IntendedID != "" {
-		item.ID = intent.IntendedID
-	}
 	event := domain.Record(nil, item, s.now, s.now, domain.ReasonUser)
 	s.day = day
-	return s.persist(ctx, item, event, nil, func() error { return s.db.Create(ctx, newDay, store.Change{Item: item, Event: event}) })
+	return s.persist(ctx, item, nil, func() error { return s.db.Create(ctx, newDay, store.Change{Item: item, Event: event}) })
 }
 
 func (s *session) edit(ctx context.Context, intent Intent) (Result, error) {
@@ -171,7 +161,7 @@ func (s *session) edit(ctx context.Context, intent Intent) (Result, error) {
 		return Result{}, err
 	}
 	event := domain.Record(&before, item, s.now, s.now, domain.ReasonUser)
-	return s.persist(ctx, item, event, nil, func() error { return s.db.Save(ctx, store.Change{Item: item, Event: event}) })
+	return s.persist(ctx, item, nil, func() error { return s.db.Save(ctx, store.Change{Item: item, Event: event}) })
 }
 
 func (s *session) remove(ctx context.Context, intent Intent) (Result, error) {
@@ -187,11 +177,12 @@ func (s *session) remove(ctx context.Context, intent Intent) (Result, error) {
 		return Result{}, err
 	}
 	event := domain.Record(&before, item, s.now, s.now, domain.ReasonUser)
-	return s.persist(ctx, item, event, nil, func() error { return s.db.Save(ctx, store.Change{Item: item, Event: event}) })
+	return s.persist(ctx, item, nil, func() error { return s.db.Save(ctx, store.Change{Item: item, Event: event}) })
 }
 
-// track performs a status action. Starting, resuming or reopening an item
-// pauses whatever else was running, in the same save and at the same instant.
+// track performs a status action. Starting an item pauses whatever else was
+// running, in the same save and at the same instant. Starting a done item
+// again is saved as a reopen.
 func (s *session) track(ctx context.Context, intent Intent) (Result, error) {
 	item, err := s.current(ctx, intent.ItemID, intent.Revision)
 	if err != nil {
@@ -202,7 +193,7 @@ func (s *session) track(ctx context.Context, intent Intent) (Result, error) {
 		return Result{}, err
 	}
 	reason := domain.ReasonUser
-	if intent.Operation == Reopen {
+	if before.Status == domain.Done {
 		reason = domain.ReasonReopen
 	}
 	var changes []store.Change
@@ -226,7 +217,7 @@ func (s *session) track(ctx context.Context, intent Intent) (Result, error) {
 	}
 	event := domain.Record(&before, item, s.now, s.now, reason)
 	changes = append(changes, store.Change{Item: item, Event: event})
-	return s.persist(ctx, item, event, paused, func() error { return s.db.Save(ctx, changes...) })
+	return s.persist(ctx, item, paused, func() error { return s.db.Save(ctx, changes...) })
 }
 
 // ParseDuration reads typed Duration text, refusing it with friendly
@@ -274,7 +265,7 @@ func (s *session) fits(ctx context.Context, minutes int64, editing domain.ID) er
 	}
 	cause := errors.Join(ErrDurationExceedsDay, domain.ErrInvalidDuration)
 	if left == 0 {
-		return Refusal(cause, "No time left on this day", "Plan this on another day, or free some time by skipping or deleting an item")
+		return Refusal(cause, "No time left on this day", "Plan this on another day, or free some time by deleting an item")
 	}
 	text, _ := domain.FormatDuration(left)
 	return Refusal(cause, "Only "+text+" left on this day", "Enter "+text+" or less, or plan this on another day")

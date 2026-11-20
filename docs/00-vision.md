@@ -20,7 +20,7 @@ the work with single keys and look back at the day in one glance.
 ## Goals
 
 - G1. Planning is a list of things and how long you want to spend on each, not a timetable.
-- G2. Every action takes one key: start, pause, finish and skip.
+- G2. Every action takes one key: start, pause and finish.
 - G3. The evening review fits on one screen and shows what got done and how much time went in.
 - G4. Everything stays on your machine, works offline and opens instantly.
 

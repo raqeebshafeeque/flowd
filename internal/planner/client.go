@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -20,25 +19,20 @@ import (
 // It never keeps the database open between operations.
 type Client struct {
 	Path string
-	// Now reads the clock. Tests replace it; it defaults to time.Now.
+	// Now reads the clock. It defaults to time.Now, and tests replace it.
 	Now func() time.Time
-	// Zone is this computer's timezone. It decides what "today" is for
-	// planning, independently of any timezone a day was saved with.
+	// Zone is this computer's timezone. It decides what "today" is, and a
+	// new day is saved with it.
 	Zone *time.Location
-	// CheckedOnce, when set, makes the first open through this client run the
-	// full integrity scan. The workspace uses it once per session.
-	CheckedOnce *atomic.Bool
 }
 
 // Signature is a cheap fingerprint of the database that changes whenever
 // anything is written to it. Taking it never opens the database.
 func (c Client) Signature() (store.Signature, error) { return store.StatSignature(c.Path) }
 
-// Selection picks a day. An empty Date means today in Zone. Timezone is only
-// used when the day does not exist yet.
+// Selection picks a day. An empty Date means today in Zone.
 type Selection struct {
-	Date     string
-	Timezone string
+	Date string
 }
 
 // Revision identifies the exact saved state of an item, including its whole
@@ -115,11 +109,7 @@ type session struct {
 
 // open owns the database for one operation and closes due days first.
 func (c Client) open(ctx context.Context, selection Selection) (*session, error) {
-	var options []store.OpenOption
-	if c.CheckedOnce != nil && c.CheckedOnce.CompareAndSwap(false, true) {
-		options = append(options, store.WithFullCheck())
-	}
-	db, err := store.Open(ctx, c.Path, options...)
+	db, err := store.Open(ctx, c.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -142,23 +132,13 @@ func (s *session) selectDay(ctx context.Context, selection Selection) (domain.Da
 	}
 	day, err := s.db.DayByDate(ctx, date)
 	if errors.Is(err, store.ErrNotFound) {
-		name := selection.Timezone
-		if name == "" {
-			name = s.zone.String()
-		}
-		unsaved := domain.Day{Date: date, Timezone: name}
+		unsaved := domain.Day{Date: date, Timezone: s.zone.String()}
 		if _, _, err := unsaved.Bounds(); err != nil {
-			return domain.Day{}, InputError(err, "Check the date and timezone", "Use a date like 2026-11-17 and a timezone like Asia/Kolkata")
+			return domain.Day{}, InputError(err, "There is no date "+date, "Use a date like 2026-11-17")
 		}
 		return unsaved, nil
 	}
-	if err != nil {
-		return domain.Day{}, err
-	}
-	if selection.Timezone != "" && selection.Timezone != day.Timezone {
-		return domain.Day{}, InputError(nil, "This day already uses "+day.Timezone, "Leave out --timezone to use the saved one")
-	}
-	return day, nil
+	return day, err
 }
 
 // Read returns the selected day with every item measured at one instant.

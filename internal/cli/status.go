@@ -21,7 +21,7 @@ func statusLine(ctx context.Context, out io.Writer, o options, client planner.Cl
 	if err != nil || !ok {
 		return nil
 	}
-	_, err = fmt.Fprintln(out, shortLine(item, o.max))
+	_, err = fmt.Fprintln(out, shortLine(item, 30))
 	return err
 }
 

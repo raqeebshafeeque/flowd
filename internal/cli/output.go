@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -83,7 +82,7 @@ func printReview(out io.Writer, v planner.View) error {
 	fmt.Fprintln(out, "Progress")
 	fmt.Fprintf(out, "  %d / %d finished\n\n", done, total)
 	fmt.Fprintln(out, "Status")
-	for _, status := range []domain.Status{domain.Todo, domain.InProgress, domain.Paused, domain.Done, domain.Skipped, domain.Incomplete} {
+	for _, status := range domain.Statuses {
 		fmt.Fprintf(out, "  %s (%d)\n", planner.Label(status), v.Counts[status])
 		for _, item := range v.Items {
 			if item.Status == status {
@@ -111,28 +110,6 @@ func printResult(out io.Writer, o options, r planner.Result) error {
 		return writeJSON(out, item)
 	}
 	return printDated(out, o.look, r.Day.Date, []planner.ItemView{item})
-}
-
-func printEvents(out io.Writer, o options, events []domain.Event) error {
-	if o.json {
-		return writeJSON(out, events)
-	}
-	table := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(table, "SEQ\tWHEN (UTC)\tCHANGE\tREASON")
-	for _, e := range events {
-		change := "created as todo"
-		if e.Before != nil {
-			change = fmt.Sprintf("%s to %s", planner.Words(e.FromStatus), planner.Words(e.ToStatus))
-			if e.FromStatus == e.ToStatus {
-				change = "edited"
-				if e.After.Archived {
-					change = "deleted"
-				}
-			}
-		}
-		fmt.Fprintf(table, "%d\t%s\t%s\t%s\n", e.Seq, e.OccurredAt.UTC().Format("2006-01-02 15:04:05"), change, e.Reason)
-	}
-	return table.Flush()
 }
 
 // heading turns 2026-11-17 into "Tue 17 Nov 2026".

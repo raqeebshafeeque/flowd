@@ -21,7 +21,7 @@ type Reservation struct {
 
 // ReservedMinutes is how much of the day an item still holds. A todo item
 // holds its full Duration. A running or paused one holds what it has not
-// worked yet, counting a partly worked minute as a whole one. Done, skipped,
+// worked yet, counting a partly worked minute as a whole one. Done,
 // incomplete and deleted items hold nothing.
 func (r Reservation) ReservedMinutes() int64 {
 	if r.Archived {

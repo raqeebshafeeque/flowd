@@ -154,12 +154,8 @@ func TestJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(s.ok("--json")), &day); err != nil {
 		t.Fatal(err)
 	}
-	if day["schema_version"] != float64(4) || day["running"] == nil || len(day["items"].([]any)) != 1 {
+	if day["schema_version"] != float64(5) || day["running"] == nil || len(day["items"].([]any)) != 1 {
 		t.Fatalf("unexpected day: %v", day)
-	}
-	var events []map[string]any
-	if err := json.Unmarshal([]byte(s.ok("--json", "events", s.id("Study"))), &events); err != nil || len(events) != 2 {
-		t.Fatalf("events: %v %v", events, err)
 	}
 }
 
@@ -182,7 +178,7 @@ func TestEditDeleteAndEveryAction(t *testing.T) {
 	if out := s.ok("edit", "--title", "Deep study", "--duration", "2h", s.id("Study")); !contains(out, "│ Deep study │       2h │   TODO │") {
 		t.Fatalf("got %q", out)
 	}
-	for _, step := range []string{"start", "pause", "resume", "finish", "reopen", "skip", "unskip"} {
+	for _, step := range []string{"start", "pause", "start", "finish", "start", "pause"} {
 		s.now = s.now.Add(time.Minute)
 		s.ok(step, s.id("Deep study"))
 	}
@@ -219,8 +215,10 @@ func TestHelpAndVersionTouchNoFiles(t *testing.T) {
 	if out := s.ok("--version"); out != "flowd 1.2.3\n" {
 		t.Fatalf("got %q", out)
 	}
-	if out := s.ok("--help"); !contains(out, "Usage:") {
-		t.Fatal("no help")
+	for _, args := range [][]string{{"--help"}, {"-h"}, {"add", "--help"}} {
+		if out := s.ok(args...); !contains(out, "Usage:") {
+			t.Fatalf("%v printed no help", args)
+		}
 	}
 	if _, err := os.Stat(s.db); !os.IsNotExist(err) {
 		t.Fatal("help or version created the database")
@@ -230,7 +228,7 @@ func TestHelpAndVersionTouchNoFiles(t *testing.T) {
 func TestHiddenCharactersInTitlesAreRefused(t *testing.T) {
 	s := newSession(t)
 	_, errOut, code := s.run("add", "1h", "Pay invoice\u202e fdp.exe")
-	if code != 2 || !strings.HasPrefix(errOut, "Error: Titles cannot hold hidden or direction-changing characters.\n") || !contains(errOut, "Titles cannot hold hidden or direction-changing characters") || !contains(errOut, "Remove the invisible or direction-changing character U+202E at position 12") {
+	if code != 2 || !strings.HasPrefix(errOut, "Error: Titles cannot hold hidden or direction-changing characters.\n") || !contains(errOut, "Remove the hidden or direction-changing character U+202E at position 12") {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	s.ok("add", "1h", "Ship it 👩\u200d💻 ✔︎")
@@ -343,7 +341,6 @@ func TestOptionsCanGoAnywhere(t *testing.T) {
 	for _, args := range [][]string{
 		{"--date", "2026-11-18", "list"},
 		{"list", "--date", "2026-11-18"},
-		{"2026-11-18"},
 	} {
 		if out := s.ok(args...); !contains(out, "Tomorrow") || contains(out, "Today") {
 			t.Fatalf("%v: %s", args, out)
@@ -357,7 +354,6 @@ func TestOptionsCanGoAnywhere(t *testing.T) {
 		t.Fatalf("a title after -- is plain text: %q", out)
 	}
 	s.fails(2, "ERR_USAGE", "--date", "2026-11-18", "list", "--date", "2026-11-19")
-	s.fails(2, "ERR_USAGE", "2026-11-18", "--date", "2026-11-18")
 	s.fails(2, "ERR_USAGE", "list", "--colour")
 }
 
@@ -422,4 +418,31 @@ func TestFinishOnAPastDayPutsAForgottenFinishRight(t *testing.T) {
 	}
 	s.keys = nil
 	s.fails(1, "ERR_ILLEGAL_TRANSITION", "finish", "--date", "2026-11-16", id)
+}
+
+// Reset asks for the whole word at a terminal and needs --yes anywhere else.
+func TestResetAsksForTheWordAndKeepsTheOldFiles(t *testing.T) {
+	s := newSession(t)
+	s.ok("add", "1h", "Study")
+	s.fails(2, "ERR_USAGE", "reset")
+	for _, answer := range []string{"y\n", "yes\n", "\n"} {
+		s.answer = &answer
+		if out := s.ok("reset"); !contains(out, "Type reset to go on") || !contains(out, "Nothing was reset") {
+			t.Fatalf("%q: %q", answer, out)
+		}
+	}
+	answer := "reset\n"
+	s.answer = &answer
+	out := s.ok("reset")
+	s.answer = nil
+	if !contains(out, "The planner is empty. The previous files are in "+s.db+".recovery-") {
+		t.Fatalf("got %q", out)
+	}
+	if !contains(s.ok("list"), "Nothing planned") {
+		t.Fatal("the planner is not empty")
+	}
+	var result map[string]string
+	if err := json.Unmarshal([]byte(s.ok("--json", "reset", "--yes")), &result); err != nil || result["status"] != "reset" || result["recovery"] == "" {
+		t.Fatalf("got %v, %v", result, err)
+	}
 }

@@ -17,33 +17,26 @@ const (
 	InProgress Status = "in_progress"
 	Paused     Status = "paused"
 	Done       Status = "done"
-	Skipped    Status = "skipped"
 	Incomplete Status = "incomplete"
 )
 
-// Valid reports whether s is one of the six statuses.
-func (s Status) Valid() bool {
-	switch s {
-	case Todo, InProgress, Paused, Done, Skipped, Incomplete:
-		return true
-	}
-	return false
-}
+// Statuses are every status, in the order a day goes through them.
+var Statuses = []Status{Todo, InProgress, Paused, Done, Incomplete}
+
+// Valid reports whether s is one of the five statuses.
+func (s Status) Valid() bool { return slices.Contains(Statuses, s) }
 
 // Unfinished reports whether work on the item can still happen today.
 func (s Status) Unfinished() bool { return s == Todo || s == InProgress || s == Paused }
 
-// Action is something a person does to an item.
+// Action is something a person does to an item. Start works on a todo,
+// paused or done item, so it also resumes and reopens.
 type Action string
 
 const (
 	Start  Action = "start"
 	Pause  Action = "pause"
-	Resume Action = "resume"
 	Finish Action = "finish"
-	Skip   Action = "skip"
-	Unskip Action = "unskip"
-	Reopen Action = "reopen"
 )
 
 var (
@@ -73,31 +66,27 @@ type Item struct {
 	// CarriedFrom is the item on an earlier day this one was copied from,
 	// or nil. It is set when the item is created and never changes.
 	CarriedFrom *ID `json:"carried_from"`
-	// CorrectedAt is when an item left incomplete or skipped was marked done
-	// after its day had ended, or nil. Its work is still only what was
-	// tracked.
+	// CorrectedAt is when an item left incomplete was marked done after its
+	// day had ended, or nil. Its work is still only what was tracked.
 	CorrectedAt *time.Time `json:"corrected_at"`
 }
 
-// CorrectDays is how far back a forgotten finish can be put right: the
-// seven days before today, the same as carrying.
-const CorrectDays = 7
+// RecentDays is how far back an incomplete item can be carried or marked
+// done: the seven days before.
+const RecentDays = 7
 
-// Correctable tells whether an item on a past day can be marked done after
-// all: it was left incomplete or skipped, is not deleted and was not
-// corrected before.
-func (it Item) Correctable() bool {
-	return !it.Archived && it.CorrectedAt == nil && (it.Status == Incomplete || it.Status == Skipped)
-}
+// Leftover tells whether an item was left incomplete and is not deleted, so
+// it can be carried to a later day or marked done after all.
+func (it Item) Leftover() bool { return !it.Archived && it.Status == Incomplete }
 
-// CorrectToDone marks an item that was left incomplete or skipped as done,
-// at the captured instant now, after its day has ended. Only the status
-// changes: it finishes when it was closed, no work or start is invented,
-// and the correction is recorded so it is never mistaken for a finish made
-// at the time.
+// CorrectToDone marks an item that was left incomplete as done, at the
+// captured instant now, after its day has ended. Only the status changes: it
+// finishes when it was closed, no work or start is made up, and the
+// correction is recorded so it is never mistaken for a finish made at the
+// time. It is done once.
 func (it *Item) CorrectToDone(now time.Time) error {
-	if !it.Correctable() {
-		return fmt.Errorf("%w: only incomplete or skipped items can be marked done later, this one is %s", ErrIllegalTransition, strings.ReplaceAll(string(it.Status), "_", " "))
+	if !it.Leftover() || it.CorrectedAt != nil {
+		return fmt.Errorf("%w: only an incomplete item can be marked done later", ErrIllegalTransition)
 	}
 	if err := it.checkClock(now); err != nil {
 		return err
@@ -108,22 +97,12 @@ func (it *Item) CorrectToDone(now time.Time) error {
 	return nil
 }
 
-// CarryDays is how far back unfinished work can be carried from: the
-// seven days before the day it is carried onto.
-const CarryDays = 7
-
-// Carryable tells whether the item can be copied onto a later day: it was
-// left incomplete or skipped, and it was not deleted.
-func (it Item) Carryable() bool {
-	return !it.Archived && (it.Status == Incomplete || it.Status == Skipped)
-}
-
-// CarryTo copies a carryable item onto another day as a fresh todo item with
-// the same title and duration, remembering where it came from. The original
-// is not touched.
+// CarryTo copies an incomplete item onto another day as a fresh todo item
+// with the same title and duration, remembering where it came from. The
+// original is not touched.
 func (it Item) CarryTo(dayID ID, now time.Time) (Item, error) {
-	if !it.Carryable() {
-		return Item{}, fmt.Errorf("%w: only incomplete or skipped items can be carried, this one is %s", ErrIllegalTransition, strings.ReplaceAll(string(it.Status), "_", " "))
+	if !it.Leftover() {
+		return Item{}, fmt.Errorf("%w: only an incomplete item can be carried", ErrIllegalTransition)
 	}
 	copied, err := NewItem(dayID, it.Title, it.DurationMinutes, now)
 	if err != nil {
@@ -196,40 +175,23 @@ func (it Item) Clone() Item {
 
 // Can tells whether the action fits the item as it is now. It is what tab
 // completion, the picker and the workspace footer offer, so they never
-// suggest something that would be refused for the item's status.
+// suggest something that would be refused.
 func (it Item) Can(a Action) bool {
-	if it.Archived || it.Status == Incomplete {
-		return false
-	}
 	_, err := it.target(a)
-	return err == nil
+	return err == nil && !it.Archived
 }
 
 // target is the status an action leads to from the item's current state.
 func (it Item) target(a Action) (Status, error) {
-	refuse := func() (Status, error) {
-		return "", fmt.Errorf("%w: cannot %s an item that is %s", ErrIllegalTransition, a, strings.ReplaceAll(string(it.Status), "_", " "))
-	}
 	switch {
-	case a == Start && it.Status == Todo:
+	case a == Start && (it.Status == Todo || it.Status == Paused || it.Status == Done):
 		return InProgress, nil
 	case a == Pause && it.Status == InProgress:
 		return Paused, nil
-	case a == Resume && it.Status == Paused:
-		return InProgress, nil
 	case a == Finish && (it.Status == InProgress || it.Status == Paused):
 		return Done, nil
-	case a == Skip && it.Status.Unfinished():
-		return Skipped, nil
-	case a == Unskip && it.Status == Skipped:
-		if it.StartedAt == nil {
-			return Todo, nil
-		}
-		return Paused, nil
-	case a == Reopen && it.Status == Done:
-		return InProgress, nil
 	}
-	return refuse()
+	return "", fmt.Errorf("%w: cannot %s an item that is %s", ErrIllegalTransition, a, strings.ReplaceAll(string(it.Status), "_", " "))
 }
 
 // Apply performs an action at the captured instant now. The item's day has
@@ -262,12 +224,10 @@ func (it *Item) move(to Status, now time.Time) error {
 		}
 		it.FinishedAt = nil
 		it.ClosedAt = nil
-	case Todo, Paused:
+	case Paused:
 		it.ClosedAt = nil
 	case Done:
 		it.FinishedAt = &stamp
-		it.ClosedAt = &stamp
-	case Skipped:
 		it.ClosedAt = &stamp
 	default:
 		return fmt.Errorf("%w: %s is not reached by an action", ErrIllegalTransition, to)
@@ -378,7 +338,7 @@ func (it Item) Check() error {
 		return bad("is done without a finish")
 	case it.Status != Done && it.FinishedAt != nil:
 		return bad("has a finish but is not done")
-	case (it.Status == Skipped || it.Status == Incomplete || it.Archived) && it.ClosedAt == nil:
+	case (it.Status == Incomplete || it.Archived) && it.ClosedAt == nil:
 		return bad("is closed without a closing time")
 	case !it.Archived && it.Status.Unfinished() && it.ClosedAt != nil:
 		return bad("is open but has a closing time")
@@ -402,26 +362,3 @@ func CheckDay(items []Item) error {
 	}
 	return nil
 }
-
-// compareAsBefore is the order lists had before you could set it yourself:
-// started items first, by their first start, then the rest by creation
-// time, with the ID breaking any tie.
-func compareAsBefore(a, b Item) int {
-	switch {
-	case (a.StartedAt == nil) != (b.StartedAt == nil):
-		if a.StartedAt != nil {
-			return -1
-		}
-		return 1
-	case a.StartedAt != nil && !a.StartedAt.Equal(*b.StartedAt):
-		return a.StartedAt.Compare(*b.StartedAt)
-	case !a.CreatedAt.Equal(b.CreatedAt):
-		return a.CreatedAt.Compare(b.CreatedAt)
-	}
-	return strings.Compare(string(a.ID), string(b.ID))
-}
-
-// SortAsBefore puts items in the order lists had before you could set it
-// yourself. It is only used once, when an older file is upgraded, so every
-// day keeps the order it showed.
-func SortAsBefore(items []Item) { slices.SortStableFunc(items, compareAsBefore) }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 )
 
@@ -20,7 +19,7 @@ func TestHelpListsTheKeys(t *testing.T) {
 		t.Fatal("? should open help")
 	}
 	text := plain(w)
-	for _, want := range []string{"Moving around", "Recording work (today only)", "Planning (today and later)", "In a form", "In the calendar", "Start, pause or resume", "Delete the selected item, after asking", "Enter never saves"} {
+	for _, want := range []string{"Moving around", "Recording work (today only)", "Planning (today and later)", "In a form", "In the calendar", "Start, pause, resume or reopen", "Delete the selected item, after asking", "Enter never saves"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q", want)
 		}
@@ -67,11 +66,6 @@ func TestHelpScrollsAndChangesNothing(t *testing.T) {
 	w.m.View()
 	if !strings.Contains(plain(w), "Show the chosen day") {
 		t.Fatal("scrolling should reach the end of help")
-	}
-	for i, row := range screen(w) {
-		if ansi.StringWidth(row) != 80 {
-			t.Fatalf("row %d is %d wide", i, ansi.StringWidth(row))
-		}
 	}
 	for _, k := range []tea.KeyPressMsg{space(), key("d"), key("n")} {
 		if w.press(k) != nil {

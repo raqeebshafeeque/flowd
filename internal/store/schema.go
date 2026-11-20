@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"modernc.org/sqlite"
@@ -204,7 +206,7 @@ func upgradeToThree(ctx context.Context, tx *sql.Tx) error {
 		if err != nil {
 			return classify(err)
 		}
-		domain.SortAsBefore(items)
+		slices.SortStableFunc(items, compareAsBefore)
 		order := make([]domain.ID, len(items))
 		for i, item := range items {
 			order[i] = item.ID
@@ -234,4 +236,23 @@ func rollback(tx *sql.Tx) error {
 		return err
 	}
 	return nil
+}
+
+// compareAsBefore is the order lists had before you could set it yourself,
+// used once when an older file is upgraded so every day keeps its order:
+// started items first, by their first start, then the rest by creation
+// time, with the ID breaking any tie.
+func compareAsBefore(a, b domain.Item) int {
+	switch {
+	case (a.StartedAt == nil) != (b.StartedAt == nil):
+		if a.StartedAt != nil {
+			return -1
+		}
+		return 1
+	case a.StartedAt != nil && !a.StartedAt.Equal(*b.StartedAt):
+		return a.StartedAt.Compare(*b.StartedAt)
+	case !a.CreatedAt.Equal(b.CreatedAt):
+		return a.CreatedAt.Compare(b.CreatedAt)
+	}
+	return strings.Compare(string(a.ID), string(b.ID))
 }

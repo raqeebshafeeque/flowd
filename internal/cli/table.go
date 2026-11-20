@@ -16,7 +16,6 @@ var statusColors = map[domain.Status]string{
 	domain.InProgress: "\x1b[34m", // blue: being worked on
 	domain.Paused:     "\x1b[33m", // yellow: waiting
 	domain.Done:       "\x1b[32m", // green: finished
-	domain.Skipped:    "\x1b[2m",
 	domain.Incomplete: "\x1b[2;31m",
 }
 

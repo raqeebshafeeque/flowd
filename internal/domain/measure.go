@@ -2,17 +2,15 @@ package domain
 
 import (
 	"fmt"
-	"math"
-	"math/big"
 	"time"
 )
 
 // Metrics is what really happened to an item at one moment.
 //
 // Work is the total time it ran. Paused is the total time it waited as
-// paused after it had started. Time spent done before a reopen, or skipped
-// before an unskip, is neither. Paused is nil for an item that never
-// started. Both are whole seconds, held in nanoseconds.
+// paused after it had started. Time spent done before it was started again
+// is neither. Paused is nil for an item that never started. Both are whole
+// seconds, held in nanoseconds.
 type Metrics struct {
 	WorkNS   int64  `json:"work_ns"`
 	PausedNS *int64 `json:"paused_ns"`
@@ -40,29 +38,18 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 	var paused int64
 	var lastOccurred, lastRecorded time.Time
 	var lastSeq int64
+	// Every stretch lies within one day, so these sums cannot overflow.
 	stopRunning := func(at time.Time) error {
 		span, err := Span(*runningSince, at)
-		if err != nil {
-			return err
-		}
-		if span > math.MaxInt64-result.WorkNS {
-			return fmt.Errorf("%w: work is too large", ErrInvalidEvidence)
-		}
 		result.WorkNS += span
 		runningSince = nil
-		return nil
+		return err
 	}
 	stopPause := func(at time.Time) error {
 		span, err := Span(*pausedSince, at)
-		if err != nil {
-			return err
-		}
-		if span > math.MaxInt64-paused {
-			return fmt.Errorf("%w: paused time is too large", ErrInvalidEvidence)
-		}
 		paused += span
 		pausedSince = nil
-		return nil
+		return err
 	}
 	for i, e := range events {
 		if err := e.ValidateFor(day); err != nil {
@@ -133,21 +120,20 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 	return result, nil
 }
 
-// Summary adds up a day. Durations are summed without any limit, so the total
-// stays exact however many items there are. Deleted items are left out.
+// Summary adds up a day. Deleted items are left out.
 type Summary struct {
 	Counts          map[Status]int `json:"status_counts"`
-	DurationMinutes *big.Int       `json:"duration_minutes"`
+	DurationMinutes int64          `json:"duration_minutes"`
 	WorkNS          int64          `json:"work_ns"`
 }
 
 // NewSummary returns an empty summary with every status counted as zero.
 func NewSummary() Summary {
 	counts := map[Status]int{}
-	for _, s := range []Status{Todo, InProgress, Paused, Done, Skipped, Incomplete} {
+	for _, s := range Statuses {
 		counts[s] = 0
 	}
-	return Summary{Counts: counts, DurationMinutes: new(big.Int)}
+	return Summary{Counts: counts}
 }
 
 // Add counts one item and its metrics.
@@ -155,11 +141,11 @@ func (s *Summary) Add(item Item, m Metrics) error {
 	if item.Archived {
 		return nil
 	}
-	if !item.Status.Valid() || item.DurationMinutes <= 0 || m.WorkNS < 0 || m.WorkNS > math.MaxInt64-s.WorkNS {
+	if !item.Status.Valid() || item.DurationMinutes <= 0 || m.WorkNS < 0 {
 		return fmt.Errorf("%w: cannot add item %s to the day", ErrInvalidEvidence, item.ID)
 	}
 	s.Counts[item.Status]++
-	s.DurationMinutes.Add(s.DurationMinutes, big.NewInt(item.DurationMinutes))
+	s.DurationMinutes += item.DurationMinutes
 	s.WorkNS += m.WorkNS
 	return nil
 }

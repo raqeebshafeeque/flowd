@@ -36,21 +36,3 @@ func (s *session) reorder(ctx context.Context, intent Intent) (Result, error) {
 	result.Outcome = Confirmed
 	return result, nil
 }
-
-// reconcileOrder settles a reorder whose save might not have landed: it did
-// if the day is now in the order that was sent.
-func (s *session) reconcileOrder(ctx context.Context, pending Result) (Result, error) {
-	items, err := s.db.Items(ctx, s.day.ID)
-	if err != nil {
-		return pending, err
-	}
-	now := make([]domain.ID, len(items))
-	for i, item := range items {
-		now[i] = item.ID
-	}
-	pending.Outcome = Refused
-	if slices.Equal(now, pending.Order) {
-		pending.Outcome = Confirmed
-	}
-	return pending, nil
-}

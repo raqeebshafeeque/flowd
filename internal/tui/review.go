@@ -12,7 +12,7 @@ import (
 // and every item grouped by status. It reads exactly what `flowd review`
 // prints, and j and k scroll it.
 
-var reviewStatuses = []domain.Status{domain.Todo, domain.InProgress, domain.Paused, domain.Done, domain.Skipped, domain.Incomplete}
+var reviewStatuses = domain.Statuses
 
 func (m *model) openReview() {
 	if m.loaded && !m.busy() {

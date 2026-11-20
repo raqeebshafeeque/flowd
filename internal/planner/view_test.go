@@ -25,7 +25,7 @@ func TestViewOrdersMeasuresAndTotals(t *testing.T) {
 	if v.Running == nil || v.Running.ID != a.ID || v.Running.WorkNS != int64(30*time.Minute) {
 		t.Fatalf("running: %+v", v.Running)
 	}
-	if v.DurationMinutes.Int64() != 90 || v.WorkNS != int64(50*time.Minute) || v.Counts[domain.Done] != 1 {
+	if v.DurationMinutes != 90 || v.WorkNS != int64(50*time.Minute) || v.Counts[domain.Done] != 1 {
 		t.Fatalf("totals: %v %v %v", v.DurationMinutes, time.Duration(v.WorkNS), v.Counts)
 	}
 	if done, total := v.Finished(); done != 1 || total != 2 {
@@ -40,7 +40,7 @@ func TestViewJSONShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{`"schema_version":4`, `"date":"2026-11-17"`, `"items":[`, `"duration_minutes":60`, `"work_ns":0`, `"paused_ns":null`, `"running":null`, `"status_counts":{`} {
+	for _, field := range []string{`"schema_version":5`, `"date":"2026-11-17"`, `"items":[`, `"duration_minutes":60`, `"work_ns":0`, `"paused_ns":null`, `"running":null`, `"status_counts":{`} {
 		if !strings.Contains(string(raw), field) {
 			t.Errorf("missing %s in %s", field, raw)
 		}

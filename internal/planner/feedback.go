@@ -51,12 +51,12 @@ var kinds = []struct {
 	hint    string
 }{
 	{context.Canceled, "ERR_CANCELLED", 130, "Stopped", ""},
-	{store.ErrIncompleteRepair, "ERR_REPAIR", 1, "A repair was interrupted", "Run flowd doctor --repair to finish it"},
 	{store.ErrCorrupt, "ERR_CORRUPT", 1, "The database is damaged", "Run flowd doctor, and restore the backup with flowd doctor --repair"},
 	{store.ErrVersion, "ERR_VERSION", 1, "The database was made by another version of flowd", "Use a matching flowd, and do not delete the file"},
 	{store.ErrLocked, "ERR_LOCKED", 1, "Another flowd is using the database", "Wait for it to finish and try again"},
 	{store.ErrDiskFull, "ERR_DISK_FULL", 1, "The disk is full", "Free some space. Everything saved before is still there"},
 	{store.ErrPermissions, "ERR_PERMISSION", 1, "The database is not private to you", "Make it readable only by you with chmod 600"},
+	{store.ErrNothingToReset, "ERR_NOT_FOUND", 1, "There is no database to reset", "flowd starts with an empty planner already"},
 	{store.ErrInvalidPath, "ERR_PATH", 2, "The database path is not a plain file", "Point --db at a regular file"},
 	{ErrPastDay, "ERR_PAST_DAY", 2, "Past days can only be looked at", "Plan new work for today or a later date"},
 	{domain.ErrUnsafeText, "ERR_TITLE", 2, "Titles cannot hold hidden or direction-changing characters", ""},
@@ -69,7 +69,7 @@ var kinds = []struct {
 	{store.ErrStale, "ERR_STALE", 1, "The item changed since it was read", "Look at it again before changing it"},
 	{ErrNotCarryable, "ERR_NOT_CARRYABLE", 1, "That item cannot be carried", ""},
 	{store.ErrNotFound, "ERR_NOT_FOUND", 1, "No such item on this day", "Check the ID with flowd list"},
-	{domain.ErrDayClosed, "ERR_DAY_CLOSED", 1, "That day is not open", "Only today's items can be started, paused, finished or skipped"},
+	{domain.ErrDayClosed, "ERR_DAY_CLOSED", 1, "That day is not open", "Only today's items can be started, paused or finished"},
 	{domain.ErrAlreadyRunning, "ERR_ILLEGAL_TRANSITION", 1, "Another item is already running", ""},
 	{domain.ErrIllegalTransition, "ERR_ILLEGAL_TRANSITION", 1, "That item cannot do that now", ""},
 	{ErrStillUnknown, "ERR_UNCONFIRMED", 1, "It is unknown whether the change was saved", "Check the item before trying again"},

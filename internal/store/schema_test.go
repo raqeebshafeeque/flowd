@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/raqeebshafeeque/flowd/internal/domain"
@@ -67,30 +69,45 @@ func TestEventsCannotBeChangedOrDeleted(t *testing.T) {
 	}
 }
 
-// versionOne makes a file the way flowd 0.9 left it: history, but no
-// carried_from column and user_version 1.
-func versionOne(t *testing.T) string {
+// olderFile turns a closed database back into the given schema version, the
+// way an older flowd left it, by dropping what later versions added.
+func olderFile(t *testing.T, path string, v int) {
 	t.Helper()
-	return versionOneWith(t, func(s *Store) { createTestItem(t, s) })
-}
-
-// versionOneWith is versionOne with the history setup makes.
-func versionOneWith(t *testing.T, setup func(*Store)) string {
-	t.Helper()
-	s := openTest(t)
-	setup(s)
-	path := s.Path()
-	s.Close()
+	steps := map[int][]string{
+		3: {"ALTER TABLE items DROP COLUMN corrected_at"},
+		2: {"DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN position"},
+		1: {"DROP INDEX items_by_origin", "ALTER TABLE items DROP COLUMN carried_from"},
+	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, statement := range []string{"DROP INDEX items_by_origin", "DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN carried_from", "ALTER TABLE items DROP COLUMN position", "ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 1"} {
-		if _, err := db.Exec(statement); err != nil {
-			t.Fatal(statement, err)
+	for from := SchemaVersion - 1; from >= v; from-- {
+		for _, statement := range steps[from] {
+			if _, err := db.Exec(statement); err != nil {
+				t.Fatal(statement, err)
+			}
 		}
 	}
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA user_version = %d", v)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// versionOne makes a file the way the first releases left it, with the history setup
+// makes, or one item when setup is nil.
+func versionOne(t *testing.T, setup func(*Store)) string {
+	t.Helper()
+	s := openTest(t)
+	if setup == nil {
+		createTestItem(t, s)
+	} else {
+		setup(s)
+	}
+	path := s.Path()
+	s.Close()
+	olderFile(t, path, 1)
 	return path
 }
 
@@ -111,7 +128,7 @@ func version(t *testing.T, path string) int {
 // Opening a version 1 file to write backs it up and upgrades it, and
 // everything saved before is still there and still checks out.
 func TestAnOlderFileIsBackedUpAndUpgraded(t *testing.T) {
-	path := versionOne(t)
+	path := versionOne(t, nil)
 	if err := Inspect(ctx, path); err != nil {
 		t.Fatalf("doctor should accept a file it will upgrade: %v", err)
 	}
@@ -128,9 +145,6 @@ func TestAnOlderFileIsBackedUpAndUpgraded(t *testing.T) {
 	}
 	if version(t, path+".bak") != 1 {
 		t.Fatal("the backup should be the file as it was before the upgrade")
-	}
-	if version(t, path) != SchemaVersion {
-		t.Fatalf("a version 1 file should go all the way to the current version, got %d", version(t, path))
 	}
 	day, err := s.DayByDate(ctx, "2026-11-17")
 	if err != nil {
@@ -151,7 +165,7 @@ func TestAnOlderFileIsBackedUpAndUpgraded(t *testing.T) {
 
 // If the backup cannot be written, nothing is changed.
 func TestAFailedUpgradeLeavesTheFileAsItWas(t *testing.T) {
-	path := versionOne(t)
+	path := versionOne(t, nil)
 	if err := os.Mkdir(path+".bak", 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +184,7 @@ func TestAFailedUpgradeLeavesTheFileAsItWas(t *testing.T) {
 // The lock free reads never upgrade. They see nothing until a real command
 // has upgraded the file.
 func TestPeekingNeverUpgrades(t *testing.T) {
-	path := versionOne(t)
+	path := versionOne(t, nil)
 	if _, err := Peek(ctx, path, "2026-11-17"); !errors.Is(err, ErrVersion) {
 		t.Fatalf("got %v", err)
 	}
@@ -182,7 +196,7 @@ func TestPeekingNeverUpgrades(t *testing.T) {
 // The upgrade numbers every day in the order it showed before: started
 // items first, by their first start, then the rest as they were added.
 func TestTheUpgradeKeepsEachDaysOrder(t *testing.T) {
-	path := versionOneWith(t, func(s *Store) {
+	path := versionOne(t, func(s *Store) {
 		day, _ := createTestItem(t, s)
 		ids := plan(t, s, day, "08:10:00", "B", "C")
 		c, _ := s.Item(ctx, ids[1])
@@ -212,16 +226,7 @@ func TestAVersionTwoFileIsUpgraded(t *testing.T) {
 	}
 	path := s.Path()
 	s.Close()
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, statement := range []string{"DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN position", "ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 2"} {
-		if _, err := db.Exec(statement); err != nil {
-			t.Fatal(statement, err)
-		}
-	}
-	db.Close()
+	olderFile(t, path, 2)
 	if err := Inspect(ctx, path); err != nil {
 		t.Fatalf("doctor should accept a version 2 file: %v", err)
 	}
@@ -250,16 +255,7 @@ func TestAVersionThreeFileIsUpgraded(t *testing.T) {
 	plan(t, s, day, "08:10:00", "B")
 	path := s.Path()
 	s.Close()
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, statement := range []string{"ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 3"} {
-		if _, err := db.Exec(statement); err != nil {
-			t.Fatal(statement, err)
-		}
-	}
-	db.Close()
+	olderFile(t, path, 3)
 	again, err := Open(ctx, path)
 	if err != nil {
 		t.Fatal(err)
@@ -270,5 +266,17 @@ func TestAVersionThreeFileIsUpgraded(t *testing.T) {
 	}
 	if got := order(t, again, day); got != "Study B" {
 		t.Fatalf("got %s", got)
+	}
+}
+
+// Items added in the same second keep a fixed order, by ID.
+func TestTheOldOrderBreaksTiesByID(t *testing.T) {
+	a := domain.Item{ID: "it_a", CreatedAt: clock("08:00:00")}
+	b, later := a, a
+	b.ID, later.ID, later.CreatedAt = "it_b", "it_0", clock("08:00:01")
+	items := []domain.Item{later, b, a}
+	slices.SortStableFunc(items, compareAsBefore)
+	if items[0].ID != "it_a" || items[1].ID != "it_b" || items[2].ID != "it_0" {
+		t.Fatalf("got %v %v %v", items[0].ID, items[1].ID, items[2].ID)
 	}
 }

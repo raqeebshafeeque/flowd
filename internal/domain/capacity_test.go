@@ -40,7 +40,6 @@ func TestRemainingMinutes(t *testing.T) {
 		{"a partial remaining minute is still held", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: InProgress, DurationMinutes: 60, WorkNS: hour - 30*int64(time.Second)}}, 239},
 		{"work beyond the duration holds nothing", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: InProgress, DurationMinutes: 30, WorkNS: hour}}, 240},
 		{"done holds nothing", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: Done, DurationMinutes: 600, WorkNS: hour}}, 240},
-		{"skipped holds nothing", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: Skipped, DurationMinutes: 600}}, 240},
 		{"incomplete holds nothing", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: Incomplete, DurationMinutes: 600}}, 240},
 		{"archived holds nothing", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: Todo, DurationMinutes: 600, Archived: true}}, 240},
 		{"over-planned day clamps to zero", utc, "2026-11-11T20:00:00Z", []Reservation{{Status: Todo, DurationMinutes: 500}}, 0},

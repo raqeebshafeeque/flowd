@@ -29,15 +29,11 @@ func Capture(t time.Time) time.Time {
 	return whole
 }
 
-// Span returns the exact time from start to end in nanoseconds. Unlike
-// time.Time.Sub it refuses instead of quietly capping a huge result.
+// Span returns the time from start to end in nanoseconds, refusing times
+// out of order.
 func Span(start, end time.Time) (int64, error) {
 	if !ValidInstant(start) || !ValidInstant(end) || end.Before(start) {
 		return 0, fmt.Errorf("%w: times are out of order", ErrInvalidEvidence)
 	}
-	span := end.Sub(start)
-	if !start.Add(span).Equal(end) {
-		return 0, fmt.Errorf("%w: time span is too large", ErrInvalidEvidence)
-	}
-	return int64(span), nil
+	return int64(end.Sub(start)), nil
 }

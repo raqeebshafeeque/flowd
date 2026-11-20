@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/raqeebshafeeque/flowd/internal/domain"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
 )
@@ -95,11 +94,14 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 			return err
 		}
 	}
+	if o.command == "reset" {
+		return resetPlanner(ctx, out, o, path, env)
+	}
 	client := planner.Client{Path: path, Now: env.Now, Zone: env.Zone}
 	if o.command == "now" && o.short {
 		return statusLine(ctx, out, o, client)
 	}
-	selection := planner.Selection{Date: o.date, Timezone: o.zone}
+	selection := planner.Selection{Date: o.date}
 	// Finishing an item on a past day puts right a forgotten finish.
 	if o.command == "finish" && o.date != "" && o.date < targetDate(options{}, env) {
 		o.operation = planner.MarkDone
@@ -130,12 +132,6 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		duration, title := o.args[0], joinTitle(o.args[1:])
 		r, err := client.Do(ctx, planner.Intent{Operation: planner.Add, Selection: selection, Title: &title, Duration: &duration})
 		return finish(out, o, r, err)
-	case "events":
-		state, item, err := find(ctx, client, selection, o.args[0])
-		if err != nil {
-			return err
-		}
-		return printEvents(out, o, state.History[item.ID])
 	case "backup":
 		return backup(ctx, out, o, path)
 	case "doctor":
@@ -192,7 +188,7 @@ func finish(out io.Writer, o options, r planner.Result, err error) error {
 }
 
 func backup(ctx context.Context, out io.Writer, o options, path string) error {
-	s, err := store.Open(ctx, path, store.WithFullCheck())
+	s, err := store.Open(ctx, path)
 	if err != nil {
 		return err
 	}
@@ -222,22 +218,40 @@ func doctor(ctx context.Context, out io.Writer, o options, path string) error {
 	if err := store.Inspect(ctx, path); err != nil {
 		return err
 	}
-	unsafe, err := store.UnsafeTitles(ctx, path)
+	if o.json {
+		return writeJSON(out, map[string]string{"status": "ok"})
+	}
+	_, err := fmt.Fprintln(out, "OK")
+	return err
+}
+
+// resetPlanner starts over with an empty planner. Typing a whole word to confirm
+// keeps a stray Enter or y from wiping the plan, and without a person to ask
+// it needs --yes.
+func resetPlanner(ctx context.Context, out io.Writer, o options, path string, env Env) error {
+	if !o.yes && (o.json || !env.Interactive) {
+		return planner.InputError(nil, "Resetting needs confirmation", "Add --yes to reset without being asked")
+	}
+	if !o.yes {
+		fmt.Fprint(out, "This empties the planner. The current files are kept in a folder next to it.\nType reset to go on: ")
+		answer := ""
+		if env.In != nil {
+			answer, _ = bufio.NewReader(env.In).ReadString('\n')
+		}
+		if strings.TrimSpace(answer) != "reset" {
+			_, err := fmt.Fprintln(out, "Nothing was reset")
+			return err
+		}
+	}
+	recovery, err := store.Reset(ctx, path)
 	if err != nil {
 		return err
 	}
 	if o.json {
-		return writeJSON(out, map[string]any{"status": "ok", "unsafe_titles": append([]domain.ID{}, unsafe...)})
+		return writeJSON(out, map[string]string{"status": "reset", "recovery": recovery})
 	}
-	fmt.Fprintln(out, "OK")
-	if len(unsafe) > 0 {
-		fmt.Fprintf(out, "Warning: %d item titles contain hidden or direction-changing characters.\n", len(unsafe))
-		fmt.Fprintln(out, "They are shown with placeholders like <U+202E>. Edit the titles to remove them:")
-		for _, id := range unsafe {
-			fmt.Fprintln(out, "  "+string(id))
-		}
-	}
-	return nil
+	_, err = fmt.Fprintf(out, "The planner is empty. The previous files are in %s\n", recovery)
+	return err
 }
 
 // joinTitle lets a title be typed without quotes: add 1h Learn Go.

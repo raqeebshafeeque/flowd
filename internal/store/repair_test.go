@@ -51,9 +51,6 @@ func TestRepairRestoresTheBackupAndKeepsTheOriginal(t *testing.T) {
 	if info, _ := os.Stat(recovery); info.Mode().Perm() != 0o700 {
 		t.Fatal("the recovery folder is not private")
 	}
-	if _, err := os.Stat(path + repairSuffix); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("the repair plan was left behind")
-	}
 }
 
 func TestRepairWithoutAUsableBackupChangesNothing(t *testing.T) {
@@ -74,42 +71,41 @@ func TestRepairWithoutAUsableBackupChangesNothing(t *testing.T) {
 	}
 }
 
-func TestInterruptedRepairBlocksOpeningAndCanBeFinished(t *testing.T) {
-	for _, stage := range []string{"moving", "publishing"} {
-		t.Run(stage, func(t *testing.T) {
-			path, item := damagedWithBackup(t)
-			plan, err := startRepair(ctx, path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if stage == "publishing" {
-				if err := moveAside(path, plan.Recovery); err != nil {
-					t.Fatal(err)
-				}
-				plan.Stage = "publishing"
-				if err := writePlan(path, plan); err != nil {
-					t.Fatal(err)
-				}
-			}
-			// The process stops here. Normal use must refuse to touch the files.
-			if _, err := Open(ctx, path); !errors.Is(err, ErrIncompleteRepair) {
-				t.Fatal("open must refuse during an interrupted repair", err)
-			}
-			if err := Inspect(ctx, path); !errors.Is(err, ErrIncompleteRepair) {
-				t.Fatal("inspect must report the interrupted repair", err)
-			}
-			recovery, err := Repair(ctx, path)
-			if err != nil || recovery != plan.Recovery {
-				t.Fatalf("finishing the repair: %q %v", recovery, err)
-			}
-			s, err := Open(ctx, path)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer s.Close()
-			if _, err := s.Item(ctx, item.ID); err != nil {
-				t.Fatal("the restored item is missing:", err)
-			}
-		})
+// Reset moves everything aside and the next open starts empty. Nothing is
+// deleted, so the old plan can still be put back by hand.
+func TestResetKeepsTheOldFilesAndStartsEmpty(t *testing.T) {
+	path := savedDatabase(t)
+	recovery, err := Reset(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(recovery); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatal("the recovery folder is missing or not private", err)
+	}
+	kept, err := Open(ctx, filepath.Join(recovery, filepath.Base(path)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kept.DayByDate(ctx, "2026-11-17"); err != nil {
+		t.Fatal("the old plan was not kept", err)
+	}
+	kept.Close()
+	s, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if _, err := s.DayByDate(ctx, "2026-11-17"); !errors.Is(err, ErrNotFound) {
+		t.Fatal("the new planner is not empty", err)
+	}
+	if _, err := Reset(ctx, filepath.Join(t.TempDir(), "none.sqlite")); !errors.Is(err, ErrNothingToReset) {
+		t.Fatal("a missing database must be reported", err)
+	}
+}
+
+func TestResetWaitsForNobody(t *testing.T) {
+	s := openTest(t)
+	if _, err := Reset(ctx, s.Path()); !errors.Is(err, ErrLocked) {
+		t.Fatal("a database in use must not be reset", err)
 	}
 }
