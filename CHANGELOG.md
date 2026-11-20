@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/raqeebshafeeque/flowd/compare/v0.9.0...v0.10.0) (2026-11-20)
+
+
+### Features
+
+* put a forgotten finish right, and write down the principles ([#53](https://github.com/raqeebshafeeque/flowd/issues/53)) ([233d754](https://github.com/raqeebshafeeque/flowd/commit/233d754a601ebdd0a95ce00060e4137b90f0b4ba))
+
 ## [0.9.0](https://github.com/raqeebshafeeque/flowd/compare/v0.8.0...v0.9.0) (2026-11-19)
 
 
