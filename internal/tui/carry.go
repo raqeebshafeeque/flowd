@@ -11,7 +11,7 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
-// The carry panel lists the incomplete and skipped items from the seven
+// The carry panel lists the incomplete items from the seven
 // days before the day on screen, with a box to tick for each. Space ticks
 // one, a ticks or clears them all, and Ctrl+S copies what is ticked onto the
 // day, like every save. Esc closes it. The
@@ -142,7 +142,7 @@ func (m *model) carryRows(width, height int) []string {
 	case !c.loaded:
 		return append(rows, " "+m.style.paint("muted", "Reading…"))
 	case len(c.items) == 0:
-		return append(rows, " "+m.style.paint("muted", fmt.Sprintf("Nothing to carry from the last %d days.", domain.CarryDays)))
+		return append(rows, " "+m.style.paint("muted", fmt.Sprintf("Nothing to carry from the last %d days.", domain.RecentDays)))
 	}
 	visible := max(1, height-2)
 	c.offset = min(max(c.offset, c.cursor-visible+1), c.cursor)

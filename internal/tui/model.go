@@ -32,8 +32,7 @@ type model struct {
 	selected domain.ID
 	details  bool
 
-	pending    bool            // a change is being saved
-	unresolved *planner.Result // a change whose outcome is not known yet
+	pending    bool // a change is being saved
 	notice     *notice
 	form       *form
 	calendar   *calendar
@@ -109,14 +108,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.recount()
 		}
-		if m.unresolved != nil {
-			cmds = append(cmds, m.reconcile())
-		}
 		return m, tea.Batch(cmds...)
 	case actionMsg:
 		return m, m.finished(msg)
-	case reconcileMsg:
-		return m, m.reconciled(msg)
 	case tea.KeyPressMsg:
 		return m, m.key(msg)
 	case tea.PasteMsg:
@@ -220,7 +214,7 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.openOrdering()
 	case ".":
 		m.moreHints = !m.moreHints
-	case "n":
+	case "a":
 		if m.plannable() {
 			m.openNew()
 		}
@@ -244,13 +238,12 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		if i := m.index(); i >= 0 && m.trackable() {
 			return m.track(spaceAction(m.state.View.Items[i].Status))
 		}
-	default:
-		if msg.String() == "f" && !m.trackable() && m.correctable() {
-			m.correcting = m.selected
-			return nil
+	case "f":
+		if m.trackable() {
+			return m.track(planner.Finish)
 		}
-		if op, ok := trackKeys[msg.String()]; ok && m.trackable() {
-			return m.track(op)
+		if m.correctable() {
+			m.correcting = m.selected
 		}
 	}
 	return nil

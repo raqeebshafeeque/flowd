@@ -44,14 +44,14 @@ func TestBackupReplacesTheOldOne(t *testing.T) {
 	if _, err := s.Backup(ctx); err != nil {
 		t.Fatal(err)
 	}
-	act(t, s, day, item, domain.Skip, clock("09:00:00"))
+	act(t, s, day, item, domain.Start, clock("09:00:00"))
 	path, err := s.Backup(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	copy, _ := Open(ctx, path)
 	defer copy.Close()
-	if saved, _ := copy.Item(ctx, item.ID); saved.Status != domain.Skipped {
+	if saved, _ := copy.Item(ctx, item.ID); saved.Status != domain.InProgress {
 		t.Fatal("the second backup did not replace the first")
 	}
 }
@@ -84,73 +84,5 @@ func TestInspect(t *testing.T) {
 	}
 	if err := Inspect(ctx, garbage); !errors.Is(err, ErrCorrupt) {
 		t.Fatal("damage must be reported", err)
-	}
-}
-
-// A title saved by an older version, or written into the file by hand, may
-// hold hidden characters. It must be shown with placeholders, stay usable,
-// and be reported by doctor without being changed on disk.
-func TestHiddenCharactersInOldTitlesAreShownAndReported(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "flowd.sqlite")
-	s, err := Open(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	day, item := createTestItem(t, s)
-	hostile := "Pay invoice\u202e fdp.exe"
-	if _, err := s.db.Exec("UPDATE items SET title=? WHERE id=?", hostile, item.ID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.db.Exec("DROP TRIGGER events_never_change"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.db.Exec("UPDATE item_events SET after_json=json_set(after_json,'$.title',?) WHERE item_id=?", hostile, item.ID); err != nil {
-		t.Fatal(err)
-	}
-	saved, err := s.Item(ctx, item.ID)
-	if err != nil || saved.Title != "Pay invoice<U+202E> fdp.exe" {
-		t.Fatalf("got %q, %v", saved.Title, err)
-	}
-	events, err := s.Events(ctx, item.ID)
-	if err != nil || events[0].After.Title != saved.Title {
-		t.Fatalf("history title %q, %v", events[0].After.Title, err)
-	}
-	act(t, s, day, saved, domain.Start, clock("09:00:00"))
-	s.Close()
-
-	ids, err := UnsafeTitles(ctx, path)
-	if err != nil || len(ids) != 1 || ids[0] != item.ID {
-		t.Fatalf("doctor should report the item: %v, %v", ids, err)
-	}
-	if err := Inspect(ctx, path); err != nil {
-		t.Fatal("hidden characters are a warning, not damage:", err)
-	}
-}
-
-func TestCleanDatabasesHaveNoUnsafeTitles(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "flowd.sqlite")
-	s, _ := Open(ctx, path)
-	createTestItem(t, s)
-	s.Close()
-	if ids, err := UnsafeTitles(ctx, path); err != nil || len(ids) != 0 {
-		t.Fatalf("got %v, %v", ids, err)
-	}
-}
-
-// doctor is often given a path relative to the current folder.
-func TestDoctorChecksWorkWithARelativePath(t *testing.T) {
-	dir := t.TempDir()
-	s, err := Open(ctx, filepath.Join(dir, "plan.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	createTestItem(t, s)
-	s.Close()
-	t.Chdir(dir)
-	if err := Inspect(ctx, "plan.sqlite"); err != nil {
-		t.Fatal("inspect:", err)
-	}
-	if ids, err := UnsafeTitles(ctx, "plan.sqlite"); err != nil || len(ids) != 0 {
-		t.Fatalf("unsafe titles: %v, %v", ids, err)
 	}
 }

@@ -50,7 +50,7 @@ any order, and let flowd keep count.
 │                                                                              │
 │                                                                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ pause [space]  finish [f]  skip [s]  edit [e]  delete [d]           more [.] │
+│ pause [space]  finish [f]  edit [e]  delete [d]  details [enter]    more [.] │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,14 +155,13 @@ Run `flowd` with no arguments to open it. Everything is one key.
 
 | Key | Action | Key | Action |
 | :---: | --- | :---: | --- |
-| `j` `k` | Move up and down | `n` | New item |
-| `space` | Start, pause or resume | `e` | Edit the selected item |
+| `j` `k` | Move up and down | `a` | Add an item |
+| `space` | Start, pause, resume or reopen | `e` | Edit the selected item |
 | `f` | Finish | `d` | Delete, after asking |
-| `s` `u` | Skip and bring back | `o` | Put the day in your order |
-| `R` | Reopen a finished item | `C` | Carry over unfinished work |
-| `enter` | Details | `c` `t` | Calendar, and back to today |
-| `r` | Review of the day | `?` | Every key |
-| `.` | More keys in the footer | `q` | Quit |
+| `enter` | Details | `o` | Put the day in your order |
+| `r` | Review of the day | `C` | Carry over unfinished work |
+| `.` | More keys in the footer | `c` `t` | Calendar, and back to today |
+| `?` | Every key | `q` | Quit |
 
 In a form, type the title, press Tab for the duration and save with Ctrl+S. A new order and the
 items to carry save with Ctrl+S too. When the keys do not fit in the footer, `.` shows the rest.
@@ -202,8 +201,7 @@ end
 ```
 
 It is built to be asked every second. It never takes the lock, never writes and never prints an
-error, so it cannot get in the way of your real commands. Long titles are cut to 30 characters,
-and `--max 20` changes that.
+error, so it cannot get in the way of your real commands. Long titles are cut to 30 characters.
 
 <br>
 
@@ -232,6 +230,7 @@ Everything lives in one SQLite file at `~/.local/share/flowd/flowd.sqlite`, or u
 flowd backup            # write a backup next to the database
 flowd doctor            # check the database
 flowd doctor --repair   # put the backup back, keeping the current files aside
+flowd reset             # start over with an empty planner, keeping the old files aside
 ```
 
 <br>

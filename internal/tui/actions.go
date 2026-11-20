@@ -14,29 +14,14 @@ type actionMsg struct {
 	err    error
 }
 
-// reconcileMsg is the answer to whether an unconfirmed change was saved.
-type reconcileMsg struct {
-	result planner.Result
-	err    error
-}
-
-// trackKeys maps keys to the status actions they perform.
-var trackKeys = map[string]planner.Operation{
-	"f": planner.Finish,
-	"s": planner.Skip,
-	"u": planner.Unskip,
-	"R": planner.Reopen,
-}
-
-// spaceAction is what space does for an item: start, pause or resume.
+// spaceAction is what space does for an item: pause it when it runs, and
+// otherwise start it, which also resumes a paused item and reopens a done one.
 func spaceAction(status domain.Status) planner.Operation {
 	switch status {
-	case domain.Todo:
-		return planner.Start
 	case domain.InProgress:
 		return planner.Pause
-	case domain.Paused:
-		return planner.Resume
+	case domain.Todo, domain.Paused, domain.Done:
+		return planner.Start
 	}
 	return ""
 }
@@ -45,23 +30,19 @@ func spaceAction(status domain.Status) planner.Operation {
 // order the footer shows them.
 func allowed(item planner.ItemView) []planner.Operation {
 	switch item.Status {
-	case domain.Todo:
-		return []planner.Operation{planner.Start, planner.Skip}
+	case domain.Todo, domain.Done:
+		return []planner.Operation{planner.Start}
 	case domain.InProgress:
-		return []planner.Operation{planner.Pause, planner.Finish, planner.Skip}
+		return []planner.Operation{planner.Pause, planner.Finish}
 	case domain.Paused:
-		return []planner.Operation{planner.Resume, planner.Finish, planner.Skip}
-	case domain.Done:
-		return []planner.Operation{planner.Reopen}
-	case domain.Skipped:
-		return []planner.Operation{planner.Unskip}
+		return []planner.Operation{planner.Start, planner.Finish}
 	}
 	return nil
 }
 
-// busy is true while a change is saving or its outcome is unknown. No other
-// change may start then, so nothing is ever sent twice.
-func (m *model) busy() bool { return m.pending || m.unresolved != nil }
+// busy is true while a change is saving. No other change may start then, so
+// nothing is ever sent twice.
+func (m *model) busy() bool { return m.pending }
 
 // track starts a status action on the selected item. Actions that do not fit
 // the item's status are still sent, so the planner explains the refusal.
@@ -80,8 +61,8 @@ func (m *model) track(op planner.Operation) tea.Cmd {
 }
 
 // finished handles a change's result. Success is quiet: the next read shows
-// it. A refusal pops up. An unknown outcome is reconciled before anything
-// else can change.
+// it. A refusal pops up, and so does an unknown outcome, which the next read
+// settles.
 func (m *model) finished(msg actionMsg) tea.Cmd {
 	m.pending = false
 	formError := false
@@ -92,36 +73,9 @@ func (m *model) finished(msg actionMsg) tea.Cmd {
 	switch {
 	case formError:
 	case msg.result.Outcome == planner.Unconfirmed:
-		r := msg.result
-		m.unresolved = &r
 		m.popup(errors.Join(planner.ErrStillUnknown, msg.err))
-		return m.reconcile()
 	case msg.err != nil && msg.result.Outcome != planner.Confirmed:
 		m.popup(msg.err)
-	}
-	return m.read()
-}
-
-func (m *model) reconcile() tea.Cmd {
-	pending := *m.unresolved
-	return func() tea.Msg {
-		r, err := m.client.Reconcile(m.ctx, pending)
-		return reconcileMsg{r, err}
-	}
-}
-
-// reconciled clears the unknown outcome once the saved history answers it.
-// While it stays unknown, every tick asks again.
-func (m *model) reconciled(msg reconcileMsg) tea.Cmd {
-	if msg.err != nil {
-		if !errors.Is(msg.err, planner.ErrStillUnknown) {
-			m.popup(msg.err)
-		}
-		return nil
-	}
-	m.unresolved = nil
-	if m.form != nil && msg.result.Outcome == planner.Confirmed {
-		m.selected, m.form = msg.result.Item.ID, nil
 	}
 	return m.read()
 }

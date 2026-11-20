@@ -211,7 +211,7 @@ func describe(err error) string {
 // and column inside the panel.
 func (m *model) formRows(width, height int) ([]string, int, int) {
 	f := m.form
-	heading := "New item"
+	heading := "Add item"
 	if f.edit {
 		heading = "Edit item"
 	}

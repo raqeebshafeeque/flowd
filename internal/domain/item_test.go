@@ -69,12 +69,9 @@ func TestEveryAllowedAction(t *testing.T) {
 		name  string
 		steps []step
 	}{
-		{"start pause resume finish", []step{{Start, InProgress}, {Pause, Paused}, {Resume, InProgress}, {Finish, Done}}},
+		{"start pause resume finish", []step{{Start, InProgress}, {Pause, Paused}, {Start, InProgress}, {Finish, Done}}},
 		{"finish while paused", []step{{Start, InProgress}, {Pause, Paused}, {Finish, Done}}},
-		{"skip before starting then unskip", []step{{Skip, Skipped}, {Unskip, Todo}}},
-		{"skip after starting then unskip", []step{{Start, InProgress}, {Skip, Skipped}, {Unskip, Paused}}},
-		{"skip while paused", []step{{Start, InProgress}, {Pause, Paused}, {Skip, Skipped}}},
-		{"reopen a finished item", []step{{Start, InProgress}, {Finish, Done}, {Reopen, InProgress}}},
+		{"start a finished item again", []step{{Start, InProgress}, {Finish, Done}, {Start, InProgress}}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -98,13 +95,12 @@ func TestEveryAllowedAction(t *testing.T) {
 
 func TestRefusedActionsChangeNothing(t *testing.T) {
 	refused := map[Status][]Action{
-		Todo:       {Pause, Resume, Finish, Unskip, Reopen},
-		InProgress: {Start, Resume, Unskip, Reopen},
-		Paused:     {Start, Pause, Unskip, Reopen},
-		Done:       {Start, Pause, Resume, Finish, Skip, Unskip},
-		Skipped:    {Start, Pause, Resume, Finish, Skip, Reopen},
+		Todo:       {Pause, Finish},
+		InProgress: {Start},
+		Paused:     {Pause},
+		Done:       {Pause, Finish},
 	}
-	reach := map[Status][]Action{Todo: nil, InProgress: {Start}, Paused: {Start, Pause}, Done: {Start, Finish}, Skipped: {Skip}}
+	reach := map[Status][]Action{Todo: nil, InProgress: {Start}, Paused: {Start, Pause}, Done: {Start, Finish}}
 	for status, actions := range refused {
 		for _, a := range actions {
 			it := newTestItem(t, "Study")
@@ -126,7 +122,7 @@ func TestRefusedActionsChangeNothing(t *testing.T) {
 
 func TestFirstStartNeverChanges(t *testing.T) {
 	it := newTestItem(t, "Study")
-	steps := []Action{Start, Pause, Resume, Finish, Reopen, Skip, Unskip, Resume}
+	steps := []Action{Start, Pause, Start, Finish, Start, Pause}
 	for i, a := range steps {
 		if err := it.Apply(a, at("09:00:00").Add(time.Duration(i)*time.Minute), testDay); err != nil {
 			t.Fatalf("%s: %v", a, err)
@@ -137,11 +133,11 @@ func TestFirstStartNeverChanges(t *testing.T) {
 	}
 }
 
-func TestReopenClearsTheFinish(t *testing.T) {
+func TestStartingAgainClearsTheFinish(t *testing.T) {
 	it := newTestItem(t, "Study")
 	_ = it.Apply(Start, at("09:00:00"), testDay)
 	_ = it.Apply(Finish, at("09:30:00"), testDay)
-	if err := it.Apply(Reopen, at("10:00:00"), testDay); err != nil {
+	if err := it.Apply(Start, at("10:00:00"), testDay); err != nil {
 		t.Fatal(err)
 	}
 	if it.FinishedAt != nil || it.ClosedAt != nil {
@@ -158,7 +154,7 @@ func TestClosedItemsRefuseEveryAction(t *testing.T) {
 	closed := at("23:59:59")
 	incomplete.Status, incomplete.ClosedAt = Incomplete, &closed
 	for _, it := range []Item{archived, incomplete} {
-		for _, a := range []Action{Start, Skip, Unskip, Reopen} {
+		for _, a := range []Action{Start, Pause, Finish} {
 			copy := it.Clone()
 			if err := copy.Apply(a, at("10:00:00"), testDay); !errors.Is(err, ErrIllegalTransition) {
 				t.Errorf("%s on a closed item: %v", a, err)
@@ -257,7 +253,6 @@ func TestCheckFindsInconsistentItems(t *testing.T) {
 		"todo with a start":     func(it *Item) { it.StartedAt = &started },
 		"running without start": func(it *Item) { it.Status = InProgress },
 		"done without finish":   func(it *Item) { it.Status, it.StartedAt = Done, &started },
-		"skipped without close": func(it *Item) { it.Status = Skipped },
 		"open with a close":     func(it *Item) { it.ClosedAt = &started },
 		"time before creation":  func(it *Item) { it.UpdatedAt = &earlier },
 		"unknown status":        func(it *Item) { it.Status = "lost" },
@@ -282,34 +277,5 @@ func TestOnlyOneItemRunsPerDay(t *testing.T) {
 	_ = a.Apply(Pause, at("09:01:00"), testDay)
 	if err := CheckDay([]Item{a, b}); err != nil {
 		t.Fatal(err)
-	}
-}
-
-// The order lists had before you could set it, which an upgrade keeps.
-func TestTheOldOrderPutStartedItemsFirst(t *testing.T) {
-	a, b, c := newTestItem(t, "A"), newTestItem(t, "B"), newTestItem(t, "C")
-	_ = c.Apply(Start, at("09:00:00"), testDay)
-	_ = c.Apply(Pause, at("09:05:00"), testDay)
-	_ = b.Apply(Start, at("09:05:00"), testDay)
-	_ = c.Apply(Finish, at("09:20:00"), testDay)
-	items := []Item{a, b, c}
-	SortAsBefore(items)
-	if got := items[0].Title + items[1].Title + items[2].Title; got != "CBA" {
-		t.Fatalf("got order %s, want CBA (started first, then not started)", got)
-	}
-}
-
-func TestOrderBreaksTiesByCreationThenID(t *testing.T) {
-	first, err := NewItem("dy", "First", 30, at("08:00:00"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, _ := NewItem("dy", "Second", 30, at("08:00:01"))
-	sameA, sameB := first, first
-	sameA.ID, sameB.ID = "it_a", "it_b"
-	items := []Item{second, sameB, sameA}
-	SortAsBefore(items)
-	if items[0].ID != "it_a" || items[1].ID != "it_b" || items[2].Title != "Second" {
-		t.Fatalf("unexpected order: %v %v %v", items[0].ID, items[1].ID, items[2].Title)
 	}
 }

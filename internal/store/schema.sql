@@ -9,7 +9,7 @@ CREATE TABLE items (
  id TEXT NOT NULL PRIMARY KEY,
  day_id TEXT NOT NULL REFERENCES days(id),
  title TEXT NOT NULL,
- status TEXT NOT NULL CHECK (status IN ('todo','in_progress','paused','done','skipped','incomplete')),
+ status TEXT NOT NULL CHECK (status IN ('todo','in_progress','paused','done','incomplete')),
  duration_minutes INTEGER NOT NULL CHECK (typeof(duration_minutes)='integer' AND duration_minutes>0),
  started_at TEXT,
  finished_at TEXT,

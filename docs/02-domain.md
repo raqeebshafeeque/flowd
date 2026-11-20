@@ -27,13 +27,11 @@ What days and items are, and the rules they always follow.
 - A title is visible text only. Hidden, zero-width, direction-changing, tag, private-use and control
   characters are refused, because they can make a title read differently from what it holds or hide
   instructions from an AI agent. Normal text in any language and real emoji are fine.
-- A title saved by an older version that still holds such characters is shown with a visible
-  placeholder like `<U+202E>` instead. Nothing on disk is changed until the item is changed.
 - A duration in whole minutes, always more than zero.
-- A status: todo, in progress, paused, done, skipped or incomplete.
+- A status: todo, in progress, paused, done or incomplete.
 - When it was first started. This never changes once it is set.
-- When it was finished. This is cleared if it is reopened.
-- When it was closed, by finishing, skipping, archiving or the end of the day.
+- When it was finished. This is cleared if it is started again.
+- When it was closed, by finishing, archiving or the end of the day.
 - Whether it is archived, and when it was created and updated.
 - The item it was carried from, if it is a copy of an unfinished item from an earlier day. This is
   set when it is created and never changes.
@@ -55,25 +53,23 @@ What days and items are, and the rules they always follow.
 
 | From | Action | To |
 | --- | --- | --- |
-| todo | start | in progress |
+| todo, paused or done | start | in progress |
 | in progress | pause | paused |
-| paused | resume | in progress |
 | in progress or paused | finish | done |
-| todo, in progress or paused | skip | skipped |
-| skipped | unskip | todo if never started, otherwise paused |
-| done | reopen | in progress |
 | todo, in progress or paused | end of the day | incomplete |
 | any visible item | delete | archived, status unchanged |
-| incomplete or skipped | carry | unchanged, with a new todo copy on a later day |
-| incomplete or skipped, in the last 7 days | mark done later | done, marked as corrected |
+| incomplete | carry | unchanged, with a new todo copy on a later day |
+| incomplete, in the last 7 days | mark done later | done, marked as corrected |
+
+Starting a paused item resumes it, and starting a done item reopens it. A reopen is saved with its
+own reason, so the history shows it.
 
 ## How much of a day is left
 
 - The time left is from now until the day's midnight. A day that has not started yet has all of its
   time, 23 to 25 hours.
 - From that, every other unfinished item holds its share: a todo item its whole Duration, a running
-  or paused item the part it has not worked yet. Done, skipped, incomplete and deleted items hold
-  nothing.
+  or paused item the part it has not worked yet. Done, incomplete and deleted items hold nothing.
 - A new item's Duration, or a larger Duration on an edit, has to fit in what is left. The item being
   edited does not count against itself.
 - This only ever refuses a change. It never touches items that are already saved.
@@ -82,20 +78,20 @@ What days and items are, and the rules they always follow.
 
 - One runner. Only one item can run at a time. Starting another one pauses it automatically.
 - Today only. Status changes only happen on today's items. Planning is allowed for today and the
-  future. Past days cannot be changed, with one exception: an item left incomplete or skipped in
-  the last 7 days can be marked done later. Only its status changes, it finishes when it was
+  future. Past days cannot be changed, with one exception: an item left incomplete in the last 7
+  days can be marked done later. Only its status changes, it finishes when it was
   closed, no work or start is made up, and it is marked as corrected so it is never mistaken for a
   finish made at the time. It is put right once.
 - End of day. When a day ends, its unfinished items become incomplete at exactly midnight, even if
   that is noticed later. This happens once, no matter how many times the day is opened.
-- Incomplete is final. It cannot be started, reopened or brought back.
+- Incomplete is final. It cannot be started again. It can only be carried or marked done later.
 - Every day stands alone. Nothing is copied, repeated or moved to another day by itself. To keep
-  working on something, you carry it: an incomplete or skipped item from the 7 days before is copied
+  working on something, you carry it: an incomplete item from the 7 days before is copied
   onto the day as a new todo item with the same title and Duration. The original stays as it was,
   and its copy remembers it, so an item is only carried once while its copy is planned.
-- First start. The first start time never changes, even after pauses, skips or reopening.
+- First start. The first start time never changes, even after pauses or reopening.
 - Order. A day is listed in the order you set. Nothing changes it by itself: starting, pausing,
-  finishing, skipping or editing never moves an item, and new or carried items join the end. Any
+  finishing or editing never moves an item, and new or carried items join the end. Any
   item can be moved, on today and later days.
 - Time. Times are stored in UTC and shown in local time.
 - Whole seconds. Every time is recorded to the nearest second, so work and paused time are always

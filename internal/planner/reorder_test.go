@@ -35,7 +35,7 @@ func TestTheDayIsInTheOrderYouSave(t *testing.T) {
 	// Changing status never moves anything.
 	f.must(Start, b)
 	f.must(Finish, b)
-	f.must(Skip, a)
+	f.must(Start, a)
 	if got := f.titles(""); got != "C A B" {
 		t.Fatalf("a status change moved an item: %s", got)
 	}
@@ -74,24 +74,5 @@ func TestCarriedItemsJoinTheEnd(t *testing.T) {
 	}
 	if got := f.titles(""); got != "Today Reply to the review Write release notes" {
 		t.Fatalf("got %s", got)
-	}
-}
-
-// A reorder whose save might not have landed is settled by reading the day.
-func TestAnUnconfirmedReorderIsFoundAgain(t *testing.T) {
-	f := newFixture(t)
-	a, b := f.add("A", "1h").Item.ID, f.add("B", "1h").Item.ID
-	r, err := f.reorder(b, a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending := r
-	pending.Outcome = Unconfirmed
-	if got, err := f.client.Reconcile(ctx, pending); err != nil || got.Outcome != Confirmed {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	pending.Order = []domain.ID{a, b}
-	if got, err := f.client.Reconcile(ctx, pending); err != nil || got.Outcome != Refused {
-		t.Fatalf("a different order means it did not land: %+v, %v", got, err)
 	}
 }

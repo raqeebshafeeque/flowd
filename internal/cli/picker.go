@@ -14,8 +14,7 @@ import (
 // done says what an operation did, for "Nothing on Thu 19 Nov 2026 can be
 // started".
 var done = map[string]string{
-	"start": "started", "pause": "paused", "resume": "resumed", "finish": "finished",
-	"skip": "skipped", "unskip": "brought back", "reopen": "reopened",
+	"start": "started", "pause": "paused", "finish": "finished",
 	"edit": "edited", "delete": "deleted", "mark_done": "marked done",
 }
 

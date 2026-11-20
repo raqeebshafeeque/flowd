@@ -83,12 +83,3 @@ func TestBoundsAreRememberedWithoutChangingTheAnswer(t *testing.T) {
 		}
 	}
 }
-
-func BenchmarkBounds(b *testing.B) {
-	day := Day{Date: "2026-11-17", Timezone: "America/New_York"}
-	for i := 0; i < b.N; i++ {
-		if _, _, err := day.Bounds(); err != nil {
-			b.Fatal(err)
-		}
-	}
-}

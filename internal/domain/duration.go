@@ -3,7 +3,6 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
@@ -12,52 +11,39 @@ import (
 var ErrInvalidDuration = errors.New("invalid duration")
 
 // ParseDuration reads a Duration written as whole minutes ("30" or "30m"),
-// whole hours ("2h") or both ("1h30m"). Durations are kept as a count of
-// minutes, never as a time.Duration, so very large values cannot overflow.
+// whole hours ("2h") or both ("1h30m"). Whether it fits in the day is for
+// the planner to decide.
 func ParseDuration(text string) (int64, error) {
-	invalid := func() (int64, error) {
-		return 0, fmt.Errorf("%w: use a positive whole-minute duration (30, 30m, 2h, 1h30m)", ErrInvalidDuration)
-	}
-	number := func(s string) (int64, bool) {
-		if s == "" {
-			return 0, false
-		}
-		for i := 0; i < len(s); i++ {
-			if s[i] < '0' || s[i] > '9' {
-				return 0, false
+	hours, minutes := "0", strings.TrimSuffix(text, "m")
+	if h, m, ok := strings.Cut(text, "h"); ok {
+		hours, minutes = h, "0"
+		if m != "" {
+			if !strings.HasSuffix(m, "m") {
+				return 0, invalidDuration()
 			}
-		}
-		n, err := strconv.ParseInt(s, 10, 64)
-		return n, err == nil
-	}
-	var total int64
-	if h, tail, ok := strings.Cut(text, "h"); ok {
-		hours, valid := number(h)
-		if !valid || hours > math.MaxInt64/60 {
-			return invalid()
-		}
-		total = hours * 60
-		if tail != "" {
-			if !strings.HasSuffix(tail, "m") {
-				return invalid()
-			}
-			minutes, valid := number(strings.TrimSuffix(tail, "m"))
-			if !valid || minutes > math.MaxInt64-total {
-				return invalid()
-			}
-			total += minutes
-		}
-	} else {
-		var valid bool
-		total, valid = number(strings.TrimSuffix(text, "m"))
-		if !valid {
-			return invalid()
+			minutes = strings.TrimSuffix(m, "m")
 		}
 	}
-	if total <= 0 {
-		return invalid()
+	h, errH := digits(hours)
+	m, errM := digits(minutes)
+	total := h*60 + m
+	if errH != nil || errM != nil || total <= 0 {
+		return 0, invalidDuration()
 	}
 	return total, nil
+}
+
+func invalidDuration() error {
+	return fmt.Errorf("%w: use whole minutes or hours, like 30, 30m, 2h or 1h30m", ErrInvalidDuration)
+}
+
+// digits reads a short run of plain digits, refusing signs, spaces and
+// anything long enough to overflow.
+func digits(s string) (int64, error) {
+	if s == "" || len(s) > 5 || strings.Trim(s, "0123456789") != "" {
+		return 0, ErrInvalidDuration
+	}
+	return strconv.ParseInt(s, 10, 64)
 }
 
 // FormatDuration writes minutes in the shortest exact form, so 90 becomes

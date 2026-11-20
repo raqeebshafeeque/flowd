@@ -54,24 +54,7 @@ func TestAForgottenFinishIsPutRight(t *testing.T) {
 	}
 }
 
-func TestASkippedItemCanBeMarkedDoneLater(t *testing.T) {
-	f := newFixture(t)
-	f.on(16)
-	id := f.add("Skipped", "30m").Item.ID
-	f.at("09:00:00")
-	f.now = time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)
-	f.must(Skip, id)
-	f.on(17)
-	if _, err := f.markDone("2026-11-16", id); err != nil {
-		t.Fatal(err)
-	}
-	if it := f.item("2026-11-16", id); it.Status != domain.Done || !it.FinishedAt.Equal(time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)) {
-		t.Fatalf("got %+v", it.Item)
-	}
-}
-
-// Only past days, within the last 7, and only items left incomplete or
-// skipped, once.
+// Only past days, within the last 7, and only items left incomplete, once.
 func TestOnlyRecentUnfinishedPastItemsArePutRight(t *testing.T) {
 	f := newFixture(t)
 	f.on(9)

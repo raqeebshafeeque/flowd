@@ -33,10 +33,7 @@ func TestCompletionOffersOnlyItemsTheCommandFits(t *testing.T) {
 		"start":  inbox + "\tInbox\n",
 		"pause":  deep + "\tDeep work\n",
 		"finish": deep + "\tDeep work\n",
-		"skip":   deep + "\tDeep work\n" + inbox + "\tInbox\n",
-		"reopen": "",
 		"edit":   deep + "\tDeep work\n" + inbox + "\tInbox\n",
-		"events": deep + "\tDeep work\n" + inbox + "\tInbox\n",
 	}
 	for command, want := range cases {
 		if got := s.tab(command, ""); got != want {
@@ -62,9 +59,6 @@ func TestCompletionFollowsTheDateAndCompletesWords(t *testing.T) {
 	}
 	if got := s.tab("edit", ""); got != "" {
 		t.Errorf("today has nothing planned: %q", got)
-	}
-	if got := s.tab("list", "--date", ""); got != "2026-11-17\ttoday\n2026-11-18\ttomorrow\n2026-11-20\tplanned\n" {
-		t.Errorf("dates: %q", got)
 	}
 	if got := s.tab("fin"); got != "finish\tMark an item done for today\n" {
 		t.Errorf("commands: %q", got)

@@ -19,7 +19,7 @@ func history(t *testing.T, steps ...any) (Item, []Event) {
 			t.Fatalf("%s at %s: %v", action, steps[i+1], err)
 		}
 		reason := ReasonUser
-		if action == Reopen {
+		if before.Status == Done {
 			reason = ReasonReopen
 		}
 		events = append(events, Record(&before, it, clock, clock, reason))
@@ -31,7 +31,7 @@ func history(t *testing.T, steps ...any) (Item, []Event) {
 }
 
 func TestRecordedEventsValidate(t *testing.T) {
-	_, events := history(t, Start, "09:00:00", Pause, "09:10:00", Resume, "09:30:00", Finish, "09:35:00", Reopen, "10:00:00", Skip, "10:05:00", Unskip, "10:10:00")
+	_, events := history(t, Start, "09:00:00", Pause, "09:10:00", Start, "09:30:00", Finish, "09:35:00", Start, "10:00:00")
 	for _, e := range events {
 		if err := e.Validate(); err != nil {
 			t.Fatalf("%s to %s: %v", e.FromStatus, e.ToStatus, err)

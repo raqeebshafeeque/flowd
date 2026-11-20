@@ -49,18 +49,13 @@ func Effort(item ItemView) string {
 	return Span(item.WorkNS) + " / " + duration
 }
 
-// TotalDuration is the sum of a day's durations, like 2h30m. The total has
-// no limit, so very large sums are written in minutes.
+// TotalDuration is the sum of a day's durations, like 2h30m.
 func TotalDuration(v View) string {
-	minutes := v.DurationMinutes
-	if minutes == nil || minutes.Sign() == 0 {
+	if v.DurationMinutes == 0 {
 		return "0m"
 	}
-	if minutes.IsInt64() {
-		text, _ := domain.FormatDuration(minutes.Int64())
-		return text
-	}
-	return minutes.String() + "m"
+	text, _ := domain.FormatDuration(v.DurationMinutes)
+	return text
 }
 
 // Label is a status as people read it, like IN PROGRESS.

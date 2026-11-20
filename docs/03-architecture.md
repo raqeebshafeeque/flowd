@@ -4,214 +4,111 @@ How the parts fit together.
 
 ## Overall shape
 
-- One Go program for macOS and Linux. There is no server and no network.
-- One SQLite file. Every action is a single transaction that is written to disk before it returns.
+- One Go program for macOS and Linux, with one SQLite file. No server and no network.
 - The command line and the terminal workspace use exactly the same operations.
 
-## Packages
+```mermaid
+flowchart TD
+    you([You]) --> cli[Command line<br>internal/cli]
+    you --> tui[Workspace<br>internal/tui]
+    agent([AI agent]) -->|--json| cli
+    cli --> planner[Planner<br>internal/planner]
+    tui --> planner
+    planner --> domain[Domain rules<br>internal/domain]
+    planner --> store[Store<br>internal/store]
+    store --> domain
+    store --> db[(flowd.sqlite)]
+    cli -.->|now --short and Tab,<br>read only, no lock| store
+```
+
+Every change goes down the solid arrows: the planner checks it against the domain rules, and the
+store saves it in one transaction. The dotted arrow is the quick read for the status line and tab
+completion, which never writes.
 
 | Package | Job |
 | --- | --- |
 | `cmd/flowd` | Starts the program |
-| `internal/domain` | Items, status changes, time and rules, with no file or network access |
+| `internal/domain` | Items, status changes, time and rules, with no file access |
 | `internal/store` | SQLite tables, transactions and backups |
 | `internal/planner` | The operations every frontend shares |
-| `internal/cli` | Commands and their output |
+| `internal/cli` | Commands, their output, completion and the pickers |
 | `internal/tui` | The terminal workspace |
 | `skills` | The Agent Skill, built into the program |
-| `scripts/notices` | Writes the license texts that `flowd --licenses` prints |
-| `scripts/repocheck` | Tests that keep the repository's own rules: one `doc.go` per package, one test file per source file, and no hidden characters. Never part of the program |
+| `scripts` | License notices and the repository's own checks, never part of the program |
 
-- Packages only depend on the ones below them. The frontends use the planner, the planner uses the
-  store, and the store uses the domain.
-- The rules about items live in the domain. The rules about when something may change, like which
-  days can be planned and how much of a day is left, live in the planner. Both frontends go through
-  the planner, so the command line and the workspace can never disagree.
+Packages only depend on the ones below them. Item rules live in the domain. Rules about when
+something may change, like which days can be planned and how much of a day is left, live in the
+planner, so the command line and the workspace can never disagree.
 
 ## Saving
 
-- A change to an item and its event are written in the same transaction.
-- Work and paused time are never stored. They are worked out from the events when they are needed.
-- Each item has a whole number `position`. A day's visible items are always numbered 1, 2, 3 with
-  no gaps, and no two share a number. A new item takes the next number, and a deleted one gives
-  its number up and the rest close the gap.
-- A new order names every visible item of the day once. It is only saved if that is still exactly
-  the day's items, so an order made before an item was added or deleted is refused. Saving it
-  renumbers the day in one transaction, in two passes: every item first takes its new number as a
-  negative, then they all turn positive, so no two ever share a number along the way.
-- The order is not part of any item's history, so a new order records no events and the history
-  check never sees it.
+- Every change is one transaction, written to disk before it returns. A change to an item and its
+  event are saved together.
+- Work and paused time are never stored. They are worked out from the events.
+- Before a transaction commits, the day is checked against the domain rules and every item's
+  history is replayed. A change that breaks a rule never reaches the disk. The one change accepted
+  after a day ended is marking an incomplete item done, with `corrected_at` set.
+- A change names the revision of the item it was read at. If the item changed since, it is refused.
+- Each visible item has a `position`, numbered 1, 2, 3 with no gaps. A new order names every item
+  once and renumbers the day in two passes, negative first, so no two items ever share a number.
+  The order is not part of any item's history.
 - Closing a day at midnight happens the next time the file is opened, so it works even if flowd
-  was not running. Every operation does this first.
-- Times are stored as UTC text in RFC 3339 format.
-- Before a transaction commits, the whole day is checked against the domain rules and every item's
-  history is replayed. A change that breaks a rule never reaches the disk.
-- The history check accepts exactly one change after a day has ended: marking an incomplete or
-  skipped item done, with `corrected_at` set and nothing else different. A correction that changes
-  anything else, or is dated before the day ended, is refused like any broken history.
-- A change carries a copy of the item as it was read. If the saved item has changed since then, the
-  change is refused instead of overwriting newer work.
-- Only one process uses the file at a time. A second one gets a clear message that the file is
-  busy. The lock lives in a separate `.lock` file next to the database, which is never deleted.
-- The database is created private to you, and its folder too. A file that others can read is
-  refused.
-- When flowd opens a file that already exists, it first checks it read only. The schema version and
-  tables are checked every time. SQLite's full scan for damage reads the whole file, so it runs only
-  when it can tell something: when the file changed since flowd last closed it cleanly, when the last
-  passed scan is more than a day old, when a crash left a journal behind, at the start of a workspace
-  session, and always for `flowd backup` and `flowd doctor`. An empty, damaged or foreign file is
-  refused and left exactly as it was.
-- After each clean close flowd writes a private `flowd.sqlite.check` file with the database's size,
-  modification time and SQLite change counter. Anything wrong with that file only causes a scan,
-  never a skip. On two years of daily use, this makes opening take a few milliseconds.
-- Hard links and special files are refused. A symbolic link to a real database is followed.
+  was not running.
+- One process uses the file at a time, through a `.lock` file next to it. The database and its
+  folder are private to you, and a file others can read is refused.
+- Every open checks the file read only first: its schema version and SQLite's integrity check. On
+  two years of daily use this takes about 15 ms. An empty, damaged or foreign file is refused and
+  left as it was.
 
 ## Upgrading the file
 
-- The schema has a version. Version 2 added the item a copy was carried from, version 3 each
-  item's place in its day, numbering every day in the order it showed before, and version 4 when
-  an item was marked done later. An older file goes through every version in between in the same
-  upgrade.
-- When flowd opens an older file to change it, it first writes a backup, the same one
-  `flowd backup` makes, and then upgrades the file in one transaction. If anything fails, the file
-  stays exactly as it was. Checking a file, `flowd doctor` and the lock free reads never upgrade.
-- After the upgrade an older flowd refuses the file as made by another version, so going back means
-  restoring the backup.
+- The schema has a version. Version 2 added the item a copy came from, version 3 each item's place
+  in its day, and version 4 when an item was marked done later. An older file goes through every
+  version in one upgrade.
+- flowd writes a backup first, then upgrades in one transaction. If anything fails, the file stays
+  as it was. An older flowd refuses the upgraded file, so going back means restoring the backup.
 
 ## Shared operations
 
-- Every operation opens the file, reads the clock once, closes any day whose midnight has passed,
-  does its work and closes the file again. Nothing holds the database while a person is thinking.
-- What counts as today comes from this computer's timezone. Choosing another timezone for a day
-  cannot reopen a day that has already passed here.
-- A change names the revision of the item it was based on, a fingerprint of the item and its whole
-  history. If the item has changed since, the change is refused.
-- Starting, resuming or reopening an item pauses the running one in the same save, at the same
-  instant.
-- Carrying creates every copy in one save, after checking that each source is incomplete or
-  skipped, is from the 7 days before, has no copy still planned, and that they all fit.
-- Every change ends in one of three outcomes. Refused means nothing was saved. Confirmed means it is
-  on disk. Unconfirmed means the save failed in a way that leaves it unknown whether it landed.
-- An unconfirmed change is never retried blindly. flowd looks for it in the saved history first and
-  only then says whether it happened. A day closing at midnight afterwards does not hide that it did.
+- Every operation opens the file, reads the clock once, closes any ended day, does its work and
+  closes the file. Nothing holds the database while a person is thinking.
+- Today comes from this computer's timezone. A new day is saved with it and keeps it.
+- Starting an item pauses the running one in the same save, at the same instant.
+- Every change ends Refused, Confirmed or Unconfirmed. Unconfirmed means it is unknown whether the
+  save landed, and flowd asks you to check with `flowd list` instead of guessing.
+- Which items a command fits is decided once in the domain and shared by completion, the pickers
+  and the checks before a change.
 
-## Text safety
+## Reading without the lock
 
-- One policy in the domain decides which characters a title may hold. Titles are checked against it
-  when they are added or edited, and any older title is cleaned with it when it is read, so every
-  output shows the same visible text, JSON included.
-- A repository test fails if a hidden character appears in the source or the docs. Tests that need
-  one write it as an escape such as `\u202e`.
+- `flowd now --short` and tab completion may run every second, so they open the file read only and
+  without the lock. SQLite's WAL mode gives them the last saved state while another flowd saves.
+- They never create the file, never close a day and never print an error.
+- The workspace reads again only when a stat fingerprint of the file changes, after its own change,
+  at midnight, and every thirty seconds. An empty WAL counts as no WAL, so these readers never look
+  like a change.
 
-## Errors
+## Text and errors
 
-- Every error has a short code, a plain sentence and a hint. Examples of codes are
-  `ERR_ILLEGAL_TRANSITION`, `ERR_CORRUPT`, `ERR_LOCKED` and `ERR_DISK_FULL`.
-- People only ever see the sentence and the hint, on the command line and in the workspace. The
-  code is for scripts and agents, which get the whole error as JSON on stderr with `--json`.
-- The store hands errors back with their cause and never prints anything itself.
-- A damaged or unknown file is refused and left alone, never replaced.
+- One policy in the domain decides which characters a title may hold, checked on add and edit. A
+  repository test fails if a hidden character appears in the source or the docs.
+- Every error has a code, a sentence and a hint. People see the sentence and the hint, and scripts
+  get all three as JSON with `--json`.
 
-## Doctor and backup
+## Backup and doctor
 
-- `flowd backup` writes a consistent copy next to the database, ending in `.bak`. It includes
-  changes that SQLite has not yet moved out of its WAL file. The old backup is only replaced once the
-  new one is complete and on disk.
-- `flowd doctor` checks the file, its permissions, its schema version and its integrity, and
-  whether another flowd is using it. It prints `OK` or the first problem it found and changes
-  nothing. It also warns about titles that hold hidden characters, listing the items, without
-  treating that as damage.
-- `flowd doctor --repair` is the only command that restores the backup. It checks the backup first.
-  The current files are never deleted. They move into a private recovery folder next to the
-  database, so changes made after the backup can still be recovered by hand.
-- Repair writes its plan to a `.repair` file before moving anything. If it is interrupted, flowd
-  refuses to open the database until `flowd doctor --repair` is run again to finish the job.
-
-## Terminal workspace
-
-- The workspace never holds the database between keys. Every second it compares a fingerprint of
-  the database file, taken with stat alone, with the one from its last read. It reads again only when
-  that changed, after its own change, when the day on screen moved on at midnight, and at least
-  every thirty seconds. In between it measures the running work again from what it already has, so
-  the counters keep moving without touching the file. A change made from the command line shows up
-  within a second or two.
-- If a read fails, the last good day stays on screen with the error under it.
-- The workspace remembers which date is on screen, or simply "today" so it moves on by itself at
-  midnight. A read that comes back for a date no longer on screen is ignored.
-- Only one change is in flight at a time. While it saves, other changes are ignored.
-- While the day is being arranged, it is not read again, so a refresh never shuffles the order being
-  made. The planner refuses the new order if the day changed in the meantime.
-- If a change ends unconfirmed, the workspace asks the planner to reconcile it, again on every tick
-  until the history answers, and no other change can start until then.
-- Durations, work and statuses are written by the same planner functions in the workspace and the
-  command line, so they always read the same.
-- Every row is drawn exactly as wide as the window, so resizing never leaves stray characters.
-
-## Status line
-
-- `flowd now --short` has its own read path, because a status bar may ask every second. A normal
-  command takes the lock, may close a day and sometimes scans the whole file, and any of those
-  would get in the way.
-- It opens the file read only, without the lock, and reads today's running item and its history in
-  one read transaction. SQLite's WAL mode gives a reader the last saved state as a whole even while
-  another flowd saves, so no lock is needed, and the reader never blocks a save.
-- It never creates the file or its folder, never closes a day and never scans for damage. It only
-  checks the schema version.
-- SQLite may leave an empty WAL file behind after such a read. An empty WAL holds nothing, so the
-  quick check record and the workspace's fingerprint count it the same as no WAL. Otherwise every
-  status line refresh would look like a change and force a full scan.
-- Work is worked out with the same domain rules as everywhere else, so it matches `flowd list`.
-
-## Tab completion and the pickers
-
-- The shell scripts are a few lines each. They pass the words typed so far to a hidden
-  `flowd __complete` command, and flowd works out the candidates in Go, so every shell offers the
-  same thing. Each candidate is one line, the value and a tab and its meaning.
-- Item IDs and dates are read with the same lock free, read only path as the status line, so a Tab
-  never makes a real command wait, and never writes or creates anything.
-- Which items a command fits is decided once, by the item's own rules in the domain, and shared by
-  completion, the picker and the checks before a change.
-- The pickers are small inline views on the terminal: one for choosing an item, one for ticking
-  items to carry and one for arranging the day. They read the day like any other command, and what
-  they send goes through the normal checks, so they can never do more than typing the IDs would.
-
-## Agents
-
-- Agents use the same command line as people. There is no separate interface for them.
-- The JSON output is a contract. Its fields only change with a new schema version.
-- The Agent Skill lives in `skills/flowd/` and is built into the program. `flowd skill` writes it
-  for the agents asked for, so its instructions always match the installed version. It replaces
-  the folder whole, by writing the new copy beside it and swapping them.
+- `flowd backup` writes a consistent `.bak` copy next to the database, replacing the old one only
+  once the new one is on disk.
+- `flowd doctor` checks the file, its permissions, schema and integrity, and changes nothing.
+- `flowd doctor --repair` checks the backup, moves the current files into a private recovery folder
+  and copies the backup in their place. `flowd reset` moves them the same way and leaves the next
+  open to start a new file. Nothing is ever deleted.
 
 ## Distribution
 
-- Each release has an archive per operating system and processor, with checksums. The archive holds
-  the program, a VERSION file and flowd's license. The licenses of the libraries flowd is built with
-  are inside the program and printed by `flowd --licenses`.
-- An `install.sh` script downloads, checks and installs the program without needing Go. It refuses
-  an archive whose checksum or contents do not match, runs the new program once in an empty private
-  home to check its version, and only then puts the files in place.
-- The installer never installs the Agent Skill anywhere new, never edits shell files and never
-  touches your planner data. It updates the skill where it is already installed, and prints how to
-  add the skill and tab completion. The database is upgraded by flowd itself, the first time it
-  changes the file.
-- If installing fails halfway, the previous version is put back. Two installers cannot run at once.
-- `install.sh --from DIR` installs from release files that are already downloaded.
-- Every release signs build provenance for its archives, checksums and installer, proving they were
-  built by this repository's release workflow. The checksum alone only proves a file matches another
-  file from the same place.
-- When the GitHub CLI is installed and signed in, `install.sh` verifies that provenance before it
-  runs anything it downloaded and refuses on a mismatch. Without it, the installer says so and relies
-  on the checksum. `--require-attestation` refuses to install without the proof.
-- The release workflow only gets permission to sign in the job that publishes, and it installs each
-  draft with `--require-attestation` before publishing it.
-- The programs are fully static, with no system libraries, so they run on any Linux, including
-  minimal ones like Alpine. Building them as position independent would make them depend on the
-  system's loader, so that is not done.
-- Releases are cut by release-please from the commit history. Merging its release PR tags the
-  version and makes a draft release. CI waits until GitHub lists that draft, builds the archives
-  into it, installs it with the real installer and only publishes it if that works. If the tag
-  ever has more than one release, or the draft has no files, the release stops before anything
-  is signed or published.
-- CI builds a full release and installs it with the real installer on every pull request, on Linux
-  and macOS.
+- Each release has a static archive per system with checksums, and signed build provenance.
+- `install.sh` checks the checksum and, when the GitHub CLI is signed in, the provenance. It runs
+  the new program once before putting it in place, and puts the old one back if anything fails. It
+  never edits shell files or touches your data.
+- release-please cuts releases from the commit history. CI builds every release, installs it with
+  the real installer and only then publishes it.

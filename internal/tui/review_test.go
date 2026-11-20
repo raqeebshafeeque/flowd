@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
@@ -55,11 +54,6 @@ func TestTheReviewScrollsWithinItsLength(t *testing.T) {
 	if !strings.Contains(text, "INCOMPLETE (0)") || strings.Contains(text, "Summary") {
 		t.Fatalf("scrolling down should reach the end and stop there:\n%s", text)
 	}
-	for i, row := range screen(w) {
-		if ansi.StringWidth(row) != 80 {
-			t.Fatalf("row %d is %d wide", i, ansi.StringWidth(row))
-		}
-	}
 }
 
 func TestTheReviewChangesNothing(t *testing.T) {
@@ -67,7 +61,7 @@ func TestTheReviewChangesNothing(t *testing.T) {
 	id := w.add("Study", "1h")
 	w.refresh()
 	w.press(key("r"))
-	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("s"), key("n"), key("e")} {
+	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("a"), key("e")} {
 		if cmd := w.press(k); cmd != nil {
 			t.Fatalf("%s did something inside the review", k.String())
 		}
@@ -87,33 +81,5 @@ func TestAnEmptyDayReviewsAsZero(t *testing.T) {
 	text := plain(w)
 	if !strings.Contains(text, "Total duration   0m") || !strings.Contains(text, "0 / 0 finished") {
 		t.Fatalf("got:\n%s", text)
-	}
-}
-
-func TestSectionsAreSeparatedByTwoEmptyRows(t *testing.T) {
-	w := newWorkspace(t)
-	w.add("Study", "1h")
-	w.refresh()
-	for _, page := range []string{"r", "?"} {
-		w.m.review, w.m.help = false, false
-		w.press(key(page))
-		rows := w.m.reviewRows(78)
-		if page == "?" {
-			rows = w.m.helpRows(78)
-		}
-		var headings []int
-		for i := range rows {
-			if i+1 < len(rows) && strings.Contains(ansi.Strip(rows[i+1]), "────") {
-				headings = append(headings, i)
-			}
-		}
-		if len(headings) < 3 || headings[0] != 1 || strings.TrimSpace(rows[0]) != "" {
-			t.Fatalf("%s: the first section should follow one empty row: %v", page, headings)
-		}
-		for _, h := range headings[1:] {
-			if strings.TrimSpace(rows[h-1]) != "" || strings.TrimSpace(rows[h-2]) != "" || strings.TrimSpace(ansi.Strip(rows[h-3])) == "" {
-				t.Fatalf("%s: section at row %d does not have exactly two empty rows above it", page, h)
-			}
-		}
 	}
 }

@@ -85,17 +85,8 @@ func TestReadingAnEmptyDayCreatesNothing(t *testing.T) {
 	}
 }
 
-func TestADayKeepsItsTimezone(t *testing.T) {
+func TestAnImpossibleDateIsRefused(t *testing.T) {
 	f := newFixture(t)
-	if _, err := f.client.Do(ctx, Intent{Operation: Add, Selection: Selection{Timezone: "Asia/Kolkata"}, Title: text("Study"), Duration: text("1h")}); err != nil {
-		t.Fatal(err)
-	}
-	if state := f.read(Selection{}); state.Day.Timezone != "Asia/Kolkata" {
-		t.Fatalf("got %q", state.Day.Timezone)
-	}
-	if _, err := f.client.Read(ctx, Selection{Timezone: "UTC"}); !errors.Is(err, ErrInput) {
-		t.Fatal("asking for another timezone on a saved day must be refused", err)
-	}
 	if _, err := f.client.Read(ctx, Selection{Date: "2026-02-30"}); !errors.Is(err, ErrInput) {
 		t.Fatal("an impossible date must be refused", err)
 	}
@@ -106,7 +97,7 @@ func TestStaleChangesAreRefused(t *testing.T) {
 	item := f.add("Study", "1h").Item
 	old := f.read(Selection{}).Revisions[item.ID]
 	f.must(Start, item.ID)
-	if _, err := f.client.Do(ctx, Intent{Operation: Skip, ItemID: item.ID, Revision: old}); !errors.Is(err, ErrStale) {
+	if _, err := f.client.Do(ctx, Intent{Operation: Finish, ItemID: item.ID, Revision: old}); !errors.Is(err, ErrStale) {
 		t.Fatal("a change based on an old read must be refused", err)
 	}
 }

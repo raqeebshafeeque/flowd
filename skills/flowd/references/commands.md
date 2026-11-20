@@ -5,7 +5,6 @@ be given only once. Put `--` before a title that starts with a dash.
 
 - `--db <PATH>` uses another database file.
 - `--date <YYYY-MM-DD>` picks a day other than today.
-- `--timezone <ZONE>` sets the timezone of a day that does not exist yet, like `Asia/Kolkata`.
 - `--json` prints JSON instead of text.
 - `--version`, `--help` and `--licenses` print the version, the help or the licenses of the code
   flowd is built with. They touch no files.
@@ -27,13 +26,13 @@ JSON:
 
 ```json
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "date": "2026-11-17",
   "timezone": "Asia/Kolkata",
   "at": "2026-11-17T04:30:00Z",
   "items": [ITEM, ...],
   "running": ITEM or null,
-  "status_counts": {"todo": 1, "in_progress": 0, "paused": 0, "done": 0, "skipped": 0, "incomplete": 0},
+  "status_counts": {"todo": 1, "in_progress": 0, "paused": 0, "done": 0, "incomplete": 0},
   "duration_minutes": 90,
   "work_ns": 0
 }
@@ -74,44 +73,29 @@ when the user asks.
 
 ### carry
 
-`flowd carry <ID> [<ID>...]` copies incomplete or skipped items from the 7 days before the day onto
+`flowd carry <ID> [<ID>...]` copies incomplete items from the 7 days before the day onto
 it, today unless `--date` names a later day. Each becomes a new todo item with the same title and
 Duration, and `carried_from` set to the original's ID. The originals do not change. JSON is the list
 of new items. `flowd carry --all` carries everything that can be carried. Everything is carried in
 one save, and if it does not all fit in what is left of the day, nothing is carried and flowd
-refuses with `ERR_DURATION_LIMIT`. An item that is not incomplete or skipped, is too old, or still
+refuses with `ERR_DURATION_LIMIT`. An item that is not incomplete, is too old, or still
 has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user asked for.
 
 ### start
 
-`flowd start <ID>` starts a todo item and pauses whatever was running.
+`flowd start <ID>` starts a todo item, resumes a paused one or reopens a done one, and pauses
+whatever was running.
 
 ### pause
 
 `flowd pause <ID>` pauses the running item.
 
-### resume
-
-`flowd resume <ID>` continues a paused item and pauses whatever was running.
-
 ### finish
 
 `flowd finish <ID>` marks a running or paused item done for today. On one of the last 7 days,
-`flowd finish --date <DATE> <ID>` marks an item that was left incomplete or skipped done after all,
-for a forgotten finish. Its work stays what was tracked and `corrected_at` says when it was put
-right. Only do this when the user says the item was really finished.
-
-### skip
-
-`flowd skip <ID>` drops a todo, running or paused item for today.
-
-### unskip
-
-`flowd unskip <ID>` brings back a skipped item, as todo if it never started, otherwise paused.
-
-### reopen
-
-`flowd reopen <ID>` starts a done item again and pauses whatever was running.
+`flowd finish --date <DATE> <ID>` marks an item that was left incomplete done after all, for a
+forgotten finish. Its work stays what was tracked and `corrected_at` says when it was put right.
+Only do this when the user says the item was really finished.
 
 ### now
 
@@ -123,21 +107,22 @@ line for a person's status bar, and nothing when nothing runs. Agents use `flowd
 `flowd review` shows the total Duration, the recorded work, how many items are finished and every
 item grouped by status. JSON is the same as `list`.
 
-### events
-
-`flowd events <ID>` shows the recorded history of an item. JSON is a list of events with `seq`,
-`item_id`, `from_status`, `to_status`, `occurred_at`, `recorded_at`, `reason`, `before` and `after`.
-
 ### backup
 
 `flowd backup` writes a backup next to the database. JSON is `{"backup": "PATH"}`.
 
 ### doctor
 
-`flowd doctor` checks the database and prints `OK` or the first problem. It also warns about item
-titles that hold hidden characters, which are shown as placeholders like `<U+202E>`. JSON is
-`{"status": "ok", "unsafe_titles": [ID, ...]}`. `flowd doctor --repair` replaces the database with
+`flowd doctor` checks the database and prints `OK` or the first problem. JSON is
+`{"status": "ok"}`. `flowd doctor --repair` replaces the database with
 its backup and moves the current files into a recovery folder. Only run it when the user asks.
+
+### reset
+
+`flowd reset --yes` starts over with an empty planner. Nothing is deleted: the current files move
+into a private recovery folder next to the database. JSON is `{"status": "reset", "recovery":
+"PATH"}`. Without `--yes` flowd asks a person to type `reset`, and refuses with `ERR_USAGE` and exit
+2 everywhere else. Only run it when the user clearly asked to empty the whole planner.
 
 ### completion
 

@@ -56,9 +56,9 @@ func TestPlanningTodayFollowsThisComputersZone(t *testing.T) {
 	f := newFixture(t)
 	f.client.Zone, _ = time.LoadLocation("Asia/Kolkata")
 	f.at("20:00:00") // already 18 November in India
-	_, err := f.client.Do(ctx, Intent{Operation: Add, Selection: Selection{Date: "2026-11-17", Timezone: "UTC"}, Title: text("Sneaky"), Duration: text("1h")})
+	_, err := f.client.Do(ctx, Intent{Operation: Add, Selection: Selection{Date: "2026-11-17"}, Title: text("Sneaky"), Duration: text("1h")})
 	if !errors.Is(err, ErrPastDay) {
-		t.Fatal("choosing a different timezone must not reopen yesterday", err)
+		t.Fatal("a day that has ended here cannot be planned", err)
 	}
 }
 
@@ -136,24 +136,6 @@ func TestMidnightClosesTheDayOnTheNextOperation(t *testing.T) {
 	}
 }
 
-func TestEveryStatusActionWorksThroughThePlanner(t *testing.T) {
-	f := newFixture(t)
-	item := f.add("Study", "1h").Item
-	steps := []struct {
-		op   Operation
-		want domain.Status
-	}{{Start, domain.InProgress}, {Pause, domain.Paused}, {Resume, domain.InProgress}, {Finish, domain.Done}, {Reopen, domain.InProgress}, {Skip, domain.Skipped}, {Unskip, domain.Paused}}
-	for i, s := range steps {
-		f.now = f.now.Add(time.Duration(i+1) * time.Minute)
-		if r := f.must(s.op, item.ID); r.Item.Status != s.want {
-			t.Fatalf("%s gave %s", s.op, r.Item.Status)
-		}
-	}
-	if _, err := f.change(Pause, item.ID); !errors.Is(err, domain.ErrIllegalTransition) {
-		t.Fatal("pausing a paused item must be refused", err)
-	}
-}
-
 func addDuration(f *fixture, selection Selection, duration string) (Result, error) {
 	return f.client.Do(ctx, Intent{Operation: Add, Selection: selection, Title: text("Task"), Duration: text(duration)})
 }
@@ -184,7 +166,7 @@ func TestOnlyUnfinishedWorkHoldsTime(t *testing.T) {
 	f := newFixture(t)
 	f.at("20:00:00")
 	done, _ := addDuration(f, Selection{}, "2h")
-	skipped, _ := addDuration(f, Selection{}, "1h")
+	deleted, _ := addDuration(f, Selection{}, "1h")
 	if _, err := addDuration(f, Selection{}, "1h"); err != nil {
 		t.Fatal(err)
 	}
@@ -193,9 +175,9 @@ func TestOnlyUnfinishedWorkHoldsTime(t *testing.T) {
 	}
 	f.must(Start, done.Item.ID)
 	f.must(Finish, done.Item.ID)
-	f.must(Skip, skipped.Item.ID)
+	f.must(Delete, deleted.Item.ID)
 	if _, err := addDuration(f, Selection{}, "3h"); err != nil {
-		t.Fatal("done and skipped items must free their time:", err)
+		t.Fatal("done and deleted items must free their time:", err)
 	}
 }
 

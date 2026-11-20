@@ -13,7 +13,7 @@ import (
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 )
 
-// carry copies incomplete or skipped items from the last seven days onto
+// carry copies incomplete items from the last seven days onto
 // the day, today unless --date names a later one. The items are named by
 // ID, all of them with --all, or picked at a terminal.
 func carry(ctx context.Context, out io.Writer, o options, client planner.Client, selection planner.Selection, env Env) error {
@@ -30,7 +30,7 @@ func carry(ctx context.Context, out io.Writer, o options, client planner.Client,
 			if o.json {
 				return writeJSON(out, []planner.ItemView{})
 			}
-			_, err := fmt.Fprintf(out, "Nothing to carry from the last %d days.\n", domain.CarryDays)
+			_, err := fmt.Fprintf(out, "Nothing to carry from the last %d days.\n", domain.RecentDays)
 			return err
 		}
 		switch {

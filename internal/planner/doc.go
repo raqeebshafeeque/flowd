@@ -8,6 +8,6 @@
 //
 // A change names the item revision it was based on. If the item changed in
 // the meantime the change is refused instead of overwriting newer work. When
-// a save cannot be confirmed, the result says so, and Reconcile can later
-// prove from the saved history whether it happened.
+// a save cannot be confirmed, the result says so, and the next read shows
+// whether it happened.
 package planner

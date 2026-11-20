@@ -6,5 +6,5 @@
 //
 // Only one operation owns the file at a time. A damaged file, an unknown
 // schema or an unsafe path is refused and left exactly as it was. The store
-// never prints anything; it returns errors with their original cause.
+// never prints anything. It returns errors with their original cause.
 package store

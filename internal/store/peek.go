@@ -79,27 +79,6 @@ func PeekItems(ctx context.Context, path, date string) (items []domain.Item, err
 	return items, err
 }
 
-// PeekDates reads the most recent planned dates, newest first, the same way
-// as Peek, for completing --date.
-func PeekDates(ctx context.Context, path string, limit int) (dates []string, err error) {
-	err = peek(ctx, path, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, "SELECT date FROM days ORDER BY date DESC LIMIT ?", limit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var date string
-			if err := rows.Scan(&date); err != nil {
-				return err
-			}
-			dates = append(dates, date)
-		}
-		return rows.Err()
-	})
-	return dates, err
-}
-
 // peek opens the database read only without the lock, checks its schema and
 // runs read in one read transaction, so everything read comes from the same
 // saved state. A missing database reads as empty, and nothing is created.
@@ -114,9 +93,6 @@ func peek(ctx context.Context, path string, read func(*sql.Tx) error) (err error
 		return nil
 	} else {
 		return err
-	}
-	if _, err := os.Stat(absolute + repairSuffix); err == nil {
-		return ErrIncompleteRepair
 	}
 	for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
 		if err := plainFile(absolute + suffix); err != nil {

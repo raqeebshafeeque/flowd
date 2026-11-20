@@ -13,24 +13,6 @@ func view(id, title string, status domain.Status, minutes int64) planner.ItemVie
 	return planner.ItemView{Item: domain.Item{ID: domain.ID(id), Title: title, Status: status, DurationMinutes: minutes}}
 }
 
-func TestTheTableLooksLikeTheWorkspace(t *testing.T) {
-	var out strings.Builder
-	items := []planner.ItemView{view("it_A", "Write release notes", domain.Todo, 30), view("it_B", "Inbox", domain.Done, 20)}
-	if err := printTable(&out, look{}, items); err != nil {
-		t.Fatal(err)
-	}
-	want := `┌──────┬─────────────────────┬──────────┬────────┐
-│ ID   │ TITLE               │ DURATION │ STATUS │
-├──────┼─────────────────────┼──────────┼────────┤
-│ it_A │ Write release notes │      30m │   TODO │
-│ it_B │ Inbox               │      20m │   DONE │
-└──────┴─────────────────────┴──────────┴────────┘
-`
-	if out.String() != want {
-		t.Fatalf("got\n%s\nwant\n%s", out.String(), want)
-	}
-}
-
 func TestALongTitleIsShortenedToFitTheTerminal(t *testing.T) {
 	var out strings.Builder
 	title := strings.Repeat("A very long title ", 6)

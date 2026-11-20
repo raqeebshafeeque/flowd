@@ -104,7 +104,7 @@ func TestThePickerMovesAndWraps(t *testing.T) {
 	}
 	// Starting never moves an item, so First is still the first row.
 	s.keys = []string{"j", "k", "enter"}
-	if out := s.ok("skip"); !contains(out, "│ First │") || !contains(out, "SKIPPED") {
+	if out := s.ok("delete", "--yes"); !contains(out, "│ First │") {
 		t.Fatalf("j then k should come back to the first row: %q", out)
 	}
 }

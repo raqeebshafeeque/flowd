@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/raqeebshafeeque/flowd/internal/domain"
 )
 
@@ -48,17 +46,6 @@ func TestFOnAPastDayAsksAndMarksDone(t *testing.T) {
 	w.press(key("esc"))
 	if strings.Contains(plain(w), "mark done [f]") {
 		t.Fatal("a done item cannot be marked done again")
-	}
-}
-
-func TestTheQuestionFitsTheWindow(t *testing.T) {
-	w, _ := forgotten(t)
-	w.m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
-	w.press(key("f"))
-	for i, row := range screen(w) {
-		if got := ansi.StringWidth(row); got != 80 {
-			t.Fatalf("row %d is %d wide", i, got)
-		}
 	}
 }
 

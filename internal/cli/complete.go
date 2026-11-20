@@ -7,7 +7,6 @@ import (
 	"io"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/internal/store"
@@ -29,18 +28,14 @@ var summaries = map[string]string{
 	"add":        "Plan an item",
 	"edit":       "Change an item's title or duration",
 	"delete":     "Delete an item",
-	"start":      "Start an item",
+	"start":      "Start, resume or reopen an item",
 	"pause":      "Pause the running item",
-	"resume":     "Continue a paused item",
 	"finish":     "Mark an item done for today",
-	"skip":       "Drop an item for today",
-	"unskip":     "Bring back a skipped item",
-	"reopen":     "Keep working on a finished item",
 	"now":        "Show the running item",
 	"review":     "Show the day's totals and statuses",
-	"events":     "Show an item's history",
 	"backup":     "Write a backup of the database",
 	"doctor":     "Check the database",
+	"reset":      "Start over with an empty planner",
 	"completion": "Print the tab completion script for a shell",
 	"carry":      "Copy unfinished items from the last 7 days",
 	"order":      "Put the day's items in the order you want",
@@ -56,7 +51,6 @@ type option struct {
 var globalOptions = []option{
 	{"db", "Use another database", true},
 	{"date", "Use another day", true},
-	{"timezone", "Timezone for a new day", true},
 	{"json", "Print JSON", false},
 	{"help", "Print the help", false},
 }
@@ -65,7 +59,8 @@ var commandOptions = map[string][]option{
 	"edit":   {{"title", "A new title", true}, {"duration", "A new duration", true}},
 	"delete": {{"yes", "Delete without asking", false}},
 	"doctor": {{"repair", "Restore the backup", false}},
-	"now":    {{"short", "One line for a status bar", false}, {"max", "Longest title for --short", true}},
+	"reset":  {{"yes", "Reset without asking", false}},
+	"now":    {{"short", "One line for a status bar", false}},
 	"skill":  {{"claude", "Install it for Claude Code", false}, {"codex", "Install it for Codex", false}},
 	"carry":  {{"all", "Carry every leftover", false}},
 }
@@ -120,9 +115,6 @@ func candidates(ctx context.Context, before []string, current string, env Env) [
 		}
 		if command == "" {
 			command = word
-			if _, err := time.Parse("2006-01-02", word); err == nil {
-				command, date = "list", word
-			}
 			continue
 		}
 		positional++
@@ -131,9 +123,6 @@ func candidates(ctx context.Context, before []string, current string, env Env) [
 	if len(before) > 0 {
 		if name, ok := optionName(before[len(before)-1]); ok && !strings.Contains(before[len(before)-1], "=") {
 			if o, known := findOption(command, name); known && o.value {
-				if name == "date" {
-					return matching(dateChoices(ctx, clientFor(db, env), env), current)
-				}
 				return nil
 			}
 		}
@@ -178,27 +167,6 @@ func itemChoices(ctx context.Context, client planner.Client, date, command strin
 	for _, item := range items {
 		if command == "events" || planner.Fits(planner.Operation(command), item) {
 			out = append(out, candidate{string(item.ID), item.Title})
-		}
-	}
-	return out
-}
-
-// dateChoices are today, tomorrow and the days already planned.
-func dateChoices(ctx context.Context, client planner.Client, env Env) []candidate {
-	now := time.Now()
-	if env.Now != nil {
-		now = env.Now()
-	}
-	zone := env.Zone
-	if zone == nil {
-		zone = time.UTC
-	}
-	today := now.In(zone)
-	out := []candidate{{today.Format("2006-01-02"), "today"}, {today.AddDate(0, 0, 1).Format("2006-01-02"), "tomorrow"}}
-	planned, _ := client.Dates(ctx, 30)
-	for _, date := range planned {
-		if date != out[0].value && date != out[1].value {
-			out = append(out, candidate{date, "planned"})
 		}
 	}
 	return out

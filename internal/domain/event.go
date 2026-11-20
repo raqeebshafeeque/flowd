@@ -12,7 +12,7 @@ type Reason string
 const (
 	ReasonUser      Reason = "user"       // someone asked for it
 	ReasonAutoPause Reason = "auto_pause" // another item started
-	ReasonReopen    Reason = "reopen"     // a done item was reopened
+	ReasonReopen    Reason = "reopen"     // a done item was started again
 	ReasonDayEnd    Reason = "day_end"    // the day closed at midnight
 )
 
@@ -168,7 +168,7 @@ func (e Event) replay() (Item, error) {
 
 // reachable reports whether some action takes item to the status to.
 func reachable(item Item, to Status) bool {
-	for _, a := range []Action{Start, Pause, Resume, Finish, Skip, Unskip, Reopen} {
+	for _, a := range []Action{Start, Pause, Finish} {
 		if got, err := item.target(a); err == nil && got == to {
 			return true
 		}

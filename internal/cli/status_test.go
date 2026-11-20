@@ -18,7 +18,7 @@ func TestTheStatusLineShowsTheRunningItem(t *testing.T) {
 		t.Fatalf("got %q", out)
 	}
 	s.now = s.now.Add(30 * time.Minute)
-	if out := s.ok("now", "--short", "--max", "9"); out != "Deep wor… 1h12m/1h +12m\n" {
+	if out := s.ok("now", "--short"); out != "Deep work on the parser 1h12m/1h +12m\n" {
 		t.Fatalf("past its duration: %q", out)
 	}
 	s.ok("pause", s.id("Deep work on the parser"))
@@ -41,7 +41,6 @@ func TestTheStatusLineNeverFailsLoudly(t *testing.T) {
 	if out, errOut, code := s.run("now", "--short"); out != "" || errOut != "" || code != 0 {
 		t.Fatalf("broken: %q %q %d", out, errOut, code)
 	}
-	s.fails(2, "ERR_USAGE", "now", "--short", "--max", "0")
 }
 
 // After midnight the running item belongs to yesterday. The status line
@@ -69,7 +68,7 @@ func TestTheStatusLineDoesNotCloseADay(t *testing.T) {
 	if files() != before {
 		t.Fatalf("the status line wrote to the database:\n%s\n%s", before, files())
 	}
-	if day := s.ok("--json", "events", s.id("Late", "--date", "2026-11-17"), "--date", "2026-11-17"); !strings.Contains(day, "day_end") {
+	if day := s.ok("--json", "--date", "2026-11-17"); !strings.Contains(day, `"status":"incomplete"`) {
 		t.Fatalf("the next real command should still close the day: %s", day)
 	}
 }

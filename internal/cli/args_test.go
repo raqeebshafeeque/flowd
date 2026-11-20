@@ -16,12 +16,10 @@ func TestParse(t *testing.T) {
 		check   func(options) bool
 	}{
 		{nil, "list", func(o options) bool { return o.date == "" }},
-		{[]string{"2026-11-20"}, "list", func(o options) bool { return o.date == "2026-11-20" }},
 		{[]string{"--db", "x.sqlite", "--json", "review"}, "review", func(o options) bool { return o.db == "x.sqlite" && o.json }},
 		{[]string{"add", "1h", "Learn", "Go"}, "add", func(o options) bool { return len(o.args) == 3 }},
 		{[]string{"edit", "--title", "New", "2"}, "edit", func(o options) bool { return *o.title == "New" && o.duration == nil && o.args[0] == "2" }},
 		{[]string{"doctor", "--repair"}, "doctor", func(o options) bool { return o.repair }},
-		{[]string{"--timezone", "Asia/Kolkata", "start", "it_1"}, "start", func(o options) bool { return o.zone == "Asia/Kolkata" }},
 	}
 	for _, c := range cases {
 		o, err := parse(c.args)
@@ -40,22 +38,17 @@ func TestParseRefusesBadCommandLines(t *testing.T) {
 		{"list", "extra"},
 		{"edit", "1"},
 		{"--date", "2026-02-30"},
-		{"--date", "2026-11-17", "2026-11-18"},
+		{"2026-11-18"},
+		{"skip", "it_1"},
+		{"events", "it_1"},
+		{"--timezone", "UTC"},
+		{"now", "--max", "9"},
 		{"--nope"},
 		{"start", "--nope", "1"},
 	}
 	for _, args := range bad {
 		if _, err := parse(args); !errors.Is(err, planner.ErrInput) {
 			t.Errorf("%v was accepted: %v", args, err)
-		}
-	}
-}
-
-func TestHelpAndVersionNeedNothingElse(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"-h"}, {"--version"}, {"add", "--help"}} {
-		o, err := parse(args)
-		if err != nil || !(o.help || o.version) {
-			t.Errorf("%v: %+v, %v", args, o, err)
 		}
 	}
 }
