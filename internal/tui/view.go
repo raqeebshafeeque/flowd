@@ -84,8 +84,10 @@ func (m *model) frame() []string {
 	return append(rows, m.border("└", "┘"))
 }
 
-// detailsHeight is about a quarter of the body, never less than nine rows.
-func detailsHeight(body int) int { return min(max(9, body/4+1), body-3) }
+// detailsHeight is about a quarter of the body, never less than ten rows:
+// the heading, its rule, the seven fields and a correction when there is
+// one.
+func detailsHeight(body int) int { return min(max(10, body/4+1), body-3) }
 
 func (m *model) border(left, right string) string {
 	return m.style.paint("border", left+strings.Repeat("─", m.width-2)+right)
@@ -230,6 +232,9 @@ func (m *model) detailRows(width, height int) []string {
 		{"Started At", m.instant(item.StartedAt)},
 		{"Finished At", m.instant(item.FinishedAt)},
 	}
+	if item.CorrectedAt != nil {
+		fields = append(fields, [2]string{"Corrected", "Marked done later, on " + item.CorrectedAt.In(m.zone).Format("Mon 2 Jan")})
+	}
 	for _, f := range fields {
 		rows = append(rows, fmt.Sprintf(" %-12s %s", f[0], f[1]))
 	}
@@ -260,6 +265,8 @@ func (m *model) footer(width int) []string {
 		return one(m.formFooter())
 	case m.deleting != "":
 		return []string{m.deleteQuestion(width)}
+	case m.correcting != "":
+		return []string{m.correctQuestion(width)}
 	case m.help:
 		return one(" scroll [j/k]  back [esc]")
 	case m.carrying != nil:
@@ -285,6 +292,9 @@ func (m *model) hints() []string {
 			for _, op := range allowed(m.state.View.Items[i]) {
 				hints = append(hints, string(op)+" ["+actionKey(op)+"]")
 			}
+		}
+		if m.correctable() {
+			hints = append(hints, "mark done [f]")
 		}
 		if m.plannable() {
 			hints = append(hints, "edit [e]", "delete [d]")

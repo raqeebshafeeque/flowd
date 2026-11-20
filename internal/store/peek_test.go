@@ -33,7 +33,7 @@ func TestPeekReadsWhileAnotherFlowdHoldsTheLock(t *testing.T) {
 }
 
 func TestPeekRefusesAnotherVersionAndChangesNothing(t *testing.T) {
-	path := writeRaw(t, "CREATE TABLE days(x)", "PRAGMA user_version = 4")
+	path := writeRaw(t, "CREATE TABLE days(x)", "PRAGMA user_version = 5")
 	before, _ := os.ReadFile(path)
 	if _, err := Peek(ctx, path, "2026-11-17"); !errors.Is(err, ErrVersion) {
 		t.Fatalf("got %v", err)

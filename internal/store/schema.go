@@ -13,10 +13,10 @@ import (
 )
 
 // SchemaVersion is the database layout this build reads and writes.
-// Version 2 added items.carried_from and version 3 items.position. An older
-// file is upgraded the first time this build opens it to write, after a
-// backup, through every version in between.
-const SchemaVersion = 3
+// Version 2 added items.carried_from, version 3 items.position and version 4
+// items.corrected_at. An older file is upgraded the first time this build
+// opens it to write, after a backup, through every version in between.
+const SchemaVersion = 4
 
 // olderColumns are what each table had in the versions this build can
 // upgrade, used to check an older file before upgrading it.
@@ -28,7 +28,12 @@ var olderColumns = map[int]map[string]string{
 	},
 	2: {
 		"days":        dayColumns,
-		"items":       itemColumns,
+		"items":       "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at,carried_from",
+		"item_events": eventColumns,
+	},
+	3: {
+		"days":        dayColumns,
+		"items":       "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at,carried_from,position",
 		"item_events": eventColumns,
 	},
 }
@@ -142,8 +147,15 @@ func upgrade(ctx context.Context, db *sql.DB, path string) (err error) {
 			return fmt.Errorf("upgrade to version 2: %w", err)
 		}
 	}
-	if err := upgradeToThree(ctx, tx); err != nil {
-		return fmt.Errorf("upgrade to version 3: %w", err)
+	// Version 4's column comes before version 3's numbering, because that
+	// reads the items with every column this build knows.
+	if _, err := tx.ExecContext(ctx, "ALTER TABLE items ADD COLUMN corrected_at TEXT"); err != nil {
+		return fmt.Errorf("upgrade to version 4: %w", classify(err))
+	}
+	if version < 3 {
+		if err := upgradeToThree(ctx, tx); err != nil {
+			return fmt.Errorf("upgrade to version 3: %w", err)
+		}
 	}
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf("PRAGMA user_version = %d", SchemaVersion)); err != nil {
 		return classify(err)

@@ -142,3 +142,52 @@ func TestRecordDetachesTheItems(t *testing.T) {
 		t.Fatal("changing the item later changed the recorded event")
 	}
 }
+
+// closed is an item on testDay that the day's end left incomplete, with its
+// history.
+func closed(t *testing.T) (Item, []Event) {
+	t.Helper()
+	it, events := history(t, Start, "09:00:00", Pause, "09:30:00")
+	before := it.Clone()
+	cutoff := at("23:59:59").Add(time.Second)
+	if _, err := it.CloseDay(testDay, cutoff); err != nil {
+		t.Fatal(err)
+	}
+	events = append(events, Record(&before, it, cutoff, cutoff, ReasonDayEnd))
+	events[len(events)-1].Seq = int64(len(events))
+	return it, events
+}
+
+// Marking a past item done is the one change accepted after its day ended,
+// and only when nothing but the status changes.
+func TestACorrectionIsTheOnlyChangeAfterTheDay(t *testing.T) {
+	it, events := closed(t)
+	later := at("23:59:59").Add(10 * time.Hour)
+	before := it.Clone()
+	if err := it.CorrectToDone(later); err != nil {
+		t.Fatal(err)
+	}
+	good := Record(&before, it, later, later, ReasonUser)
+	if err := good.ValidateFor(testDay); err != nil {
+		t.Fatalf("a real correction must be accepted: %v", err)
+	}
+	good.Seq = int64(len(events) + 1)
+	m, err := Measure(testDay, it, append(events, good), later)
+	if err != nil || m.WorkNS != int64(30*time.Minute) {
+		t.Fatalf("the work stays what was tracked: %+v, %v", m, err)
+	}
+	forged := it.Clone()
+	forged.Title = "Something else"
+	if err := Record(&before, forged, later, later, ReasonUser).ValidateFor(testDay); err == nil {
+		t.Fatal("a correction that changes anything else must be refused")
+	}
+	early := it.Clone()
+	stamp := at("12:00:00")
+	early.CorrectedAt, early.UpdatedAt = &stamp, &stamp
+	if err := Record(&before, early, stamp, stamp, ReasonUser).ValidateFor(testDay); err == nil {
+		t.Fatal("a correction before the day ended must be refused")
+	}
+	if err := it.CorrectToDone(later.Add(time.Hour)); !errors.Is(err, ErrIllegalTransition) {
+		t.Fatalf("an item is corrected once: %v", err)
+	}
+}

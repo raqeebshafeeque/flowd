@@ -68,7 +68,9 @@ func Measure(day Day, item Item, events []Event, observed time.Time) (Metrics, e
 		if err := e.ValidateFor(day); err != nil {
 			return result, err
 		}
-		if e.ItemID != item.ID || e.OccurredAt.After(observed) || e.OccurredAt.Before(lastOccurred) || e.RecordedAt.Before(lastRecorded) || (i > 0 && e.Seq <= lastSeq) {
+		// A correction comes after the day ended and changes nothing that is
+		// measured, so it is the one event allowed past the cutoff.
+		if e.ItemID != item.ID || (e.OccurredAt.After(observed) && !e.Correction()) || e.OccurredAt.Before(lastOccurred) || e.RecordedAt.Before(lastRecorded) || (i > 0 && e.Seq <= lastSeq) {
 			return result, fmt.Errorf("%w: events are out of order", ErrInvalidEvidence)
 		}
 		if (previous == nil) != (e.Before == nil) || (previous != nil && !Same(*previous, *e.Before)) {

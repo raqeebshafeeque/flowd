@@ -14,7 +14,7 @@ import (
 
 const (
 	dayColumns   = "id,date,timezone,created_at,updated_at"
-	itemColumns  = "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at,carried_from"
+	itemColumns  = "id,day_id,title,status,duration_minutes,started_at,finished_at,closed_at,archived,created_at,updated_at,carried_from,corrected_at"
 	eventColumns = "seq,item_id,from_status,to_status,occurred_at,recorded_at,reason,before_json,after_json"
 )
 
@@ -81,8 +81,8 @@ func (s *Store) Create(ctx context.Context, newDay *domain.Day, items ...Change)
 		}
 		for _, c := range items {
 			// A new item goes to the end of its day's list.
-			values := append(itemValues(c.Item), carriedFrom(c.Item), c.Item.DayID)
-			if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+",position) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,(SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE day_id=? AND archived=0))", values...); err != nil {
+			values := append(itemValues(c.Item), carriedFrom(c.Item), nullable(c.Item.CorrectedAt), c.Item.DayID)
+			if _, err := tx.ExecContext(ctx, "INSERT INTO items("+itemColumns+",position) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,(SELECT COALESCE(MAX(position), 0) + 1 FROM items WHERE day_id=? AND archived=0))", values...); err != nil {
 				return err
 			}
 			if err := record(ctx, tx, c.Item.DayID, c.Event); err != nil {
@@ -120,8 +120,8 @@ func save(ctx context.Context, tx *sql.Tx, changes []Change) error {
 		if !domain.Same(saved, *c.Event.Before) {
 			return ErrStale
 		}
-		values := itemValues(c.Item)
-		if _, err := tx.ExecContext(ctx, "UPDATE items SET day_id=?,title=?,status=?,duration_minutes=?,started_at=?,finished_at=?,closed_at=?,archived=?,created_at=?,updated_at=? WHERE id=?", append(values[1:], c.Item.ID)...); err != nil {
+		values := append(itemValues(c.Item)[1:], nullable(c.Item.CorrectedAt), c.Item.ID)
+		if _, err := tx.ExecContext(ctx, "UPDATE items SET day_id=?,title=?,status=?,duration_minutes=?,started_at=?,finished_at=?,closed_at=?,archived=?,created_at=?,updated_at=?,corrected_at=? WHERE id=?", values...); err != nil {
 			return err
 		}
 		if err := record(ctx, tx, c.Item.DayID, c.Event); err != nil {
@@ -310,8 +310,8 @@ func readItems(ctx context.Context, q querier, dayID domain.ID) ([]domain.Item, 
 func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 	var it domain.Item
 	var created string
-	var started, finished, closed, updated, carried sql.NullString
-	if err := row.Scan(&it.ID, &it.DayID, &it.Title, &it.Status, &it.DurationMinutes, &started, &finished, &closed, &it.Archived, &created, &updated, &carried); err != nil {
+	var started, finished, closed, updated, carried, corrected sql.NullString
+	if err := row.Scan(&it.ID, &it.DayID, &it.Title, &it.Status, &it.DurationMinutes, &started, &finished, &closed, &it.Archived, &created, &updated, &carried, &corrected); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return domain.Item{}, ErrNotFound
 		}
@@ -331,7 +331,7 @@ func scanItem(row interface{ Scan(...any) error }) (domain.Item, error) {
 	for _, f := range []struct {
 		text sql.NullString
 		into **time.Time
-	}{{started, &it.StartedAt}, {finished, &it.FinishedAt}, {closed, &it.ClosedAt}, {updated, &it.UpdatedAt}} {
+	}{{started, &it.StartedAt}, {finished, &it.FinishedAt}, {closed, &it.ClosedAt}, {updated, &it.UpdatedAt}, {corrected, &it.CorrectedAt}} {
 		if *f.into, err = parseNullable(f.text); err != nil {
 			return domain.Item{}, err
 		}

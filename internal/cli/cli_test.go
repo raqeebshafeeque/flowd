@@ -154,7 +154,7 @@ func TestJSONOutput(t *testing.T) {
 	if err := json.Unmarshal([]byte(s.ok("--json")), &day); err != nil {
 		t.Fatal(err)
 	}
-	if day["schema_version"] != float64(3) || day["running"] == nil || len(day["items"].([]any)) != 1 {
+	if day["schema_version"] != float64(4) || day["running"] == nil || len(day["items"].([]any)) != 1 {
 		t.Fatalf("unexpected day: %v", day)
 	}
 	var events []map[string]any
@@ -398,4 +398,28 @@ func TestEveryTableNamesItsDay(t *testing.T) {
 			t.Fatalf("%v: %q", args, out)
 		}
 	}
+}
+
+// finish on a past day marks a forgotten item done, by ID or with the picker.
+func TestFinishOnAPastDayPutsAForgottenFinishRight(t *testing.T) {
+	s := newSession(t)
+	s.now = time.Date(2026, 11, 16, 9, 0, 0, 0, time.UTC)
+	s.ok("add", "1h", "Forgot to finish")
+	s.ok("add", "30m", "Also forgot")
+	s.now = time.Date(2026, 11, 17, 9, 0, 0, 0, time.UTC)
+	id := s.id("Forgot to finish", "--date", "2026-11-16")
+	var item map[string]any
+	if err := json.Unmarshal([]byte(s.ok("--json", "finish", "--date", "2026-11-16", id)), &item); err != nil {
+		t.Fatal(err)
+	}
+	if item["status"] != "done" || item["corrected_at"] == nil || item["work_ns"] != float64(0) {
+		t.Fatalf("got %v", item)
+	}
+	s.keys = []string{"enter"}
+	out := s.ok("finish", "--date", "2026-11-16")
+	if strings.Join(s.offered, ", ") != "Also forgot" || !contains(out, "Also forgot") || !contains(out, "DONE") {
+		t.Fatalf("offered %v, got %q", s.offered, out)
+	}
+	s.keys = nil
+	s.fails(1, "ERR_ILLEGAL_TRANSITION", "finish", "--date", "2026-11-16", id)
 }

@@ -40,7 +40,7 @@ func TestViewJSONShape(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{`"schema_version":3`, `"date":"2026-11-17"`, `"items":[`, `"duration_minutes":60`, `"work_ns":0`, `"paused_ns":null`, `"running":null`, `"status_counts":{`} {
+	for _, field := range []string{`"schema_version":4`, `"date":"2026-11-17"`, `"items":[`, `"duration_minutes":60`, `"work_ns":0`, `"paused_ns":null`, `"running":null`, `"status_counts":{`} {
 		if !strings.Contains(string(raw), field) {
 			t.Errorf("missing %s in %s", field, raw)
 		}

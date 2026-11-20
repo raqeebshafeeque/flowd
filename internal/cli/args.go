@@ -27,10 +27,13 @@ type options struct {
 	max      int
 	agents   map[string]bool // for skill: which agents to install it for
 	all      bool            // for carry: every leftover
-	yes      bool
-	title    *string
-	duration *string
-	look     look // set from Env, not from the command line
+	// operation overrides what the command does, when it means something
+	// else in context, like finish on a past day.
+	operation planner.Operation
+	yes       bool
+	title     *string
+	duration  *string
+	look      look // set from Env, not from the command line
 }
 
 // command describes how a command takes its arguments.
@@ -73,6 +76,14 @@ var commands = map[string]command{
 			f.BoolFunc(a.flag, "", func(string) error { o.agents[a.flag] = true; return nil })
 		}
 	}},
+}
+
+// op is the planner operation the command line asks for.
+func (o options) op() planner.Operation {
+	if o.operation != "" {
+		return o.operation
+	}
+	return planner.Operation(o.command)
 }
 
 // commandNames lists every command, sorted.
@@ -248,27 +259,31 @@ Usage:
   flowd [command] [options]
   flowd <YYYY-MM-DD> [options]    Show that date
 
-Commands:
+Plan the day:
   list                         Show the day (the default)
   add <DURATION> <TITLE>       Plan an item, for example: add 1h30m "Study"
   edit [--title <TITLE>] [--duration <DURATION>] <ID>
   delete [--yes] <ID>          Delete an item, after asking. --yes skips the question
+  order [<ID>...]              Put the day in this order, or arrange it at a terminal
+  carry [<ID>...] [--all]      Copy incomplete or skipped items from the last 7 days onto the day
+
+Track the work:
   start <ID>                   Start an item, pausing whatever was running
   pause <ID>                   Pause the running item
   resume <ID>                  Continue a paused item
-  finish <ID>                  Mark an item done for today
+  finish <ID>                  Mark an item done. On a past day, put a forgotten finish right
   skip <ID>                    Drop an item for today
   unskip <ID>                  Bring back a skipped item
   reopen <ID>                  Keep working on a finished item
   now [--short] [--max <N>]    Show the running item. --short prints one line for a status bar
   review                       Show the day's totals, progress and statuses
+
+Set up and look after:
+  completion <SHELL>           Print tab completion for bash, fish or zsh
+  skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
   events <ID>                  Show an item's recorded history
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
-  order [<ID>...]              Put the day in this order, or arrange it at a terminal
-  carry [<ID>...] [--all]      Copy incomplete or skipped items from the last 7 days onto the day
-  completion <SHELL>           Print tab completion for bash, fish or zsh
-  skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
 
 <ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G. Leave it
 out at a terminal to pick the item with the arrow keys, or press Tab with completion set up.

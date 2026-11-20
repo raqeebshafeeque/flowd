@@ -73,6 +73,39 @@ type Item struct {
 	// CarriedFrom is the item on an earlier day this one was copied from,
 	// or nil. It is set when the item is created and never changes.
 	CarriedFrom *ID `json:"carried_from"`
+	// CorrectedAt is when an item left incomplete or skipped was marked done
+	// after its day had ended, or nil. Its work is still only what was
+	// tracked.
+	CorrectedAt *time.Time `json:"corrected_at"`
+}
+
+// CorrectDays is how far back a forgotten finish can be put right: the
+// seven days before today, the same as carrying.
+const CorrectDays = 7
+
+// Correctable tells whether an item on a past day can be marked done after
+// all: it was left incomplete or skipped, is not deleted and was not
+// corrected before.
+func (it Item) Correctable() bool {
+	return !it.Archived && it.CorrectedAt == nil && (it.Status == Incomplete || it.Status == Skipped)
+}
+
+// CorrectToDone marks an item that was left incomplete or skipped as done,
+// at the captured instant now, after its day has ended. Only the status
+// changes: it finishes when it was closed, no work or start is invented,
+// and the correction is recorded so it is never mistaken for a finish made
+// at the time.
+func (it *Item) CorrectToDone(now time.Time) error {
+	if !it.Correctable() {
+		return fmt.Errorf("%w: only incomplete or skipped items can be marked done later, this one is %s", ErrIllegalTransition, strings.ReplaceAll(string(it.Status), "_", " "))
+	}
+	if err := it.checkClock(now); err != nil {
+		return err
+	}
+	stamp := now.UTC()
+	finished := it.ClosedAt.UTC()
+	it.Status, it.FinishedAt, it.CorrectedAt, it.UpdatedAt = Done, &finished, &stamp, &stamp
+	return nil
 }
 
 // CarryDays is how far back unfinished work can be carried from: the
@@ -153,6 +186,7 @@ func (it Item) Clone() Item {
 		from := *it.CarriedFrom
 		it.CarriedFrom = &from
 	}
+	it.CorrectedAt = copyTime(it.CorrectedAt)
 	it.StartedAt = copyTime(it.StartedAt)
 	it.FinishedAt = copyTime(it.FinishedAt)
 	it.ClosedAt = copyTime(it.ClosedAt)
@@ -334,7 +368,9 @@ func (it Item) Check() error {
 	switch {
 	case it.StartedAt != nil && it.ClosedAt != nil && it.ClosedAt.Before(*it.StartedAt):
 		return bad("closed before it started")
-	case (it.Status == InProgress || it.Status == Paused || it.Status == Done) && it.StartedAt == nil:
+	case it.CorrectedAt != nil && (it.Status != Done || !ValidInstant(*it.CorrectedAt) || it.CorrectedAt.Before(it.CreatedAt)):
+		return bad("has a correction that does not add up")
+	case (it.Status == InProgress || it.Status == Paused || (it.Status == Done && it.CorrectedAt == nil)) && it.StartedAt == nil:
 		return bad("has worked without a start")
 	case it.Status == Todo && it.StartedAt != nil:
 		return bad("is todo but has started")

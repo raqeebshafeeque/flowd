@@ -12,18 +12,19 @@ import (
 type Operation string
 
 const (
-	Add     Operation = "add"
-	Edit    Operation = "edit"
-	Delete  Operation = "delete"
-	Start   Operation = "start"
-	Pause   Operation = "pause"
-	Resume  Operation = "resume"
-	Finish  Operation = "finish"
-	Skip    Operation = "skip"
-	Unskip  Operation = "unskip"
-	Reopen  Operation = "reopen"
-	Carry   Operation = "carry"
-	Reorder Operation = "reorder"
+	Add      Operation = "add"
+	Edit     Operation = "edit"
+	Delete   Operation = "delete"
+	Start    Operation = "start"
+	Pause    Operation = "pause"
+	Resume   Operation = "resume"
+	Finish   Operation = "finish"
+	Skip     Operation = "skip"
+	Unskip   Operation = "unskip"
+	Reopen   Operation = "reopen"
+	Carry    Operation = "carry"
+	Reorder  Operation = "reorder"
+	MarkDone Operation = "mark_done"
 )
 
 // Intent is one explicit request against one day.
@@ -82,6 +83,8 @@ func (s *session) do(ctx context.Context, intent Intent) (Result, error) {
 		return s.carry(ctx, intent)
 	case Reorder:
 		return s.reorder(ctx, intent)
+	case MarkDone:
+		return s.markDone(ctx, intent)
 	}
 	return Result{}, InputError(nil, "Unknown operation "+string(intent.Operation), "")
 }

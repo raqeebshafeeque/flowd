@@ -16,7 +16,7 @@ import (
 var done = map[string]string{
 	"start": "started", "pause": "paused", "resume": "resumed", "finish": "finished",
 	"skip": "skipped", "unskip": "brought back", "reopen": "reopened",
-	"edit": "edited", "delete": "deleted",
+	"edit": "edited", "delete": "deleted", "mark_done": "marked done",
 }
 
 // choose asks which item a command is for, when it was given no ID. Only a
@@ -33,18 +33,22 @@ func choose(ctx context.Context, o options, client planner.Client, selection pla
 	}
 	var items []planner.ItemView
 	for _, item := range state.View.Items {
-		if o.command == "events" || planner.Fits(planner.Operation(o.command), item.Item) {
+		if o.command == "events" || planner.Fits(o.op(), item.Item) {
 			items = append(items, item)
 		}
 	}
 	if len(items) == 0 {
-		summary := "Nothing on " + heading(state.View.Date) + " can be " + done[o.command]
+		summary := "Nothing on " + heading(state.View.Date) + " can be " + done[string(o.op())]
 		if o.command == "events" {
 			summary = "Nothing is planned on " + heading(state.View.Date)
 		}
 		return "", planner.Refusal(store.ErrNotFound, summary, "See the day with flowd list")
 	}
-	final, err := run(picker{verb: o.command, items: items, look: o.look})
+	verb := o.command
+	if o.op() == planner.MarkDone {
+		verb = "mark done"
+	}
+	final, err := run(picker{verb: verb, items: items, look: o.look})
 	if err != nil {
 		return "", err
 	}
