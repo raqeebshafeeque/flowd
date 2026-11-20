@@ -46,7 +46,9 @@ See the [command reference](references/commands.md) for every command and its JS
 
 Do not try to work around these. Explain them to the user instead.
 
-- Past days can only be looked at. Only today and later dates can be planned.
+- Past days can only be looked at. Only today and later dates can be planned. The one exception is
+  a forgotten finish in the last 7 days, which the user can ask to put right with
+  `flowd --json finish --date DATE ID`.
 - Only today's items can be started, paused, finished or skipped.
 - At midnight, unfinished items become incomplete. Incomplete is final.
 - Going past a Duration is fine. It never means the item should be finished.

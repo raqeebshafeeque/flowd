@@ -30,7 +30,7 @@ func writeRaw(t *testing.T, statements ...string) string {
 
 func TestNewerOrForeignDatabasesAreRefused(t *testing.T) {
 	cases := map[string][]string{
-		"a newer version":       {"CREATE TABLE days(x)", "PRAGMA user_version = 4"},
+		"a newer version":       {"CREATE TABLE days(x)", "PRAGMA user_version = 5"},
 		"someone else's tables": {"CREATE TABLE notes(text)"},
 	}
 	for name, statements := range cases {
@@ -86,7 +86,7 @@ func versionOneWith(t *testing.T, setup func(*Store)) string {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, statement := range []string{"DROP INDEX items_by_origin", "DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN carried_from", "ALTER TABLE items DROP COLUMN position", "PRAGMA user_version = 1"} {
+	for _, statement := range []string{"DROP INDEX items_by_origin", "DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN carried_from", "ALTER TABLE items DROP COLUMN position", "ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 1"} {
 		if _, err := db.Exec(statement); err != nil {
 			t.Fatal(statement, err)
 		}
@@ -129,8 +129,8 @@ func TestAnOlderFileIsBackedUpAndUpgraded(t *testing.T) {
 	if version(t, path+".bak") != 1 {
 		t.Fatal("the backup should be the file as it was before the upgrade")
 	}
-	if version(t, path) != 3 {
-		t.Fatalf("a version 1 file should go all the way to version 3, got %d", version(t, path))
+	if version(t, path) != SchemaVersion {
+		t.Fatalf("a version 1 file should go all the way to the current version, got %d", version(t, path))
 	}
 	day, err := s.DayByDate(ctx, "2026-11-17")
 	if err != nil {
@@ -199,9 +199,9 @@ func TestTheUpgradeKeepsEachDaysOrder(t *testing.T) {
 	}
 }
 
-// A version 2 file, which has carried_from but no position, goes on to
-// version 3 with everything in it, a carried item included.
-func TestAVersionTwoFileIsUpgradedToThree(t *testing.T) {
+// A version 2 file, which has carried_from but no position, goes on to the
+// current version with everything in it, a carried item included.
+func TestAVersionTwoFileIsUpgraded(t *testing.T) {
 	s := openTest(t)
 	day, first := createTestItem(t, s)
 	copied, _ := domain.NewItem(day.ID, "Carried", 30, clock("08:30:00"))
@@ -216,7 +216,7 @@ func TestAVersionTwoFileIsUpgradedToThree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{"DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN position", "PRAGMA user_version = 2"} {
+	for _, statement := range []string{"DROP INDEX items_in_order", "ALTER TABLE items DROP COLUMN position", "ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 2"} {
 		if _, err := db.Exec(statement); err != nil {
 			t.Fatal(statement, err)
 		}
@@ -230,7 +230,7 @@ func TestAVersionTwoFileIsUpgradedToThree(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer again.Close()
-	if version(t, path) != 3 || version(t, path+".bak") != 2 {
+	if version(t, path) != SchemaVersion || version(t, path+".bak") != 2 {
 		t.Fatalf("version %d, backup %d", version(t, path), version(t, path+".bak"))
 	}
 	items, err := again.Items(ctx, day.ID)
@@ -238,6 +238,37 @@ func TestAVersionTwoFileIsUpgradedToThree(t *testing.T) {
 		t.Fatalf("items %+v, %v", items, err)
 	}
 	if got := order(t, again, day); got != "Study Carried" {
+		t.Fatalf("got %s", got)
+	}
+}
+
+// A version 3 file, with its order but no corrections, gains corrected_at
+// and keeps its order.
+func TestAVersionThreeFileIsUpgraded(t *testing.T) {
+	s := openTest(t)
+	day, _ := createTestItem(t, s)
+	plan(t, s, day, "08:10:00", "B")
+	path := s.Path()
+	s.Close()
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{"ALTER TABLE items DROP COLUMN corrected_at", "PRAGMA user_version = 3"} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(statement, err)
+		}
+	}
+	db.Close()
+	again, err := Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	if version(t, path) != SchemaVersion || version(t, path+".bak") != 3 {
+		t.Fatalf("version %d, backup %d", version(t, path), version(t, path+".bak"))
+	}
+	if got := order(t, again, day); got != "Study B" {
 		t.Fatalf("got %s", got)
 	}
 }

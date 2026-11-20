@@ -58,6 +58,11 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Finish means you are done with it for today, not that the problem is solved forever.
 - A skipped item can be brought back, and a finished one can be reopened, on the same day.
 - Only today's items can be started, paused, finished or skipped.
+- A forgotten finish can be put right. On one of the last 7 days, an item left incomplete or
+  skipped can be marked done: `f` in the workspace asks first, and
+  `flowd finish --date <DATE> <ID>` does it from the command line. Only the status changes. Its work stays what was tracked,
+  it finishes when it was closed, and its details say `Marked done later, on Thu 20 Nov`. Nothing
+  else on a past day can be changed.
 
 ### F5. Show what really happened
 
@@ -205,3 +210,4 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Searching across days.
 - Recommendations about what to do next, recurring items, copying items to another day by itself,
   or editing recorded times.
+- Projects, tags, priorities or subtasks. See the principles in the vision.

@@ -18,7 +18,8 @@ CREATE TABLE items (
  created_at TEXT NOT NULL,
  updated_at TEXT,
  carried_from TEXT REFERENCES items(id),
- position INTEGER NOT NULL DEFAULT 0
+ position INTEGER NOT NULL DEFAULT 0,
+ corrected_at TEXT
 );
 CREATE TABLE item_events (
  seq INTEGER PRIMARY KEY AUTOINCREMENT,

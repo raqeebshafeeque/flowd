@@ -33,6 +33,9 @@ var helpSections = []struct {
 		{"o", "Put the day in the order you want, then save with ctrl+s"},
 		{"C", "Carry incomplete or skipped items from the last 7 days"},
 	}},
+	{"On a past day", [][2]string{
+		{"f", "Mark an item done that you forgot to finish, in the last 7 days"},
+	}},
 	{"In a form", [][2]string{
 		{"tab / enter", "Move to the other field. Enter never saves"},
 		{"ctrl+s", "Save"},

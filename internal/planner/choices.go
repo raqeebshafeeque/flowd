@@ -16,6 +16,8 @@ func Fits(op Operation, item domain.Item) bool {
 		return !item.Archived
 	case Start, Pause, Resume, Finish, Skip, Unskip, Reopen:
 		return item.Can(domain.Action(op))
+	case MarkDone:
+		return item.Correctable()
 	}
 	return false
 }

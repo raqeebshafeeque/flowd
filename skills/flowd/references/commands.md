@@ -27,7 +27,7 @@ JSON:
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "date": "2026-11-17",
   "timezone": "Asia/Kolkata",
   "at": "2026-11-17T04:30:00Z",
@@ -40,8 +40,9 @@ JSON:
 ```
 
 Each ITEM has `id`, `day_id`, `title`, `status`, `duration_minutes`, `started_at`, `finished_at`,
-`closed_at`, `archived`, `created_at`, `updated_at`, `carried_from`, `work_ns` and `paused_ns`.
-Times are UTC. `carried_from` is the ID of the item it was carried from, or null.
+`closed_at`, `archived`, `created_at`, `updated_at`, `carried_from`, `corrected_at`, `work_ns` and
+`paused_ns`. Times are UTC. `carried_from` is the ID of the item it was carried from, or null.
+`corrected_at` is when a forgotten finish was put right, or null.
 `work_ns` and `paused_ns` are whole seconds written in nanoseconds. `work_ns` is the time the item
 ran and `paused_ns` the time it waited as paused after it started. `paused_ns` is null until the
 item first starts.
@@ -95,7 +96,10 @@ has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user
 
 ### finish
 
-`flowd finish <ID>` marks a running or paused item done for today.
+`flowd finish <ID>` marks a running or paused item done for today. On one of the last 7 days,
+`flowd finish --date <DATE> <ID>` marks an item that was left incomplete or skipped done after all,
+for a forgotten finish. Its work stays what was tracked and `corrected_at` says when it was put
+right. Only do this when the user says the item was really finished.
 
 ### skip
 

@@ -37,6 +37,7 @@ What days and items are, and the rules they always follow.
 - Whether it is archived, and when it was created and updated.
 - The item it was carried from, if it is a copy of an unfinished item from an earlier day. This is
   set when it is created and never changes.
+- When it was marked done later, if a forgotten finish was put right after its day ended.
 - Its place in the day's list. This is how the list is laid out, not something that happened to the
   item, so it is not part of the item's history.
 
@@ -64,6 +65,7 @@ What days and items are, and the rules they always follow.
 | todo, in progress or paused | end of the day | incomplete |
 | any visible item | delete | archived, status unchanged |
 | incomplete or skipped | carry | unchanged, with a new todo copy on a later day |
+| incomplete or skipped, in the last 7 days | mark done later | done, marked as corrected |
 
 ## How much of a day is left
 
@@ -80,7 +82,10 @@ What days and items are, and the rules they always follow.
 
 - One runner. Only one item can run at a time. Starting another one pauses it automatically.
 - Today only. Status changes only happen on today's items. Planning is allowed for today and the
-  future. Past days cannot be changed.
+  future. Past days cannot be changed, with one exception: an item left incomplete or skipped in
+  the last 7 days can be marked done later. Only its status changes, it finishes when it was
+  closed, no work or start is made up, and it is marked as corrected so it is never mistaken for a
+  finish made at the time. It is put right once.
 - End of day. When a day ends, its unfinished items become incomplete at exactly midnight, even if
   that is noticed later. This happens once, no matter how many times the day is opened.
 - Incomplete is final. It cannot be started, reopened or brought back.

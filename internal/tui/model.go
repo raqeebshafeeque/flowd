@@ -39,6 +39,7 @@ type model struct {
 	calendar   *calendar
 	carrying   *carryPanel // the carry panel, when it is open
 	ordering   *ordering   // reorder mode, when it is on
+	correcting domain.ID   // the item a mark done question is about
 	moreHints  bool        // the footer shows every hint, on more rows
 	date       string      // the date on screen, or "" for today
 
@@ -179,6 +180,9 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 	if m.deleting != "" {
 		return m.deleteKey(msg.String())
 	}
+	if m.correcting != "" {
+		return m.correctKey(msg.String())
+	}
 	if m.help {
 		m.helpKey(msg.String())
 		return nil
@@ -241,6 +245,10 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 			return m.track(spaceAction(m.state.View.Items[i].Status))
 		}
 	default:
+		if msg.String() == "f" && !m.trackable() && m.correctable() {
+			m.correcting = m.selected
+			return nil
+		}
 		if op, ok := trackKeys[msg.String()]; ok && m.trackable() {
 			return m.track(op)
 		}

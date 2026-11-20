@@ -8,7 +8,7 @@ import (
 
 // ViewSchemaVersion numbers the JSON shape of a day. Fields only change with
 // a new number, so scripts and agents can rely on them.
-const ViewSchemaVersion = 3
+const ViewSchemaVersion = 4
 
 // ItemView is an item with its metrics, as frontends show it.
 type ItemView struct {

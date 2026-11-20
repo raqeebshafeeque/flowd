@@ -83,6 +83,12 @@ func (e Event) Validate() error {
 	return nil
 }
 
+// Correction tells whether the event marks a past item done after its day
+// ended, which is the one change allowed once a day is closed.
+func (e Event) Correction() bool {
+	return e.Before != nil && e.Before.CorrectedAt == nil && e.After.CorrectedAt != nil
+}
+
 // ValidateFor checks the event against its day as well: status changes
 // happen while the day is open, a day end happens exactly at midnight, and no
 // edit happens after the day closed.
@@ -98,6 +104,11 @@ func (e Event) ValidateFor(day Day) error {
 		return err
 	}
 	switch {
+	case e.Correction():
+		if e.OccurredAt.Before(cutoff) {
+			return fmt.Errorf("%w: %s was marked done later before its day ended", ErrInvalidEvidence, e.ItemID)
+		}
+		return nil
 	case e.Reason == ReasonDayEnd && !e.OccurredAt.Equal(cutoff):
 		return fmt.Errorf("%w: day end for %s is not at midnight", ErrInvalidEvidence, e.ItemID)
 	case e.Reason != ReasonDayEnd && e.FromStatus != e.ToStatus:
@@ -117,6 +128,11 @@ func (e Event) replay() (Item, error) {
 	expected := b.Clone()
 	var err error
 	switch {
+	case e.Correction():
+		if e.Reason != ReasonUser {
+			return Item{}, ErrInvalidEvidence
+		}
+		err = expected.CorrectToDone(e.OccurredAt)
 	case e.Reason == ReasonDayEnd:
 		err = b.checkClock(e.OccurredAt)
 		if !b.Status.Unfinished() {

@@ -46,6 +46,9 @@ How the parts fit together.
 - Times are stored as UTC text in RFC 3339 format.
 - Before a transaction commits, the whole day is checked against the domain rules and every item's
   history is replayed. A change that breaks a rule never reaches the disk.
+- The history check accepts exactly one change after a day has ended: marking an incomplete or
+  skipped item done, with `corrected_at` set and nothing else different. A correction that changes
+  anything else, or is dated before the day ended, is refused like any broken history.
 - A change carries a copy of the item as it was read. If the saved item has changed since then, the
   change is refused instead of overwriting newer work.
 - Only one process uses the file at a time. A second one gets a clear message that the file is
@@ -65,9 +68,10 @@ How the parts fit together.
 
 ## Upgrading the file
 
-- The schema has a version. Version 2 added the item a copy was carried from, and version 3 each
-  item's place in its day, numbering every day in the order it showed before. An older file goes
-  through every version in between in the same upgrade.
+- The schema has a version. Version 2 added the item a copy was carried from, version 3 each
+  item's place in its day, numbering every day in the order it showed before, and version 4 when
+  an item was marked done later. An older file goes through every version in between in the same
+  upgrade.
 - When flowd opens an older file to change it, it first writes a backup, the same one
   `flowd backup` makes, and then upgrades the file in one transaction. If anything fails, the file
   stays exactly as it was. Checking a file, `flowd doctor` and the lock free reads never upgrade.

@@ -100,6 +100,10 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		return statusLine(ctx, out, o, client)
 	}
 	selection := planner.Selection{Date: o.date, Timezone: o.zone}
+	// Finishing an item on a past day puts right a forgotten finish.
+	if o.command == "finish" && o.date != "" && o.date < targetDate(options{}, env) {
+		o.operation = planner.MarkDone
+	}
 	if commands[o.command].positional == "ITEM" && len(o.args) == 0 {
 		run := env.pick
 		if run == nil {
@@ -148,7 +152,7 @@ func run(ctx context.Context, o options, out io.Writer, env Env) error {
 		_, err := fmt.Fprintln(out, "Not deleted")
 		return err
 	}
-	intent := planner.Intent{Operation: planner.Operation(o.command), Selection: selection, ItemID: item.ID, Revision: state.Revisions[item.ID]}
+	intent := planner.Intent{Operation: o.op(), Selection: selection, ItemID: item.ID, Revision: state.Revisions[item.ID]}
 	if o.command == "edit" {
 		intent.Title, intent.Duration = o.title, o.duration
 	}
