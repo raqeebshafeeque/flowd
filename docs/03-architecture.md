@@ -18,6 +18,7 @@ How the parts fit together.
 | `internal/planner` | The operations every frontend shares |
 | `internal/cli` | Commands and their output |
 | `internal/tui` | The terminal workspace |
+| `skills` | The Agent Skill, built into the program |
 | `scripts/notices` | Writes the license texts that `flowd --licenses` prints |
 | `scripts/repocheck` | Tests that keep the repository's own rules: one `doc.go` per package, one test file per source file, and no hidden characters. Never part of the program |
 
@@ -113,9 +114,9 @@ How the parts fit together.
   changes that SQLite has not yet moved out of its WAL file. The old backup is only replaced once the
   new one is complete and on disk.
 - `flowd doctor` checks the file, its permissions, its schema version and its integrity, and
-  whether another flowd is using it. It prints `OK` or the first problem it found and changes nothing.
-  It also warns about titles that hold hidden characters, listing the items, without treating that
-  as damage.
+  whether another flowd is using it. It prints `OK` or the first problem it found and changes
+  nothing. It also warns about titles that hold hidden characters, listing the items, without
+  treating that as damage.
 - `flowd doctor --repair` is the only command that restores the backup. It checks the backup first.
   The current files are never deleted. They move into a private recovery folder next to the
   database, so changes made after the backup can still be recovered by hand.
@@ -134,6 +135,8 @@ How the parts fit together.
 - The workspace remembers which date is on screen, or simply "today" so it moves on by itself at
   midnight. A read that comes back for a date no longer on screen is ignored.
 - Only one change is in flight at a time. While it saves, other changes are ignored.
+- While the day is being arranged, it is not read again, so a refresh never shuffles the order being
+  made. The planner refuses the new order if the day changed in the meantime.
 - If a change ends unconfirmed, the workspace asks the planner to reconcile it, again on every tick
   until the history answers, and no other change can start until then.
 - Durations, work and statuses are written by the same planner functions in the workspace and the
@@ -155,7 +158,7 @@ How the parts fit together.
   status line refresh would look like a change and force a full scan.
 - Work is worked out with the same domain rules as everywhere else, so it matches `flowd list`.
 
-## Tab completion and the picker
+## Tab completion and the pickers
 
 - The shell scripts are a few lines each. They pass the words typed so far to a hidden
   `flowd __complete` command, and flowd works out the candidates in Go, so every shell offers the
@@ -164,8 +167,9 @@ How the parts fit together.
   never makes a real command wait, and never writes or creates anything.
 - Which items a command fits is decided once, by the item's own rules in the domain, and shared by
   completion, the picker and the checks before a change.
-- The picker is a small inline view on the terminal. It reads the day like any other command, and
-  the chosen item goes through the normal checks, so it can never do more than typing its ID would.
+- The pickers are small inline views on the terminal: one for choosing an item, one for ticking
+  items to carry and one for arranging the day. They read the day like any other command, and what
+  they send goes through the normal checks, so they can never do more than typing the IDs would.
 
 ## Agents
 
@@ -178,12 +182,15 @@ How the parts fit together.
 ## Distribution
 
 - Each release has an archive per operating system and processor, with checksums. The archive holds
-  the program, a VERSION file and flowd's license. The licenses of the libraries
-  flowd is built with are inside the program and printed by `flowd --licenses`.
-- An `install.sh` script downloads, checks and installs the program without needing Go. It never
-  installs the Agent Skill anywhere new and never edits shell files. It updates the skill where it
-  is already installed, and prints how to add the skill and tab completion. It refuses an archive whose checksum or contents do not match, runs the new program
-  once in an empty private home to check its version, and only then puts the files in place.
+  the program, a VERSION file and flowd's license. The licenses of the libraries flowd is built with
+  are inside the program and printed by `flowd --licenses`.
+- An `install.sh` script downloads, checks and installs the program without needing Go. It refuses
+  an archive whose checksum or contents do not match, runs the new program once in an empty private
+  home to check its version, and only then puts the files in place.
+- The installer never installs the Agent Skill anywhere new, never edits shell files and never
+  touches your planner data. It updates the skill where it is already installed, and prints how to
+  add the skill and tab completion. The database is upgraded by flowd itself, the first time it
+  changes the file.
 - If installing fails halfway, the previous version is put back. Two installers cannot run at once.
 - `install.sh --from DIR` installs from release files that are already downloaded.
 - Every release signs build provenance for its archives, checksums and installer, proving they were

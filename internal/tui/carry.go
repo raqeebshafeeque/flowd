@@ -179,7 +179,7 @@ func (m *model) carryRows(width, height int) []string {
 	return rows
 }
 
-// carryFooter offers what the panel can do, counting what Enter carries.
+// carryFooter offers what the panel can do, counting what Ctrl+S carries.
 func (m *model) carryFooter() string {
 	c := m.carrying
 	if !c.loaded || len(c.items) == 0 {

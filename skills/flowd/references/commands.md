@@ -15,9 +15,9 @@ person at a terminal, and fails with exit 2 when run by an agent.
 
 `<ID>` is the full ID of an item, such as `it_01JD8K6Z2KAS98N1W1N1PMM62G`, from the JSON of `list`
 or of any change. Nothing shorter and no position in the list is accepted.
-`<DURATION>` is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`. It cannot be longer than what is
-left of the day after the other unfinished items, otherwise flowd refuses with `ERR_DURATION_LIMIT`
-and says how much is left.
+`<DURATION>` is whole minutes or hours: `30`, `30m`, `2h` or `1h30m`. It cannot be longer than
+what is left of the day after the other unfinished items, otherwise flowd refuses with
+`ERR_DURATION_LIMIT` and says how much is left.
 
 ### list
 
@@ -48,8 +48,8 @@ item first starts.
 
 ### add
 
-`flowd add <DURATION> <TITLE>` plans a new item. JSON is the new ITEM. Every command below that changes
-an item also prints the saved ITEM as JSON, so there is no need to read the day again after each one.
+`flowd add <DURATION> <TITLE>` plans a new item. JSON is the new ITEM. The commands that change one
+item also print the saved ITEM as JSON, so there is no need to read the day again after each one.
 
 ### edit
 
@@ -61,6 +61,25 @@ an item also prints the saved ITEM as JSON, so there is no need to read the day 
 brought back. Without `--yes` flowd asks a person at a terminal, and refuses with `ERR_USAGE` and
 exit 2 everywhere else, including with `--json`. Only pass `--yes` when the user asked to delete
 that exact item.
+
+### order
+
+`flowd order <ID> <ID> ...` puts the day in this order. It has to name every visible item of the day
+exactly once, in the order they should be listed. Changing an item's status never moves it, and new
+or carried items go to the end, so the order only changes when it is saved. JSON is the day, like
+`list`. If the day changed since it was read, for example because an item was added, flowd refuses
+with `ERR_STALE` and nothing changes. Read the day again and send the whole order. Only reorder
+when the user asks.
+
+### carry
+
+`flowd carry <ID> [<ID>...]` copies incomplete or skipped items from the 7 days before the day onto
+it, today unless `--date` names a later day. Each becomes a new todo item with the same title and
+Duration, and `carried_from` set to the original's ID. The originals do not change. JSON is the list
+of new items. `flowd carry --all` carries everything that can be carried. Everything is carried in
+one save, and if it does not all fit in what is left of the day, nothing is carried and flowd
+refuses with `ERR_DURATION_LIMIT`. An item that is not incomplete or skipped, is too old, or still
+has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user asked for.
 
 ### start
 
@@ -92,30 +111,13 @@ that exact item.
 
 ### now
 
-`flowd now` shows the running item. JSON is that ITEM or null.
+`flowd now` shows the running item. JSON is that ITEM or null. `flowd now --short` prints it as one
+line for a person's status bar, and nothing when nothing runs. Agents use `flowd --json now`.
 
 ### review
 
 `flowd review` shows the total Duration, the recorded work, how many items are finished and every
 item grouped by status. JSON is the same as `list`.
-
-### order
-
-`flowd order ID ID ...` puts the day in this order. It has to name every visible item of the day
-exactly once, in the order they should be listed. Changing an item's status never moves it, and new
-or carried items go to the end, so the order only changes when it is saved. If the day changed
-since it was read, for example because an item was added, flowd refuses with `ERR_STALE` and
-nothing changes. Read the day again and send the whole order. Only reorder when the user asks.
-
-### carry
-
-`flowd carry ID [ID...]` copies incomplete or skipped items from the 7 days before the day onto it,
-today unless `--date` names a later day. Each becomes a new todo item with the same title and
-Duration, and `carried_from` set to the original's ID. The originals do not change. JSON is the list
-of new items. `flowd carry --all` carries everything that can be carried. Everything is carried in
-one save, and if it does not all fit in what is left of the day, nothing is carried and flowd
-refuses with `ERR_DURATION_LIMIT`. An item that is not incomplete or skipped, is too old, or still
-has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user asked for.
 
 ### events
 
@@ -130,8 +132,8 @@ has a planned copy is refused with `ERR_NOT_CARRYABLE`. Only carry what the user
 
 `flowd doctor` checks the database and prints `OK` or the first problem. It also warns about item
 titles that hold hidden characters, which are shown as placeholders like `<U+202E>`. JSON is
-`{"status": "ok", "unsafe_titles": [ID, ...]}`. `flowd doctor --repair` replaces the database with its backup and moves the
-current files into a recovery folder. Only run it when the user asks.
+`{"status": "ok", "unsafe_titles": [ID, ...]}`. `flowd doctor --repair` replaces the database with
+its backup and moves the current files into a recovery folder. Only run it when the user asks.
 
 ### completion
 
@@ -149,6 +151,7 @@ that name that holds anything other than the flowd skill is refused, never repla
 ## Exit status
 
 `0` success, `1` a refused action or a problem with the database, `2` bad input, `130` stopped.
-With `--json`, an error is printed to stderr as `{"error": {"code": "ERR_NOT_FOUND", "message": "...",
-"hint": "..."}}` and nothing is printed to stdout. Without `--json` it is a sentence and a hint
-for a person, with no code, so always use `--json`.
+With `--json`, an error is printed to stderr as
+`{"error": {"code": "ERR_NOT_FOUND", "message": "...", "hint": "..."}}` and nothing is printed to
+stdout. Without `--json` it is a sentence and a hint for a person, with no code, so always use
+`--json`.
