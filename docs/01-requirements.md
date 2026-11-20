@@ -89,7 +89,7 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Keyboard only, at least 80 by 24. A smaller window only asks to be made larger.
 - Space starts, pauses, resumes or reopens the selected item, and `f` finishes it. The footer only
   offers what the item and the day allow, with `more [.]` when the keys do not fit.
-- `n` adds and `e` edits in a form at the bottom. Tab moves between fields, Ctrl+S saves, and Esc
+- `a` adds and `e` edits in a form at the bottom. Tab moves between fields, Ctrl+S saves, and Esc
   asks before throwing changes away. Everything that commits, a form, an order or a carry, saves
   with Ctrl+S.
 - `enter` shows details, `r` a read-only review, `c` a month calendar and `t` goes back to today.

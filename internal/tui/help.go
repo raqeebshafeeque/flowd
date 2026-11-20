@@ -24,7 +24,7 @@ var helpSections = []struct {
 		{"f", "Finish it for today"},
 	}},
 	{"Planning (today and later)", [][2]string{
-		{"n", "Add an item"},
+		{"a", "Add an item"},
 		{"e", "Edit the selected item"},
 		{"d", "Delete the selected item, after asking"},
 		{"o", "Put the day in the order you want, then save with ctrl+s"},

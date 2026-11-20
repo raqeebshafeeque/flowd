@@ -214,7 +214,7 @@ func (m *model) key(msg tea.KeyPressMsg) tea.Cmd {
 		m.openOrdering()
 	case ".":
 		m.moreHints = !m.moreHints
-	case "n":
+	case "a":
 		if m.plannable() {
 			m.openNew()
 		}

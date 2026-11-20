@@ -129,7 +129,7 @@ func TestFutureDaysCanBePlannedButNotTracked(t *testing.T) {
 	w.refresh()
 	w.press(key("c"), key("l"))
 	w.run(w.press(key("enter")))
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Tomorrow's item")
 	w.press(tab())
 	w.typeText("1h")
@@ -155,13 +155,13 @@ func TestPastDaysCanOnlyBeLookedAt(t *testing.T) {
 	if len(w.m.state.View.Items) != 1 || w.m.state.View.Items[0].Status != "incomplete" {
 		t.Fatalf("the 17th should show its closed item: %+v", w.m.state.View.Items)
 	}
-	w.press(key("n"))
+	w.press(key("a"))
 	w.press(key("e"))
 	if w.m.form != nil {
 		t.Fatal("a past day must not open a form")
 	}
 	text := plain(w)
-	if strings.Contains(text, "new [n]") || strings.Contains(text, "edit [e]") || strings.Contains(text, "Press n") {
+	if strings.Contains(text, "add [a]") || strings.Contains(text, "edit [e]") || strings.Contains(text, "Press n") {
 		t.Fatalf("the footer offers planning on a past day:\n%s", text)
 	}
 }

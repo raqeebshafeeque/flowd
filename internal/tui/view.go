@@ -306,7 +306,7 @@ func (m *model) hints() []string {
 		hints = append(hints, "move [j/k]")
 	}
 	if m.plannable() {
-		hints = append(hints, "new [n]")
+		hints = append(hints, "add [a]")
 		if len(m.state.View.Items) > 1 {
 			hints = append(hints, "order [o]")
 		}

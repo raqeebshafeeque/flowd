@@ -31,7 +31,7 @@ func (w *workspace) item(id domain.ID) domain.Item {
 func TestNewItemFromTheWorkspace(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	if w.m.form == nil || w.m.form.edit {
 		t.Fatal("n should open a new item form")
 	}
@@ -55,7 +55,7 @@ func TestLettersAreTextWhileTyping(t *testing.T) {
 	w := newWorkspace(t)
 	w.add("Study", "1h")
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("q s f n e ?")
 	if w.m.form == nil || w.m.form.fields[0].value() != "q s f n e ?" {
 		t.Fatal("letters must be typed, not run as actions")
@@ -98,7 +98,7 @@ func TestSavingAnUnchangedEditJustCloses(t *testing.T) {
 func TestABadDurationIsExplainedUnderTheField(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Study")
 	w.press(tab())
 	w.typeText("1.5h")
@@ -123,11 +123,11 @@ func TestABadDurationIsExplainedUnderTheField(t *testing.T) {
 func TestEscAsksBeforeThrowingAwayChanges(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"), key("esc"))
+	w.press(key("a"), key("esc"))
 	if w.m.form != nil {
 		t.Fatal("an empty form should close right away")
 	}
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Study")
 	w.press(key("esc"))
 	if w.m.form == nil || !w.m.form.discard || !strings.Contains(plain(w), "Discard changes?") {
@@ -146,7 +146,7 @@ func TestEscAsksBeforeThrowingAwayChanges(t *testing.T) {
 func TestCaretEditingAndPaste(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Stdy")
 	w.press(key("left"), key("left"), key("left"))
 	w.typeText("u")
@@ -164,7 +164,7 @@ func TestCaretEditingAndPaste(t *testing.T) {
 func TestTheCaretIsPlacedInTheFocusedField(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Study")
 	v := w.m.View()
 	if v.Cursor == nil {
@@ -185,7 +185,7 @@ func TestTheCaretIsPlacedInTheFocusedField(t *testing.T) {
 func TestTheDurationHintShowsWhileEmpty(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	if !strings.Contains(plain(w), "e.g. 30m, 1h, 1h30m") {
 		t.Fatal("the empty Duration should show an example")
 	}
@@ -194,7 +194,7 @@ func TestTheDurationHintShowsWhileEmpty(t *testing.T) {
 func TestAHiddenCharacterIsNamedUnderTheTitle(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.m.Update(tea.PasteMsg{Content: "Study\u202e"})
 	w.press(tab())
 	w.typeText("1h")
@@ -207,7 +207,7 @@ func TestAHiddenCharacterIsNamedUnderTheTitle(t *testing.T) {
 func TestTooLongADurationIsExplainedAtTheField(t *testing.T) {
 	w := newWorkspace(t) // 09:00, fifteen hours left
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Too much")
 	w.press(tab())
 	w.typeText("30h")

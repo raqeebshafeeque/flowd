@@ -67,7 +67,7 @@ func TestHelpScrollsAndChangesNothing(t *testing.T) {
 	if !strings.Contains(plain(w), "Show the chosen day") {
 		t.Fatal("scrolling should reach the end of help")
 	}
-	for _, k := range []tea.KeyPressMsg{space(), key("d"), key("n")} {
+	for _, k := range []tea.KeyPressMsg{space(), key("d"), key("a")} {
 		if w.press(k) != nil {
 			t.Fatal("keys acted inside help")
 		}
@@ -84,7 +84,7 @@ func TestHelpScrollsAndChangesNothing(t *testing.T) {
 func TestAQuestionMarkInAFormIsText(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
-	w.press(key("n"))
+	w.press(key("a"))
 	w.typeText("Why?")
 	if w.m.help || w.m.form.fields[0].value() != "Why?" {
 		t.Fatal("? must be typed in a form")

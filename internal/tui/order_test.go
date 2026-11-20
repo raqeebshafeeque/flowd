@@ -74,7 +74,7 @@ func TestCancellingAsksAfterAMove(t *testing.T) {
 func TestNothingElseHappensWhileReordering(t *testing.T) {
 	w := threeItems(t)
 	w.press(key("o"), key("J"))
-	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("n"), key("d"), key("C")} {
+	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("a"), key("d"), key("C")} {
 		if cmd := w.press(k); cmd != nil {
 			t.Fatalf("%s did something while reordering", k.String())
 		}

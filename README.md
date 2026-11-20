@@ -155,7 +155,7 @@ Run `flowd` with no arguments to open it. Everything is one key.
 
 | Key | Action | Key | Action |
 | :---: | --- | :---: | --- |
-| `j` `k` | Move up and down | `n` | New item |
+| `j` `k` | Move up and down | `a` | Add an item |
 | `space` | Start, pause, resume or reopen | `e` | Edit the selected item |
 | `f` | Finish | `d` | Delete, after asking |
 | `enter` | Details | `o` | Put the day in your order |

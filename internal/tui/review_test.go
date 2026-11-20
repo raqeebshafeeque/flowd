@@ -61,7 +61,7 @@ func TestTheReviewChangesNothing(t *testing.T) {
 	id := w.add("Study", "1h")
 	w.refresh()
 	w.press(key("r"))
-	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("n"), key("e")} {
+	for _, k := range []tea.KeyPressMsg{space(), key("f"), key("a"), key("e")} {
 		if cmd := w.press(k); cmd != nil {
 			t.Fatalf("%s did something inside the review", k.String())
 		}
