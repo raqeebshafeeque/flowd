@@ -28,12 +28,12 @@ func (w *workspace) item(id domain.ID) domain.Item {
 	return domain.Item{}
 }
 
-func TestNewItemFromTheWorkspace(t *testing.T) {
+func TestAddAnItemFromTheWorkspace(t *testing.T) {
 	w := newWorkspace(t)
 	w.refresh()
 	w.press(key("a"))
-	if w.m.form == nil || w.m.form.edit {
-		t.Fatal("n should open a new item form")
+	if w.m.form == nil || w.m.form.edit || !strings.Contains(plain(w), "Add item") {
+		t.Fatal("a should open the Add item form")
 	}
 	w.typeText("Read the Go spec")
 	w.press(key("enter")) // moves to Duration, never saves
