@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/raqeebshafeeque/flowd/compare/v0.10.0...v0.11.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* the skipped status and the skip, unskip, resume, reopen and events commands are removed. Use start to resume or reopen an item. --timezone and now --max are removed, and a bare date like flowd 2026-11-18 is no longer a command. The JSON schema version is 5, and status_counts no longer has skipped. Databases with skipped items are not supported.
+
+### Code Refactoring
+
+* make flowd lean, and add reset ([#55](https://github.com/raqeebshafeeque/flowd/issues/55)) ([dc0eb9d](https://github.com/raqeebshafeeque/flowd/commit/dc0eb9da37fd2356ba42f0657afd0a8ca3d50910))
+
 ## [0.10.0](https://github.com/raqeebshafeeque/flowd/compare/v0.9.0...v0.10.0) (2026-11-20)
 
 
