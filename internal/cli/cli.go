@@ -234,10 +234,11 @@ func resetPlanner(ctx context.Context, out io.Writer, o options, path string, en
 	}
 	backup := !o.noBackup
 	if !o.yes {
-		in := bufio.NewReader(env.In)
-		if env.In == nil {
-			in = bufio.NewReader(strings.NewReader(""))
+		var source io.Reader = strings.NewReader("")
+		if env.In != nil {
+			source = env.In
 		}
+		in := bufio.NewReader(source)
 		ask := func(question string) bool {
 			fmt.Fprint(out, question+" [y/n]: ")
 			answer, _ := in.ReadString('\n')
@@ -247,7 +248,9 @@ func resetPlanner(ctx context.Context, out io.Writer, o options, path string, en
 			_, err := fmt.Fprintln(out, "Nothing was reset")
 			return err
 		}
-		backup = ask("Keep the old files in a backup folder next to it?")
+		if backup {
+			backup = ask("Keep the old files in a backup folder next to it?")
+		}
 	}
 	recovery, err := store.Reset(ctx, path, backup)
 	if err != nil {
