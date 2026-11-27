@@ -72,7 +72,7 @@ expect verified-and-required "$verified" installed --require-attestation
 
 # The skill is never installed on its own. The message says how to.
 expect no-skill-installed "$verified" installed
-grep -q 'flowd skill --claude --codex' "$work/no-skill-installed.out"
+grep -q 'flowd skill' "$work/no-skill-installed.out"
 if [ -e "$work/no-skill-installed/home/.agents" ] || [ -e "$work/no-skill-installed/home/.claude" ]; then printf '%s\n' 'no-skill-installed: the skill was installed' >&2; exit 1; fi
 
 # A skill installed before is updated to match, and only there.
@@ -91,7 +91,7 @@ bin=$(CDPATH='' cd "$work/older-install/bin" && pwd -P)
 printf 'flowd-install-v1\n0.0.0\n%s\n' "$bin/flowd" > "$work/older-install/home/.agents/skills/flowd/.flowd-install"
 printf -- '---\nname: flowd\n---\n' > "$work/older-install/home/.agents/skills/flowd/SKILL.md"
 expect older-install "$verified" installed
-grep -q 'Updated the agent skill for Codex.' "$work/older-install.out"
+grep -q 'Updated the agent skill for Codex, OpenCode, Pi and Gemini CLI.' "$work/older-install.out"
 
 # A flowd that no installer put there is never replaced without --force.
 mkdir -p "$work/unmanaged/bin"
