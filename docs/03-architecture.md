@@ -101,8 +101,8 @@ planner, so the command line and the workspace can never disagree.
   once the new one is on disk.
 - `flowd doctor` checks the file, its permissions, schema and integrity, and changes nothing.
 - `flowd doctor --repair` checks the backup, moves the current files into a private recovery folder
-  and copies the backup in their place. `flowd reset` moves them the same way and leaves the next
-  open to start a new file. Nothing is ever deleted.
+  and copies the backup in their place. `flowd reset` moves them the same way when you ask for a backup, or deletes them
+  when you do not, and leaves the next open to start a new file.
 
 ## Distribution
 

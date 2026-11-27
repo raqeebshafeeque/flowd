@@ -133,7 +133,7 @@ func TestFutureDaysCanBePlannedButNotTracked(t *testing.T) {
 	w.typeText("Tomorrow's item")
 	w.press(tab())
 	w.typeText("1h")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if len(w.m.state.View.Items) != 1 || w.m.state.Day.Date != "2026-11-18" {
 		t.Fatalf("the item should be planned on the 18th: %+v", w.m.state.Day)
 	}

@@ -19,7 +19,7 @@ func TestHelpListsTheKeys(t *testing.T) {
 		t.Fatal("? should open help")
 	}
 	text := plain(w)
-	for _, want := range []string{"Moving around", "Recording work (today only)", "Planning (today and later)", "In a form", "In the calendar", "Start, pause, resume or reopen", "Delete the selected item, after asking", "Enter never saves"} {
+	for _, want := range []string{"Moving around", "Recording work (today only)", "Planning (today and later)", "In a form", "In the calendar", "Start, pause, resume or reopen", "Delete the selected item, after asking", "save from the last one"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q", want)
 		}

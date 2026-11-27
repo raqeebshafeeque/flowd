@@ -119,9 +119,10 @@ its backup and moves the current files into a recovery folder. Only run it when 
 
 ### reset
 
-`flowd reset --yes` starts over with an empty planner. Nothing is deleted: the current files move
-into a private recovery folder next to the database. JSON is `{"status": "reset", "recovery":
-"PATH"}`. Without `--yes` flowd asks a person to type `reset`, and refuses with `ERR_USAGE` and exit
+`flowd reset --yes` starts over with an empty planner. The current files move into a private
+recovery folder next to the database, unless `--no-backup` is added, which deletes them. JSON is
+`{"status": "reset", "recovery": "PATH"}` with an empty path when nothing was kept. Without `--yes`
+flowd asks a person y or n to go on and y or n to keep a backup, and refuses with `ERR_USAGE` and exit
 2 everywhere else. Only run it when the user clearly asked to empty the whole planner.
 
 ### completion

@@ -163,8 +163,8 @@ Run `flowd` with no arguments to open it. Everything is one key.
 | `.` | More keys in the footer | `c` `t` | Calendar, and back to today |
 | `?` | Every key | `q` | Quit |
 
-In a form, type the title, press Tab for the duration and save with Ctrl+S. A new order and the
-items to carry save with Ctrl+S too. When the keys do not fit in the footer, `.` shows the rest.
+In a form, type the title, press Enter for the duration and Enter again to save. A new order and
+the items to carry save with Ctrl+S. When the keys do not fit in the footer, `.` shows the rest.
 The window needs to be at least 80 by 24.
 
 <br>
@@ -230,7 +230,7 @@ Everything lives in one SQLite file at `~/.local/share/flowd/flowd.sqlite`, or u
 flowd backup            # write a backup next to the database
 flowd doctor            # check the database
 flowd doctor --repair   # put the backup back, keeping the current files aside
-flowd reset             # start over with an empty planner, keeping the old files aside
+flowd reset             # start over with an empty planner, and ask whether to keep the old files
 ```
 
 <br>

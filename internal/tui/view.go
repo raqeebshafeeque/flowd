@@ -285,7 +285,15 @@ func (m *model) footer(width int) []string {
 // the day first and help and quit last.
 func (m *model) hints() []string {
 	var hints []string
-	if i := m.index(); i >= 0 {
+	i := m.index()
+	// Always in this order: add, edit, start or resume or pause, finish, delete.
+	if m.plannable() {
+		hints = append(hints, "add [a]")
+		if i >= 0 {
+			hints = append(hints, "edit [e]")
+		}
+	}
+	if i >= 0 {
 		if m.trackable() {
 			item := m.state.View.Items[i]
 			for _, op := range allowed(item) {
@@ -296,7 +304,7 @@ func (m *model) hints() []string {
 			hints = append(hints, "mark done [f]")
 		}
 		if m.plannable() {
-			hints = append(hints, "edit [e]", "delete [d]")
+			hints = append(hints, "delete [d]")
 		}
 		if m.details {
 			hints = append(hints, "close [esc]")
@@ -306,7 +314,6 @@ func (m *model) hints() []string {
 		hints = append(hints, "move [j/k]")
 	}
 	if m.plannable() {
-		hints = append(hints, "add [a]")
 		if len(m.state.View.Items) > 1 {
 			hints = append(hints, "order [o]")
 		}

@@ -36,14 +36,14 @@ func TestAddAnItemFromTheWorkspace(t *testing.T) {
 		t.Fatal("a should open the Add item form")
 	}
 	w.typeText("Read the Go spec")
-	w.press(key("enter")) // moves to Duration, never saves
+	w.press(key("enter")) // moves to Duration
 	if w.m.form == nil || w.m.form.focus != 1 {
 		t.Fatal("enter should move to the Duration field")
 	}
 	w.typeText("1h30m")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if w.m.form != nil || len(w.m.state.View.Items) != 1 {
-		t.Fatal("ctrl+s should save and close the form")
+		t.Fatal("enter on the last field should save and close the form")
 	}
 	got := w.m.state.View.Items[0]
 	if got.Title != "Read the Go spec" || got.DurationMinutes != 90 || w.m.selected != got.ID {
@@ -76,7 +76,7 @@ func TestEditChangesOnlyWhatChanged(t *testing.T) {
 	w.press(tab())
 	w.press(key("backspace"), key("backspace"))
 	w.typeText("45m")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if got := w.item(id); got.Title != "Study" || got.DurationMinutes != 45 {
 		t.Fatalf("unexpected item: %+v", got)
 	}
@@ -86,8 +86,8 @@ func TestSavingAnUnchangedEditJustCloses(t *testing.T) {
 	w := newWorkspace(t)
 	id := w.add("Study", "1h")
 	w.refresh()
-	w.press(key("e"))
-	if w.press(ctrl('s')) != nil || w.m.form != nil {
+	w.press(key("e"), tab())
+	if w.press(key("enter")) != nil || w.m.form != nil {
 		t.Fatal("an unchanged edit should close without saving")
 	}
 	if events := w.m.state.History[id]; len(events) != 1 {
@@ -102,7 +102,7 @@ func TestABadDurationIsExplainedUnderTheField(t *testing.T) {
 	w.typeText("Study")
 	w.press(tab())
 	w.typeText("1.5h")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if w.m.form == nil || w.m.form.focus != 1 || !strings.Contains(w.m.form.errors[1], "Invalid duration") {
 		t.Fatalf("the error should sit under Duration: %+v", w.m.form)
 	}
@@ -198,7 +198,7 @@ func TestAHiddenCharacterIsNamedUnderTheTitle(t *testing.T) {
 	w.m.Update(tea.PasteMsg{Content: "Study\u202e"})
 	w.press(tab())
 	w.typeText("1h")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if w.m.form == nil || w.m.form.focus != 0 || !strings.Contains(w.m.form.errors[0], "U+202E") {
 		t.Fatalf("the title error should name the character: %+v", w.m.form)
 	}
@@ -211,7 +211,7 @@ func TestTooLongADurationIsExplainedAtTheField(t *testing.T) {
 	w.typeText("Too much")
 	w.press(tab())
 	w.typeText("30h")
-	w.run(w.press(ctrl('s')))
+	w.run(w.press(key("enter")))
 	if w.m.form == nil || w.m.form.focus != 1 || !strings.Contains(w.m.form.errors[1], "Only 15h left on this day") {
 		t.Fatalf("got %+v", w.m.form)
 	}

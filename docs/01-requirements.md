@@ -89,9 +89,9 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Keyboard only, at least 80 by 24. A smaller window only asks to be made larger.
 - Space starts, pauses, resumes or reopens the selected item, and `f` finishes it. The footer only
   offers what the item and the day allow, with `more [.]` when the keys do not fit.
-- `a` adds and `e` edits in a form at the bottom. Tab moves between fields, Ctrl+S saves, and Esc
-  asks before throwing changes away. Everything that commits, a form, an order or a carry, saves
-  with Ctrl+S.
+- `a` adds and `e` edits in a form at the bottom. Enter moves to the next field and saves from the last one, Tab
+  moves between fields, and Esc asks before throwing changes away. An order or a carry saves with
+  Ctrl+S.
 - `enter` shows details, `r` a read-only review, `c` a month calendar and `t` goes back to today.
   Looking at a day never creates it.
 - `d` asks before deleting, and only `y` deletes.
@@ -120,8 +120,9 @@ What flowd needs to do. The command line and the terminal workspace follow the s
   file fails with a clear error and is never replaced.
 - Size. Under 30 MB of memory and one file under 15 MB.
 - Support. `flowd doctor` checks the file and `flowd doctor --repair` restores the backup.
-  `flowd reset` starts over with an empty planner. You type `reset` to confirm, and the old files
-  move into a private folder next to the database instead of being deleted.
+  `flowd reset` starts over with an empty planner. It asks y or n to go on, then y or n to keep a
+  backup. Only when you say yes do the old files move into a private folder next to the database.
+  Otherwise they are deleted.
 - Data. The file is `$XDG_DATA_HOME/flowd/flowd.sqlite`, or `~/.local/share/flowd/flowd.sqlite`.
 
 ## Not in scope

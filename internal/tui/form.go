@@ -132,8 +132,6 @@ func (m *model) formKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 	switch key {
-	case "ctrl+s":
-		return m.save()
 	case "esc":
 		if f.dirty() {
 			f.discard = true
@@ -143,7 +141,11 @@ func (m *model) formKey(msg tea.KeyPressMsg) tea.Cmd {
 	case "tab", "shift+tab", "up", "down":
 		f.focus = 1 - f.focus
 	case "enter":
-		f.focus = 1 // Enter moves on, it never saves
+		if f.focus == 0 {
+			f.focus = 1
+			return nil
+		}
+		return m.save()
 	default:
 		if !f.fields[f.focus].edit(key) && msg.Text != "" {
 			f.fields[f.focus].insert(msg.Text)
@@ -251,5 +253,8 @@ func (m *model) formFooter() string {
 	case m.form.saving:
 		return " Saving…"
 	}
-	return " save [ctrl+s]  next field [tab]  back [esc]"
+	if m.form.focus == 0 {
+		return " next field [enter]  back [esc]"
+	}
+	return " save [enter]  previous field [shift+tab]  back [esc]"
 }
