@@ -77,10 +77,15 @@ show_success() {
     [ -z "$attestation_note" ] || printf '\n%s\n' "$attestation_note"
     if [ -n "$refreshed_skills" ]; then
         printf '\n%s\n' "Updated the agent skill for$refreshed_skills."
+    elif [ "$interactive" = true ] && ( : < /dev/tty ) 2> /dev/null; then
+        # Piped from curl, stdin is the script, so the questions are read from
+        # the terminal. Escape skips the skill, and so does any failure.
+        printf '\n'
+        "$binary_target" skill < /dev/tty || true
     else
         printf '\n'
         say 'To install the agent skill 🤖, run:'
-        printf '%s\n' '$ flowd skill --claude --codex'
+        printf '%s\n' '$ flowd skill'
     fi
     show_completion
 }
@@ -112,7 +117,7 @@ usage_error() { progress_end; printf 'flowd install: %s\n' "$*" >&2; exit 2; }
 help() {
     printf '%s\n' 'Usage: sh install.sh [--version vX.Y.Z] [--from DIR] [--bin-dir DIR] [--force] [--require-attestation]' \
         'Downloads a public release and installs flowd to ~/.local/bin.' \
-        'The Agent Skill is installed only when asked, with flowd skill --claude --codex.' \
+        'At a terminal it then asks which agents to install the Agent Skill for. Skip it with Esc, or run flowd skill later.' \
         '--from DIR installs from release files already downloaded into DIR instead.' \
         'Needs curl, tar, gzip, standard shell tools and sha256sum or shasum.' \
         'Checks the release checksum before installing anything, and the signed build provenance' \
@@ -366,7 +371,7 @@ publish_payload() {
 # always matches the new flowd. It is never installed anywhere new, and a
 # failure here only means the old skill stays.
 refresh_skills() {
-    for pair in "claude:$HOME/.claude/skills/flowd:Claude Code" "codex:$HOME/.agents/skills/flowd:Codex"; do
+    for pair in "claude:$HOME/.claude/skills/flowd:Claude Code" "agents:$HOME/.agents/skills/flowd:Codex, OpenCode, Pi and Gemini CLI"; do
         flag=${pair%%:*} rest=${pair#*:}
         folder=${rest%%:*} name=${rest#*:}
         [ -f "$folder/SKILL.md" ] && [ "$(sed -n 2p "$folder/SKILL.md")" = 'name: flowd' ] || continue

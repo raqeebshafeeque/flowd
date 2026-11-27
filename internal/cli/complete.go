@@ -61,7 +61,7 @@ var commandOptions = map[string][]option{
 	"doctor": {{"repair", "Restore the backup", false}},
 	"reset":  {{"yes", "Reset without asking, keeping a backup", false}, {"no-backup", "Do not keep the old files", false}},
 	"now":    {{"short", "One line for a status bar", false}},
-	"skill":  {{"claude", "Install it for Claude Code", false}, {"codex", "Install it for Codex", false}},
+	"skill":  {{"claude", "Install it for Claude Code", false}, {"agents", "Install it for Codex, OpenCode, Pi and Gemini CLI", false}},
 	"carry":  {{"all", "Carry every leftover", false}},
 }
 

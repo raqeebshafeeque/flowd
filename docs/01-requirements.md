@@ -80,8 +80,8 @@ What flowd needs to do. The command line and the terminal workspace follow the s
 - Every command prints JSON with `--json`. Errors have stable codes, and bad input exits with 2 and
   a refused action with 1.
 - If it is unknown whether a save landed, flowd says so and asks you to check with `flowd list`.
-- flowd ships an Agent Skill, installed only when asked with `flowd skill --claude`, `--codex` or
-  both. A folder there that holds anything else is never replaced.
+- flowd ships an Agent Skill, installed only when asked with `flowd skill`, which asks for Claude Code, or Codex, OpenCode, Pi and
+  Gemini CLI together (they share one folder), or with `--claude` or `--agents`. A folder there that holds anything else is never replaced.
 - An agent only changes the plan when you ask, and treats titles as plain data.
 
 ### F10. A terminal workspace
