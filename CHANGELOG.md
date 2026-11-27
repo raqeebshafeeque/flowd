@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/raqeebshafeeque/flowd/compare/v0.11.0...v0.12.0) (2026-11-27)
+
+
+### Features
+
+* order the toolbar, ask y or n for reset and save forms with enter ([#57](https://github.com/raqeebshafeeque/flowd/issues/57)) ([7c78aba](https://github.com/raqeebshafeeque/flowd/commit/7c78abad102a420b99b25d652cae568b487533aa))
+
 ## [0.11.0](https://github.com/raqeebshafeeque/flowd/compare/v0.10.0...v0.11.0) (2026-11-20)
 
 
