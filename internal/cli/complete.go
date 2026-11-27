@@ -59,7 +59,7 @@ var commandOptions = map[string][]option{
 	"edit":   {{"title", "A new title", true}, {"duration", "A new duration", true}},
 	"delete": {{"yes", "Delete without asking", false}},
 	"doctor": {{"repair", "Restore the backup", false}},
-	"reset":  {{"yes", "Reset without asking", false}},
+	"reset":  {{"yes", "Reset without asking, keeping a backup", false}, {"no-backup", "Do not keep the old files", false}},
 	"now":    {{"short", "One line for a status bar", false}},
 	"skill":  {{"claude", "Install it for Claude Code", false}, {"codex", "Install it for Codex", false}},
 	"carry":  {{"all", "Carry every leftover", false}},

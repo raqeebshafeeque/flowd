@@ -28,7 +28,7 @@ func TestTheListShowsWorkDurationAndStatus(t *testing.T) {
 	w.refresh()
 	w.press(key(".")) // the rest of the keys, which do not fit on one row
 	text := plain(w)
-	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "pause [space]  finish [f]  edit [e]", "help [?]", "quit [q]"} {
+	for _, want := range []string{"flowd", "Tue 17 Nov 2026 │ 09:10:00", "> Study", "10m / 1h", "IN PROGRESS", "Code", "30m", "TODO", "add [a]  edit [e]  pause [space]  finish [f]  delete [d]", "help [?]", "quit [q]"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("missing %q in:\n%s", want, text)
 		}

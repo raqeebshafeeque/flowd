@@ -225,30 +225,40 @@ func doctor(ctx context.Context, out io.Writer, o options, path string) error {
 	return err
 }
 
-// resetPlanner starts over with an empty planner. Typing a whole word to confirm
-// keeps a stray Enter or y from wiping the plan, and without a person to ask
-// it needs --yes.
+// resetPlanner starts over with an empty planner. At a terminal it asks
+// y or n to go on, then y or n to keep the old files aside. Without a person
+// to ask it needs --yes, which keeps a backup unless --no-backup is given.
 func resetPlanner(ctx context.Context, out io.Writer, o options, path string, env Env) error {
 	if !o.yes && (o.json || !env.Interactive) {
 		return planner.InputError(nil, "Resetting needs confirmation", "Add --yes to reset without being asked")
 	}
+	backup := !o.noBackup
 	if !o.yes {
-		fmt.Fprint(out, "This empties the planner. The current files are kept in a folder next to it.\nType reset to go on: ")
-		answer := ""
-		if env.In != nil {
-			answer, _ = bufio.NewReader(env.In).ReadString('\n')
+		in := bufio.NewReader(env.In)
+		if env.In == nil {
+			in = bufio.NewReader(strings.NewReader(""))
 		}
-		if strings.TrimSpace(answer) != "reset" {
+		ask := func(question string) bool {
+			fmt.Fprint(out, question+" [y/n]: ")
+			answer, _ := in.ReadString('\n')
+			return strings.EqualFold(strings.TrimSpace(answer), "y")
+		}
+		if !ask("All data will be gone. Go on?") {
 			_, err := fmt.Fprintln(out, "Nothing was reset")
 			return err
 		}
+		backup = ask("Keep the old files in a backup folder next to it?")
 	}
-	recovery, err := store.Reset(ctx, path)
+	recovery, err := store.Reset(ctx, path, backup)
 	if err != nil {
 		return err
 	}
 	if o.json {
 		return writeJSON(out, map[string]string{"status": "reset", "recovery": recovery})
+	}
+	if recovery == "" {
+		_, err = fmt.Fprintln(out, "The planner is empty. The previous files were deleted")
+		return err
 	}
 	_, err = fmt.Fprintf(out, "The planner is empty. The previous files are in %s\n", recovery)
 	return err

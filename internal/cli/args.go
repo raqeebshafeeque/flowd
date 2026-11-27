@@ -29,6 +29,7 @@ type options struct {
 	// else in context, like finish on a past day.
 	operation planner.Operation
 	yes       bool
+	noBackup  bool
 	title     *string
 	duration  *string
 	look      look // set from Env, not from the command line
@@ -45,7 +46,10 @@ var commands = map[string]command{
 	"review": {},
 	"now":    {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.short, "short", false, "") }},
 	"backup": {},
-	"reset":  {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.yes, "yes", false, "") }},
+	"reset": {flags: func(f *flag.FlagSet, o *options) {
+		f.BoolVar(&o.yes, "yes", false, "")
+		f.BoolVar(&o.noBackup, "no-backup", false, "")
+	}},
 	"doctor": {flags: func(f *flag.FlagSet, o *options) { f.BoolVar(&o.repair, "repair", false, "") }},
 	"add":    {positional: "DURATION TITLE"},
 	"edit": {positional: "ITEM", flags: func(f *flag.FlagSet, o *options) {
@@ -260,7 +264,7 @@ Set up and look after:
   skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
-  reset [--yes]                Start over with an empty planner, keeping the old files aside
+  reset [--yes] [--no-backup]  Start over with an empty planner. Asks whether to keep the old files
 
 <ID> is the full ID of an item, as shown by list, like it_01JD8K6Z2KAS98N1W1N1PMM62G. Leave it
 out at a terminal to pick the item with the arrow keys, or press Tab with completion set up.

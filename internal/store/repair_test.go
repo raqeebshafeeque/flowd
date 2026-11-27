@@ -75,7 +75,7 @@ func TestRepairWithoutAUsableBackupChangesNothing(t *testing.T) {
 // deleted, so the old plan can still be put back by hand.
 func TestResetKeepsTheOldFilesAndStartsEmpty(t *testing.T) {
 	path := savedDatabase(t)
-	recovery, err := Reset(ctx, path)
+	recovery, err := Reset(ctx, path, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,14 +98,14 @@ func TestResetKeepsTheOldFilesAndStartsEmpty(t *testing.T) {
 	if _, err := s.DayByDate(ctx, "2026-11-17"); !errors.Is(err, ErrNotFound) {
 		t.Fatal("the new planner is not empty", err)
 	}
-	if _, err := Reset(ctx, filepath.Join(t.TempDir(), "none.sqlite")); !errors.Is(err, ErrNothingToReset) {
+	if _, err := Reset(ctx, filepath.Join(t.TempDir(), "none.sqlite"), true); !errors.Is(err, ErrNothingToReset) {
 		t.Fatal("a missing database must be reported", err)
 	}
 }
 
 func TestResetWaitsForNobody(t *testing.T) {
 	s := openTest(t)
-	if _, err := Reset(ctx, s.Path()); !errors.Is(err, ErrLocked) {
+	if _, err := Reset(ctx, s.Path(), true); !errors.Is(err, ErrLocked) {
 		t.Fatal("a database in use must not be reset", err)
 	}
 }

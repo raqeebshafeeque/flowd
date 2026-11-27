@@ -34,8 +34,8 @@ var helpSections = []struct {
 		{"f", "Mark an item done that you forgot to finish, in the last 7 days"},
 	}},
 	{"In a form", [][2]string{
-		{"tab / enter", "Move to the other field. Enter never saves"},
-		{"ctrl+s", "Save"},
+		{"tab", "Move to the other field"},
+		{"enter", "Move to the next field, and save from the last one"},
 		{"esc", "Go back, asking first if something was typed"},
 	}},
 	{"In the calendar", [][2]string{

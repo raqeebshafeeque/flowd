@@ -64,6 +64,6 @@ Do not try to work around these. Explain them to the user instead.
 - If flowd says it is unknown whether the change was saved, read the day with `flowd --json list`
   before doing anything else. Never assume it failed.
 - Never run `flowd reset` unless the user clearly asked to empty the whole planner. It keeps the old
-  files in a recovery folder, so say where they went.
+  files in a recovery folder unless `--no-backup` is given, so say where they went.
 - Never run `flowd doctor --repair` unless the user asks for it after you explain that it replaces
   the database with the last backup and moves the current files aside.

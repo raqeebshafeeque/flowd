@@ -420,18 +420,19 @@ func TestFinishOnAPastDayPutsAForgottenFinishRight(t *testing.T) {
 	s.fails(1, "ERR_ILLEGAL_TRANSITION", "finish", "--date", "2026-11-16", id)
 }
 
-// Reset asks for the whole word at a terminal and needs --yes anywhere else.
-func TestResetAsksForTheWordAndKeepsTheOldFiles(t *testing.T) {
+// Reset asks y or n to go on, then y or n to keep a backup. Anywhere else it
+// needs --yes.
+func TestResetAsksAndOnlyKeepsABackupWhenTold(t *testing.T) {
 	s := newSession(t)
 	s.ok("add", "1h", "Study")
 	s.fails(2, "ERR_USAGE", "reset")
-	for _, answer := range []string{"y\n", "yes\n", "\n"} {
+	for _, answer := range []string{"n\n", "\n", "yes please\n"} {
 		s.answer = &answer
-		if out := s.ok("reset"); !contains(out, "Type reset to go on") || !contains(out, "Nothing was reset") {
+		if out := s.ok("reset"); !contains(out, "Go on? [y/n]") || !contains(out, "Nothing was reset") {
 			t.Fatalf("%q: %q", answer, out)
 		}
 	}
-	answer := "reset\n"
+	answer := "y\ny\n"
 	s.answer = &answer
 	out := s.ok("reset")
 	s.answer = nil
@@ -441,6 +442,19 @@ func TestResetAsksForTheWordAndKeepsTheOldFiles(t *testing.T) {
 	if !contains(s.ok("list"), "Nothing planned") {
 		t.Fatal("the planner is not empty")
 	}
+	s.ok("add", "1h", "Again")
+	answer = "y\nn\n"
+	s.answer = &answer
+	out = s.ok("reset")
+	s.answer = nil
+	if !contains(out, "The previous files were deleted") {
+		t.Fatalf("got %q", out)
+	}
+	s.ok("add", "1h", "Third")
+	if out := s.ok("reset", "--yes", "--no-backup"); !contains(out, "were deleted") {
+		t.Fatalf("got %q", out)
+	}
+	s.ok("add", "1h", "Fourth")
 	var result map[string]string
 	if err := json.Unmarshal([]byte(s.ok("--json", "reset", "--yes")), &result); err != nil || result["status"] != "reset" || result["recovery"] == "" {
 		t.Fatalf("got %v, %v", result, err)

@@ -41,11 +41,12 @@ func Repair(ctx context.Context, path string) (recovery string, err error) {
 // ErrNothingToReset means there is no database to reset.
 var ErrNothingToReset = errors.New("there is no database to reset")
 
-// Reset leaves an empty planner behind: the current files move into a
-// private recovery folder next to the database, whose path is returned, and
-// the next open starts a new file. Nothing is deleted, and the backup stays
-// where it is.
-func Reset(ctx context.Context, path string) (recovery string, err error) {
+// Reset leaves an empty planner behind and the next open starts a new file.
+// With backup, the current files move into a private recovery folder next to
+// the database, whose path is returned, and nothing is deleted. Without it,
+// the files are removed and the returned path is empty. The backup stays
+// where it is either way.
+func Reset(ctx context.Context, path string, backup bool) (recovery string, err error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -61,10 +62,25 @@ func Reset(ctx context.Context, path string) (recovery string, err error) {
 		return "", err
 	}
 	defer func() { err = errors.Join(err, lock.Close()) }()
-	if recovery, err = moveAside(absolute); err != nil {
+	if backup {
+		recovery, err = moveAside(absolute)
+	} else {
+		err = removeFiles(absolute)
+	}
+	if err != nil {
 		return recovery, err
 	}
 	return recovery, syncDir(filepath.Dir(absolute))
+}
+
+// removeFiles deletes the database and its SQLite side files.
+func removeFiles(absolute string) error {
+	for _, suffix := range []string{"", "-wal", "-shm", "-journal"} {
+		if err := os.Remove(absolute + suffix); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
 }
 
 // moveAside moves the database and its SQLite side files into a new private
