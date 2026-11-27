@@ -451,6 +451,13 @@ func TestResetAsksAndOnlyKeepsABackupWhenTold(t *testing.T) {
 		t.Fatalf("got %q", out)
 	}
 	s.ok("add", "1h", "Third")
+	answer = "y\n"
+	s.answer = &answer
+	if out := s.ok("reset", "--no-backup"); !contains(out, "were deleted") || contains(out, "Keep the old files") {
+		t.Fatalf("--no-backup should skip the backup question: %q", out)
+	}
+	s.answer = nil
+	s.ok("add", "1h", "Third again")
 	if out := s.ok("reset", "--yes", "--no-backup"); !contains(out, "were deleted") {
 		t.Fatalf("got %q", out)
 	}
