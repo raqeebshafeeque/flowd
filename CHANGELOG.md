@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/raqeebshafeeque/flowd/compare/v0.12.0...v0.12.1) (2026-11-27)
+
+
+### Bug Fixes
+
+* skip the backup question when reset is given --no-backup ([#59](https://github.com/raqeebshafeeque/flowd/issues/59)) ([7974f1f](https://github.com/raqeebshafeeque/flowd/commit/7974f1f60b64a055a3910228aa476db08f4d376c))
+
 ## [0.12.0](https://github.com/raqeebshafeeque/flowd/compare/v0.11.0...v0.12.0) (2026-11-27)
 
 
