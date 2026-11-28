@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/raqeebshafeeque/flowd/compare/v0.12.1...v0.13.0) (2026-11-28)
+
+
+### Features
+
+* pick the agents for the skill at a terminal ([#61](https://github.com/raqeebshafeeque/flowd/issues/61)) ([a10e7b3](https://github.com/raqeebshafeeque/flowd/commit/a10e7b30bd150ad23dd1f45f63e6b81440777edc))
+
 ## [0.12.1](https://github.com/raqeebshafeeque/flowd/compare/v0.12.0...v0.12.1) (2026-11-27)
 
 
