@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/raqeebshafeeque/flowd/internal/planner"
 	"github.com/raqeebshafeeque/flowd/skills"
 )
@@ -19,7 +21,8 @@ type agent struct{ flag, name, folder string }
 
 var agents = []agent{
 	{"claude", "Claude Code", ".claude/skills"},
-	{"codex", "Codex", ".agents/skills"},
+	// Codex, OpenCode, Pi and Gemini CLI all read the shared agents folder.
+	{"agents", "Codex, OpenCode, Pi and Gemini CLI", ".agents/skills"},
 }
 
 // skillMarker starts the SKILL.md of the flowd skill. A folder that holds
@@ -29,7 +32,35 @@ const skillMarker = "---\nname: flowd\n"
 // installSkill writes the embedded skill for each agent that was asked for.
 // Each folder is replaced whole, and only when it holds the flowd skill or
 // nothing, so an unrelated skill of the same name is never overwritten.
-func installSkill(out io.Writer, o options, version string) error {
+func installSkill(ctx context.Context, out io.Writer, o options, env Env) error {
+	version := env.Version
+	if len(o.agents) == 0 {
+		if o.json || !env.Interactive {
+			return planner.InputError(nil, "Choose which agents get the skill", "Use "+agentFlags()+", or run flowd skill at a terminal to pick")
+		}
+		run := env.pick
+		if run == nil {
+			run = runPicker(ctx, env, out)
+		}
+		final, err := run(newAgentPicker(o.look))
+		if err != nil {
+			return err
+		}
+		p, ok := final.(agentPicker)
+		if !ok || !p.chosen {
+			return nil
+		}
+		o.agents = map[string]bool{}
+		for i, on := range p.on {
+			if on {
+				o.agents[agents[i].flag] = true
+			}
+		}
+		if len(o.agents) == 0 {
+			_, err := fmt.Fprintln(out, "No agent was chosen, so nothing was installed")
+			return err
+		}
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return planner.InputError(err, "Cannot find your home folder", "Set HOME and try again")
@@ -122,4 +153,67 @@ func tilde(home, path string) string {
 		return "~/" + rest
 	}
 	return path
+}
+
+// agentFlags lists the agent flags for messages: --claude or --agents.
+func agentFlags() string {
+	var flags []string
+	for _, a := range agents {
+		flags = append(flags, "--"+a.flag)
+	}
+	return strings.Join(flags[:len(flags)-1], ", ") + " or " + flags[len(flags)-1]
+}
+
+// agentPicker asks which agents get the skill. Up and down move, Space
+// ticks one, Enter installs for the ticked ones, and Esc, q or Ctrl+C cancel.
+type agentPicker struct {
+	on      []bool
+	cursor  int
+	chosen  bool
+	closing bool
+	look    look
+}
+
+func newAgentPicker(l look) agentPicker { return agentPicker{on: make([]bool, len(agents)), look: l} }
+
+func (p agentPicker) Init() tea.Cmd { return nil }
+
+func (p agentPicker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if key, ok := msg.(tea.KeyPressMsg); ok {
+		switch key.String() {
+		case "up", "k", "ctrl+p":
+			p.cursor = (p.cursor + len(agents) - 1) % len(agents)
+		case "down", "j", "ctrl+n", "tab":
+			p.cursor = (p.cursor + 1) % len(agents)
+		case "space", " ", "x":
+			p.on = append([]bool(nil), p.on...)
+			p.on[p.cursor] = !p.on[p.cursor]
+		case "enter":
+			p.chosen, p.closing = true, true
+			return p, tea.Quit
+		case "esc", "q", "ctrl+c":
+			p.closing = true
+			return p, tea.Quit
+		}
+	}
+	return p, nil
+}
+
+func (p agentPicker) View() tea.View {
+	if p.closing {
+		return tea.NewView("")
+	}
+	rows := []string{p.look.paint("\x1b[1m", "Install the skill for which agents?") + p.look.paint("\x1b[2m", "  space to tick, enter to install, esc to cancel")}
+	for i, a := range agents {
+		box := "[ ]"
+		if p.on[i] {
+			box = "[x]"
+		}
+		row := "  " + box + " " + a.name
+		if i == p.cursor {
+			row = p.look.paint("\x1b[36m", "> "+box+" "+a.name)
+		}
+		rows = append(rows, row)
+	}
+	return tea.NewView(strings.Join(rows, "\n"))
 }

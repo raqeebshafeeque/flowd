@@ -70,6 +70,8 @@ var commands = map[string]command{
 		for _, a := range agents {
 			f.BoolFunc(a.flag, "", func(string) error { o.agents[a.flag] = true; return nil })
 		}
+		// --codex is the older name for --agents.
+		f.BoolFunc("codex", "", func(string) error { o.agents["agents"] = true; return nil })
 	}},
 }
 
@@ -208,9 +210,6 @@ func parse(args []string) (options, error) {
 			return o, planner.InputError(nil, "Add needs a duration and a title", `For example: flowd add 1h30m "Study"`)
 		}
 	}
-	if o.command == "skill" && len(o.agents) == 0 {
-		return o, planner.InputError(nil, "Choose which agents get the skill", "Use --claude, --codex or both")
-	}
 	if o.command == "edit" && o.title == nil && o.duration == nil {
 		return o, planner.InputError(nil, "Edit needs a new title, a new duration or both", "Use --title, --duration or both")
 	}
@@ -261,7 +260,8 @@ Track the work:
 
 Set up and look after:
   completion <SHELL>           Print tab completion for bash, fish or zsh
-  skill [--claude] [--codex]   Install the Agent Skill for Claude Code, Codex or both
+  skill [--claude] [--agents]  Install the Agent Skill. Pick at a terminal, or use --claude for
+                               Claude Code, --agents for Codex, OpenCode, Pi and Gemini CLI
   backup                       Write a backup next to the database
   doctor [--repair]            Check the database, or restore the backup
   reset [--yes] [--no-backup]  Start over with an empty planner. Asks whether to keep the old files

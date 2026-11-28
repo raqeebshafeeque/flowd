@@ -1,6 +1,7 @@
 package cli
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,7 @@ func TestTheSkillGoesWhereItIsAskedFor(t *testing.T) {
 	t.Setenv("HOME", home)
 	s := newSession(t)
 	out := s.ok("skill", "--codex")
-	if !contains(out, "Installed the flowd skill for Codex in ~/.agents/skills/flowd") || contains(out, "Claude") {
+	if !contains(out, "Installed the flowd skill for Codex, OpenCode, Pi and Gemini CLI in ~/.agents/skills/flowd") || contains(out, "Claude") {
 		t.Fatalf("got %q", out)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".claude")); err == nil {
@@ -77,5 +78,43 @@ func TestTheSkillNeverReplacesSomethingElse(t *testing.T) {
 	os.Symlink(mine, link)
 	if _, _, code := s.run("skill", "--codex"); code != 2 {
 		t.Fatalf("a symbolic link should be refused, exit %d", code)
+	}
+}
+
+// At a terminal, flowd skill with no flags asks which agents to install for.
+func TestTheSkillAsksWhichAgents(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	s := newSession(t)
+	s.keys = []string{"j", "space", "enter"}
+	s.picker = func(m tea.Model) (tea.Model, error) {
+		for _, k := range s.keys {
+			var msg tea.KeyPressMsg
+			switch k {
+			case "space":
+				msg = tea.KeyPressMsg{Code: tea.KeySpace}
+			case "enter":
+				msg = tea.KeyPressMsg{Code: tea.KeyEnter}
+			default:
+				msg = tea.KeyPressMsg{Code: rune(k[0]), Text: k}
+			}
+			m, _ = m.Update(msg)
+		}
+		return m, nil
+	}
+	out := s.ok("skill")
+	if !contains(out, "for Codex, OpenCode, Pi and Gemini CLI in ~/.agents/skills/flowd") || contains(out, "Claude") {
+		t.Fatalf("got %q", out)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".agents/skills/flowd/SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
+	s.keys = []string{"esc"}
+	s.picker = func(m tea.Model) (tea.Model, error) {
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+		return m, nil
+	}
+	if out := s.ok("skill"); out != "" {
+		t.Fatalf("cancel should print nothing, got %q", out)
 	}
 }
